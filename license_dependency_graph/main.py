@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 import tarfile
 import email
+from packaging.version import parse as parse_version
 
 PACKAGES_DIR = './packages'
 if not os.path.isdir(PACKAGES_DIR):
@@ -71,6 +72,7 @@ def _get_license_and_requirements(tar_url):
                     if l.startswith('['):
                         break
                     else:
+                        print('req1', l)
                         requirements.append(l)
                 break
         else:
@@ -81,28 +83,16 @@ def _get_license_and_requirements(tar_url):
 def get_package_distributions(package_name, package_version, sign, d):
     releases = list(_iter_pypi(package_name))
 
+    selected_releases = []
+
     if package_version is None:
-        selected_releases = releases[::]
+        selected_releases.extend(releases)
     else:
-        for i, (_, _, version, _) in enumerate(releases):
-            if version == package_version:
-                if sign == '>=':
-                    selected_releases = releases[i:]
-                    break
-                if sign == '<=':
-                    selected_releases = releases[:i + 1]
-                    break
-                elif sign == '==':
-                    selected_releases =  releases[i:i + 1]
-                    break
-                elif sign == '>':
-                    selected_releases =  releases[i + 1:]
-                    break
-                elif sign == '<':
-                    selected_releases =  releases[:i]
-                    break
-                else:
-                    raise ValueError('expected sign: {}'.format(' or '.join(['==', '>=', '>'])))
+        assert sign in ['>=', '<=', '==', '<', '>'], 'invalid sign'
+        for full_name, name, version, link in releases:
+            if eval('"{}" {} "{}"'.format(parse_version(version), sign, parse_version(package_version))):
+                selected_releases.append((full_name, name, version, link))
+                break
         else:
             raise Exception('version {} not found'.format(package_version))
             
@@ -111,7 +101,7 @@ def get_package_distributions(package_name, package_version, sign, d):
         d[full_name].add(license_name)
         for req in requirements:
             req_name, req_version, req_sign = _split_package_name(req)
-            print(req_name, req_version, req_sign)
+            print('req2', req_name, req_version, req_sign)
             get_package_distributions(req_name, req_version, req_sign, d)
 
 
