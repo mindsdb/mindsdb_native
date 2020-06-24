@@ -52,7 +52,7 @@ elif sys_platform == 'darwin':
 
 # Windows specific requirements
 elif sys_platform in ['win32','cygwin','windows']:
-    requirements = ['cwrap',*requirements]
+    requirements = ['cwrap', *requirements]
     ludwig_model_requirements = remove_requirements(ludwig_model_requirements, 'tensorflow', 'tensorflow == 1.13.1')
     ludwig_model_requirements = remove_requirements(ludwig_model_requirements, 'ludwig', 'ludwig == 0.1.2')
     ludwig_model_requirements = remove_requirements(ludwig_model_requirements, 'tensorflow-estimator')
