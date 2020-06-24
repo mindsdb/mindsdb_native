@@ -1,4 +1,4 @@
-__title__ = 'MindsDB'
+__title__ = 'mindsdb_native'
 __package_name__ = 'mindsdb_native'
 __version__ = '1.99.0'
 __description__ = "MindsDB's goal is to make it very simple for developers to use the power of artificial neural networks in their projects."
