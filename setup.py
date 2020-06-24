@@ -15,7 +15,7 @@ def remove_requirements(requirements, name, replace=None):
 sys_platform = sys.platform
 
 about = {}
-with open("mindsdb/__about__.py") as fp:
+with open("mindsdb_native/__about__.py") as fp:
     exec(fp.read(), about)
 
 long_description = open('README.md', encoding='utf-8').read()
