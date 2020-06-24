@@ -1,14 +1,23 @@
 import pytest
+import os
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
+
+import torch
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+
 from mindsdb.libs.controllers.predictor import Predictor
 from mindsdb.libs.data_sources.file_ds import FileDS
 from mindsdb.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
-from tests.unit_tests.utils import test_column_types
+from tests.unit_tests.utils import (test_column_types,
+                                    generate_value_cols,
+                                    generate_timeseries_labels,
+                                    generate_log_labels,
+                                    columns_to_file)
 
 
 class TestPredictor:
@@ -80,19 +89,28 @@ class TestPredictor:
     def test_explain_prediction(self):
         mdb = Predictor(name='test_home_rentals')
 
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_x': list(range(n_points)),
+            'categorical_x': [int(x % 2 == 0) for x in range(n_points)],
+        }, index=list(range(n_points)))
+
+        input_dataframe['numeric_y'] = input_dataframe.numeric_x + 2*input_dataframe.categorical_x
+
         mdb.learn(
-            from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-            to_predict='rental_price',
-            stop_training_in_x_seconds=6
+            from_data=input_dataframe,
+            to_predict='numeric_y',
+            stop_training_in_x_seconds=1
         )
 
-        result = mdb.predict(when={"number_of_rooms": 2, "sqft": 1384})
-        explanation = result[0].explain()['rental_price'][0]
-        assert explanation['value']
-        assert explanation['confidence']
-        assert explanation['explanation']
-        assert explanation['simple']
-        assert explanation['model_result']
+        result = mdb.predict(when={"numeric_x": 10, 'categorical_x': 1})
+        explanation_new = result[0].explanation['numeric_y']
+        assert explanation_new['predicted_value'] is not None
+        assert explanation_new['confidence_interval']
+        assert explanation_new['confidence'] >= 0.8
+        assert explanation_new['important_missing_information'] == []
+        assert explanation_new['prediction_quality'] == 'very confident'
+
 
     @pytest.mark.skip(reason="Causes error in probabilistic validator")
     @pytest.mark.slow
@@ -205,3 +223,179 @@ class TestPredictor:
                 a2['existing_credits']['typing']['data_subtype'])
         assert (a2['existing_credits']['typing'][
                     'data_subtype'] == DATA_SUBTYPES.SINGLE)
+
+    @pytest.mark.skip(reason='Test gets stuck during learn call, need investigation')
+    @pytest.mark.slow
+    def test_timeseries(self, tmp_path):
+        ts_hours = 12
+        data_len = 120
+        train_file_name = os.path.join(str(tmp_path), 'train_data.csv')
+        test_file_name = os.path.join(str(tmp_path), 'test_data.csv')
+
+        features = generate_value_cols(['date', 'int'], data_len, ts_hours * 3600)
+        labels = [generate_timeseries_labels(features)]
+
+        feature_headers = list(map(lambda col: col[0], features))
+        label_headers = list(map(lambda col: col[0], labels))
+
+        # Create the training dataset and save it to a file
+        columns_train = list(
+            map(lambda col: col[1:int(len(col) * 3 / 4)], features))
+        columns_train.extend(
+            list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
+        columns_to_file(columns_train, train_file_name, headers=[*feature_headers,
+                                                                 *label_headers])
+        # Create the testing dataset and save it to a file
+        columns_test = list(
+            map(lambda col: col[int(len(col) * 3 / 4):], features))
+        columns_to_file(columns_test, test_file_name, headers=feature_headers)
+
+        mdb = Predictor(name='test_timeseries')
+
+        mdb.learn(
+            from_data=train_file_name,
+            to_predict=label_headers,
+            order_by=feature_headers[0],
+            # ,window_size_seconds=ts_hours* 3600 * 1.5
+            window_size=3,
+            stop_training_in_x_seconds=1
+        )
+
+        results = mdb.predict(when_data=test_file_name, use_gpu=False)
+
+        for row in results:
+            expect_columns = [label_headers[0],
+                              label_headers[0] + '_confidence']
+            for col in expect_columns:
+                assert col in row
+
+        models = mdb.get_models()
+        model_data = mdb.get_model_data(models[0]['name'])
+        assert model_data
+
+    def test_multilabel_prediction(self, tmp_path):
+        train_file_name = os.path.join(str(tmp_path), 'train_data.csv')
+        test_file_name = os.path.join(str(tmp_path), 'test_data.csv')
+        data_len = 60
+
+        features = generate_value_cols(['int', 'float', 'int', 'float'], data_len)
+        labels = []
+        labels.append(generate_log_labels(features))
+        labels.append(generate_timeseries_labels(features))
+
+        feature_headers = list(map(lambda col: col[0], features))
+        label_headers = list(map(lambda col: col[0], labels))
+
+        # Create the training dataset and save it to a file
+        columns_train = list(
+            map(lambda col: col[1:int(len(col) * 3 / 4)], features))
+        columns_train.extend(
+            list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
+        columns_to_file(columns_train, train_file_name,
+                        headers=[*feature_headers, *label_headers])
+
+        # Create the testing dataset and save it to a file
+        columns_test = list(
+            map(lambda col: col[int(len(col) * 3 / 4):], features))
+        columns_to_file(columns_test, test_file_name,
+                        headers=feature_headers)
+
+        mdb = Predictor(name='test_multilabel_prediction')
+        mdb.learn(from_data=train_file_name,
+                  to_predict=label_headers,
+                  stop_training_in_x_seconds=1)
+
+        results = mdb.predict(when_data=test_file_name)
+        models = mdb.get_models()
+        model_data = mdb.get_model_data(models[0]['name'])
+        assert model_data
+
+        for i in range(len(results)):
+            row = results[i]
+            for label in label_headers:
+                expect_columns = [label, label + '_confidence']
+                for col in expect_columns:
+                    assert col in row
+
+    # If cuda is not available then we expect the test to fail when trying to use it
+    @pytest.mark.parametrize("use_gpu", [
+        True if torch.cuda.is_available() else pytest.param(True, marks=pytest.mark.xfail),
+        False])
+    @pytest.mark.slow
+    def test_house_pricing(self, use_gpu):
+        """
+        Tests whole pipeline from downloading the dataset to making predictions and explanations.
+        """
+        # Create & Learn
+        mdb = Predictor(name='home_rentals_price')
+        mdb.learn(to_predict='rental_price',
+                  from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+                  backend='lightwood',
+                  stop_training_in_x_seconds=1,
+                  use_gpu=use_gpu)
+
+        def assert_prediction_interface(prediction):
+            assert hasattr(prediction, 'data')
+            assert hasattr(prediction, 'extra_insights')
+            assert hasattr(prediction, 'transaction')
+            assert hasattr(prediction[0], 'explanation')
+            assert hasattr(prediction[0], 'data')
+            assert prediction[0].predict_columns[0] == 'rental_price'
+
+            for item in prediction:
+                # Assert __str__ works
+                print(item)
+
+            print(prediction[0].as_dict())
+            print(prediction[0].as_list())
+            print(prediction[0]['rental_price_confidence'])
+            print(type(prediction[0]['rental_price_confidence']))
+
+            print(prediction[0].explanation)
+            print(prediction[0].raw_predictions())
+
+        test_results = mdb.test(
+            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            accuracy_score_functions=r2_score, predict_args={'use_gpu': use_gpu})
+        assert test_results['rental_price_accuracy'] >= 0.8
+
+        prediction = mdb.predict(
+            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            use_gpu=use_gpu)
+        assert_prediction_interface(prediction)
+        prediction = mdb.predict(when={'sqft': 300}, use_gpu=use_gpu)
+        assert_prediction_interface(prediction)
+
+        amd = mdb.get_model_data('home_rentals_price')
+
+        for k in ['status', 'name', 'version', 'data_source', 'current_phase',
+                  'updated_at', 'created_at',
+                  'train_end_at']:
+            assert isinstance(amd[k], str)
+
+        assert isinstance(amd['predict'], (list, str))
+        assert isinstance(amd['is_active'], bool)
+
+        for k in ['validation_set_accuracy', 'accuracy']:
+            assert isinstance(amd[k], float)
+
+        for k in amd['data_preparation']:
+            assert isinstance(amd['data_preparation'][k], (int, float))
+
+        for k in amd['data_analysis']:
+            assert (len(amd['data_analysis'][k]) > 0)
+            assert isinstance(amd['data_analysis'][k][0], dict)
+
+        model_analysis = amd['model_analysis']
+        assert (len(model_analysis) > 0)
+        assert isinstance(model_analysis[0], dict)
+        input_importance = model_analysis[0]["overall_input_importance"]
+        assert (len(input_importance) > 0)
+        assert isinstance(input_importance, dict)
+
+        for column, importance in zip(input_importance["x"],
+                                      input_importance["y"]):
+            assert isinstance(column, str)
+            assert (len(column) > 0)
+            assert isinstance(importance, (float, int))
+            assert (importance >= 0 and importance <= 10)
