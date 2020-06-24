@@ -334,34 +334,37 @@ class TestPredictor:
                   stop_training_in_x_seconds=1,
                   use_gpu=use_gpu)
 
-        prediction = mdb.predict(
-            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-            use_gpu=use_gpu)
-        assert prediction
-        assert prediction[0]
+        def assert_prediction_interface(prediction):
+            assert hasattr(prediction, 'data')
+            assert hasattr(prediction, 'extra_insights')
+            assert hasattr(prediction, 'transaction')
+            assert hasattr(prediction[0], 'explanation')
+            assert hasattr(prediction[0], 'data')
+            assert prediction[0].predict_columns[0] == 'rental_price'
+
+            for item in prediction:
+                # Assert __str__ works
+                print(item)
+
+            print(prediction[0].as_dict())
+            print(prediction[0].as_list())
+            print(prediction[0]['rental_price_confidence'])
+            print(type(prediction[0]['rental_price_confidence']))
+
+            print(prediction[0].explanation)
+            print(prediction[0].raw_predictions())
 
         test_results = mdb.test(
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             accuracy_score_functions=r2_score, predict_args={'use_gpu': use_gpu})
-        assert test_results
+        assert test_results['rental_price_accuracy'] >= 0.8
 
+        prediction = mdb.predict(
+            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            use_gpu=use_gpu)
+        assert_prediction_interface(prediction)
         prediction = mdb.predict(when={'sqft': 300}, use_gpu=use_gpu)
-        assert prediction
-        assert prediction[0]
-
-        print(prediction)
-        print(prediction[0])
-        for item in prediction:
-            print(item)
-
-        print(prediction[0].as_dict())
-        print(prediction[0].as_list())
-        print(prediction[0]['rental_price_confidence'])
-        print(type(prediction[0]['rental_price_confidence']))
-
-        print(prediction[0].explain()) # Deprecated interface, do not use
-        print(prediction[0].explanation)
-        print(prediction[0].raw_predictions())
+        assert_prediction_interface(prediction)
 
         amd = mdb.get_model_data('home_rentals_price')
 
