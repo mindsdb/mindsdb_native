@@ -113,7 +113,7 @@ class Transaction:
 
         self.lmd['is_active'] = True
         module_path = convert_cammelcase_to_snake_string(module_name)
-        module_full_path = 'mindsdb.libs.phases.{module_path}.{module_path}'.format(module_path=module_path)
+        module_full_path = 'mindsdb_native.libs.phases.{module_path}.{module_path}'.format(module_path=module_path)
         try:
             main_module = importlib.import_module(module_full_path)
             module = getattr(main_module, module_name)
