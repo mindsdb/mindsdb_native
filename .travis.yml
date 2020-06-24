@@ -45,9 +45,9 @@ matrix:
 
 
 notifications:
-  # send notifications only on master failure
+  # send notifications only on stable failure
   email:
-    only: master
+    only: stable
 cache: pip
 # install dependencies
 install:
@@ -73,14 +73,14 @@ deploy:
     password: $PYPI_SYSADMIN_PASSWORD
     distributions: "sdist"
     on:
-      branch: master
+      branch: stable
       condition: $DEPLOYMENT_ENV = "true"
 
 # after pip is deployed, we can deploy to dockerhub
 after_deploy:
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then sleep 15; fi
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then cd distributions/docker; fi
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then docker build -t docker-build .; fi
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then docker tag docker-build $REGISTRY_USER/mindsdb:latest; fi
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then cd ../..; fi
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS" && docker push $REGISTRY_USER/mindsdb && docker logout; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then sleep 15; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then cd distributions/docker; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then docker build -t docker-build .; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then docker tag docker-build $REGISTRY_USER/mindsdb:latest; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then cd ../..; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS" && docker push $REGISTRY_USER/mindsdb && docker logout; fi
