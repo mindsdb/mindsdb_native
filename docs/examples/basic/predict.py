@@ -6,7 +6,7 @@ The example code objective here is to predict the best retail price for a given 
 
 """
 
-from mindsdb import Predictor
+from mindsdb_native import Predictor
 
 # use the model to make predictions
 result = Predictor(name='home_rentals_price').predict(when={'number_of_rooms': 2,'number_of_bathrooms':1, 'sqft': 1190})

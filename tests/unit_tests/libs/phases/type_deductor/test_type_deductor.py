@@ -5,9 +5,9 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from mindsdb.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
-from mindsdb.libs.data_types.transaction_data import TransactionData
-from mindsdb.libs.phases.type_deductor.type_deductor import TypeDeductor
+from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
+from mindsdb_native.libs.data_types.transaction_data import TransactionData
+from mindsdb_native.libs.phases.type_deductor.type_deductor import TypeDeductor
 from tests.unit_tests.utils import test_column_types
 
 

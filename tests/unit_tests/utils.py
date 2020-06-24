@@ -2,7 +2,7 @@ import random
 import string
 import datetime
 from math import log
-from mindsdb.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
+from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
 test_column_types = {
     'numeric_int': (DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT),

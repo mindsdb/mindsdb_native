@@ -1,9 +1,9 @@
 import mysql.connector
 import datetime
 import logging
-from mindsdb import Predictor
-from mindsdb.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
-from mindsdb import MariaDS
+from mindsdb_native import Predictor
+from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
+from mindsdb_native import MariaDS
 
 
 def test_maria_ds():

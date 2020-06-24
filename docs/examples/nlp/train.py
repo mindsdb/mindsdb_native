@@ -1,4 +1,4 @@
-from mindsdb import *
+from mindsdb_native import *
 
 mdb = Predictor(name='real_estate_desc')
 
