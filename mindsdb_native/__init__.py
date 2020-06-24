@@ -13,6 +13,8 @@ import mindsdb_native.libs.constants.mindsdb as CONST
 
 from mindsdb_native.__about__ import __package_name__ as name, __version__
 from mindsdb_native.libs.controllers.predictor import Predictor
+from mindsdb_native.libs.data_sources.maria_ds import MariaDS
+from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
 
 # Data Sources
 from mindsdb_native.libs.data_sources.file_ds import FileDS
@@ -21,17 +23,6 @@ try:
     from mindsdb_native.libs.data_sources.s3_ds import S3DS
 except:
     pass
-
-try:
-    from mindsdb_native.libs.data_sources.maria_ds import MariaDS
-except:
-    print("MariaDS Datasource is not available by default. If you wish to use it, please install mariadb or mindsdb[extra_data_sources]")
-
-
-try:
-    from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
-except:
-    print("MySQL Datasource is not available by default. If you wish to use it, please install mysqlclient or mindsdb[extra_data_sources]")
 
 try:
     from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
