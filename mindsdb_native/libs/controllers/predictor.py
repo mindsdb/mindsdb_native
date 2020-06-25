@@ -10,7 +10,7 @@ from mindsdb_native.__about__ import __version__
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.constants.mindsdb import *
-from mindsdb_native.libs.helpers.general_helpers import check_for_updates, , deprecated
+from mindsdb_native.libs.helpers.general_helpers import check_for_updates, deprecated
 from mindsdb_native.libs.controllers.functional import (export_storage, export_predictor,
                                                  rename_model, delete_model,
                                                  import_model)
@@ -379,7 +379,10 @@ class Predictor:
 
     @deprecated(reason='Use controllers.functional.rename_model instead')
     def rename_model(self, old_model_name, new_model_name):
-        return rename_model(old_model_name, new_model_name)
+        try:
+            return rename_model(old_model_name, new_model_name)
+        except Exception:
+            return False
 
     @deprecated(reason='Use controllers.functional.delete_model instead')
     def delete_model(self, model_name=None):

@@ -8,6 +8,9 @@ import lightwood
 # HORRIBLE HACK TO AVOID SEGFAULT
 # @TODO: FIND A WAY TO ACTUALLY SOLVE THIS ASAP !!!
 
+from mindsdb_native.libs.controllers import functional
+F = functional
+
 from mindsdb_native.config import CONFIG
 import mindsdb_native.libs.constants.mindsdb as CONST
 
@@ -32,5 +35,7 @@ except:
 
 
 from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
+
+
 
 MindsDB = Predictor

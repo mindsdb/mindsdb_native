@@ -3,7 +3,7 @@ import pickle
 import shutil
 import zipfile
 
-from mindsdb.config import CONFIG
+from mindsdb_native.config import CONFIG
 
 
 def export_storage(mindsdb_storage_dir='mindsdb_storage'):
@@ -61,14 +61,11 @@ def rename_model(old_model_name, new_model_name):
 
     moved_a_backend = False
     for extension in ['_lightwood_data', '_ludwig_data']:
-        try:
-            shutil.move(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                     old_model_name + extension),
-                        os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                     new_model_name + extension))
-            moved_a_backend = True
-        except Exception:
-            pass
+        shutil.move(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                                 old_model_name + extension),
+                    os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                                 new_model_name + extension))
+        moved_a_backend = True
 
     if not moved_a_backend:
         return False
