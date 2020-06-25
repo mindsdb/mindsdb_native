@@ -1,56 +1,68 @@
 import os
 import sys
 import json
-import requests
 import xml.etree.ElementTree as ET
 import tarfile
 import zipfile
 import email
+from collections import defaultdict
 from pkg_resources import parse_version
+
+import requests
 
 PACKAGES_DIR = './packages'
 if not os.path.isdir(PACKAGES_DIR):
     os.makedirs(PACKAGES_DIR)
 
 
+CMP_OPERATORS = ['>=', '<=', '==', '<', '>', '!=']
+
+
 def _split_package_name(package_name):
     """
-    converts str of format "name>=x.y.z" to tuple(name, str('x.y.z'))
+    example:
+        >>> _split_package_name('mindsdb<=1.17.1>1.15.1!=1.15.2')
+        >>> ('mindsdb', ('<=', '1.17.1'), ('>', '1.15.1'), ('!=', '1.15.2'))
     """
+    s = package_name
+    L = []
+    for i in reversed(range(len(package_name))):
+        for op in CMP_OPERATORS:
+            if package_name.startswith(op, i):
+                version = s[i + len(op):]
+                L.append((op, version))
+                s = s[:i]
+                break
+    return (s, *L)
 
-    for sep in ['>=', '<=', '==', '<', '>']:
-        tmp = package_name.split(sep)
-        if len(tmp) == 2:
-            name, version, sign = tmp[0].strip(), tmp[1].strip(), sep
-            break
-    else:
-        name, version, sign = package_name.strip(), None, None
 
-    return name, version, sign
+def _iter_pypi(package_name, cache=dict()):
+    if package_name not in cache:
+        res = requests.get('https://pypi.org/simple/{}'.format(package_name))
+        try:
+            res.raise_for_status()
+        except Exception:
+            cache[package_name] = []
+        else:
+            tree = ET.fromstring(res.text)
+            cache[package_name] = list(tree.findall('.//a'))
 
-
-def _iter_pypi(package_name):
-    res = requests.get('https://pypi.org/simple/{}'.format(package_name))
-    res.raise_for_status()
-    tree = ET.fromstring(res.text)
-    for a in tree.findall('.//a'):
+    for a in cache[package_name]:
         link = a.get('href')
-        full_name = a.text
+        link = link.split('#')[0].rstrip('/')
+        if link.startswith('/simple'):
+            link = 'https://pypi.org' + link
         for ext in ['.tar.gz', '.zip', '.whl']:
-            if full_name.lower().endswith(ext):
-                name, version = full_name.lower().rstrip(ext).split('-')[:2]
-                yield (full_name, name, version, link)
+            if link.endswith(ext):
+                version = link.split('-')[1].rstrip(ext)
+                yield (ext, version, link)
                 break
         else:
-            # print('skipped', full_name)
             continue
 
 
 def _get_license_and_requirements(url, cache=dict()):
-    if url in cache:
-        return cache[url]
-
-    dist_name = url.split('/')[-1].split('#')[0]
+    dist_name = url.split('/')[-1]
     dist_path = os.path.join(PACKAGES_DIR, dist_name)
 
     if not os.path.isfile(dist_path):
@@ -68,11 +80,12 @@ def _get_license_and_requirements(url, cache=dict()):
                     license_name = parser.parsestr(pkg_info)['License']
                     break
             else:
-                raise Exception('failed to find PKG-INFO in {}'.format(dist_name))
+                license_name = 'failed to find'
+                #raise Exception('failed to find PKG-INFO in {}'.format(dist_name))
 
             requirements = []
             for member in tar.getmembers():
-                if member.name.endswith('requires.txt'):
+                if member.name.endswith('requires.txt') or member.name.endswith('requirements.txt'):
                     lines = tar.extractfile(member).read().decode().split('\n')
                     requirements = []
                     for l in lines:
@@ -83,7 +96,8 @@ def _get_license_and_requirements(url, cache=dict()):
                             requirements.append(l)
                     break
             else:
-                print('Warning: failed to find requires.txt in {}'.format(dist_name))
+                pass
+                #print('Warning: failed to find requires.txt/requirements.txt in {}'.format(dist_name))
 
     elif dist_name.endswith('.zip') or dist_name.endswith('.whl'):
         with zipfile.ZipFile(dist_path) as zip_:
@@ -100,84 +114,87 @@ def _get_license_and_requirements(url, cache=dict()):
                     break
             else:
                 license_name = 'Unknown (failed to find metadata)'
-                print('Warning: failed to find metadata.json in {}'.format(dist_name))
+                #print('Warning: failed to find metadata.json in {}'.format(dist_name))
             
             requirements = []
     else:
         raise Exception('exptected tar/zip/whl')
     
-    cache[url] = (license_name, requirements)
-
-    return license_name, requirements
+    return (license_name, requirements)
 
 
-def get_package_distributions(package_name, package_version, sign, D, cache=dict(), visited=set()):
+def dep_graph(package_name, D, white_list=None, branch_cache=dict(), visited_chain=list(),):
+    print('[{}]'.format(' -> '.join(visited_chain)))
+    name, *versions = _split_package_name(package_name)
+
     try:
-        # sort so that .tag.gz distributions are prioritized
-        releases = sorted(
-            _iter_pypi(package_name),
-            key=lambda x: x[0].endswith('.tar.gz'),
-            reverse=True
-        )
+        # gropup by version
+        releases = defaultdict(list)
+        for ext, version, link in _iter_pypi(name):
+            releases[version].append((ext, link))
 
-        # make releases list unqiue by version
-        tmp = set()
-        new_releases = []
-        for full_name, name, version, link in releases:
-            if version not in tmp:
-                tmp.add(version)
-                new_releases.append((full_name, name, version, link))
-        releases = new_releases
+        # sort by extension priority
+        ext_priority = ['.tar.gz', '.zip', '.whl']
+        for k in releases:
+            releases[k] = sorted(
+                releases[k],
+                key=lambda x: ext_priority.index(x[0])
+            )
 
     except Exception as e:
         print('Warning:', e)
         return
 
-    selected_releases = []
-
-    # if version is not specified, use all releases
-    if package_version is None:
-        selected_releases.extend(releases)
-    
-    # otherwise filter them
-    else:
-        assert sign in ['>=', '<=', '==', '<', '>'], 'invalid sign'
-        for full_name, name, version, link in releases:
-            if eval('parse_version("{}") {} parse_version("{}")'.format(version, sign, package_version)):
-                selected_releases.append((full_name, name, version, link))
-
-    # extract license and requirements from selected releases
-    for full_name, name, version, link in selected_releases:
-        key = str((name, version))
-
-        if key not in cache:
-            try:
-                license_name, requirements = _get_license_and_requirements(link)
-            except Exception as e:
-                cache[key] = str(e)
+    # filter out versions that we don't need
+    to_drop = []
+    if len(versions) > 0:
+        for release_v in releases:
+            for op, v in versions:
+                if eval('parse_version("{}") {} parse_version("{}")'.format(release_v, op, v)):
+                    break
             else:
-                cache[key] = {'license': license_name}
-                if key in visited:
-                    cache[key]['requirements'] = 'cirular dependency'
-                else:
-                    cache[key]['requirements'] = dict()
-                    for req in requirements:
-                        req_name, req_version, req_sign = _split_package_name(req)
-                        get_package_distributions(req_name, req_version, req_sign, cache[key]['requirements'], cache, set([*visited, key]))
-            print(full_name)
-        else:
-            print('[using cached]', full_name)
+                # if none of the conditions was satisfied, drop the relese version
+                # NOTE: dict.pop right here will raise RuntimeError
+                to_drop.append(release_v)
 
-        D[key] = cache[key]
+    for release_v in to_drop:
+        releases.pop(release_v, None)
+
+    # extract license and requirements from filtered releases
+    for release_v, distributions in releases.items():
+        # for now use first distribution
+        # later maybe try other in case of failure to get
+        # required info from the first distribution
+        ext, link = distributions[0]
+
+        key = str((name, release_v))
+
+        if white_list is not None and name in white_list:
+            D[key] = 'WhiteListedBranch'
+        elif name in visited_chain:
+            D[key] = 'CircularDependency'
+        else:
+            if key in branch_cache:
+                D[key] = branch_cache[key]
+            else:
+                license_name, requirements = _get_license_and_requirements(link)
+                D[key] = {'license': license_name, 'requirements': dict()}
+                branch_cache[key] = D[key]
+                for req in requirements:
+                    dep_graph(
+                        package_name=req,
+                        D=D[key]['requirements'],
+                        branch_cache=branch_cache,
+                        visited_chain=[*visited_chain, name],
+                        white_list=white_list
+                    )
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         sys.exit('Usage: python ./{} package_name'.format(__file__))
 
-    name, version, sign = _split_package_name(sys.argv[1])
-
     D = dict()
-    get_package_distributions(name, version, sign, D)
+    dep_graph(sys.argv[1], D, white_list=['nose'])
     with open('out.json', 'w') as f:
         f.write(json.dumps(D))
