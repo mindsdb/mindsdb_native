@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from mindsdb.libs.data_types.transaction_data import TransactionData
-from mindsdb.libs.phases.data_analyzer.data_analyzer import DataAnalyzer
+from mindsdb_native.libs.data_types.transaction_data import TransactionData
+from mindsdb_native.libs.phases.data_analyzer.data_analyzer import DataAnalyzer
 from tests.unit_tests.utils import test_column_types
 
 

@@ -1,8 +1,8 @@
 import datetime
 import logging
 import pg8000
-from mindsdb import Predictor
-from mindsdb.libs.data_sources.postgres_ds import PostgresDS
+from mindsdb_native import Predictor
+from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
 
 
 def test_postgres_ds():

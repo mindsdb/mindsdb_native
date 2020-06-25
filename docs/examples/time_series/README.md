@@ -11,7 +11,7 @@ The goal is to be able to predict the fuel consumption of a vessel, given the pa
 
 ```python
 
-from mindsdb import Predictor
+from mindsdb_native import Predictor
 
 
 Predictor(name='fuel').learn(
@@ -50,7 +50,7 @@ Here you will find a file [fuel_predict.csv](https://raw.githubusercontent.com/m
 
 ```python
 
-from mindsdb import Predictor
+from mindsdb_native import Predictor
 
 # Here we use the model to make predictions (NOTE: You need to run train.py first)
 result = Predictor(name='fuel').predict(when_data = 'fuel_predict.csv')

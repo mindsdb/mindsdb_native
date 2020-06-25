@@ -1,6 +1,6 @@
 import requests
-from mindsdb import Predictor
-from mindsdb.libs.data_sources.clickhouse_ds import ClickhouseDS
+from mindsdb_native import Predictor
+from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
 
 def test_clickhouse_ds():

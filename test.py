@@ -1,4 +1,4 @@
-from mindsdb import Predictor
+from mindsdb_native import Predictor
 import sys
 import pandas as pd
 import json

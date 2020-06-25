@@ -1,9 +1,9 @@
 import mysql.connector
 import datetime
 import logging
-from mindsdb import Predictor
-from mindsdb.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
-from mindsdb import MariaDS
+from mindsdb_native import Predictor
+from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
+from mindsdb_native import MariaDS
 
 
 def test_maria_ds():
@@ -23,9 +23,9 @@ def test_maria_ds():
     cur.execute('DROP TABLE IF EXISTS test_mindsdb')
     cur.execute("""CREATE TABLE test_mindsdb (
                                 col_int BIGINT,
-                                col_float FLOAT, 
-                                col_categorical Text, 
-                                col_bool BOOL, 
+                                col_float FLOAT,
+                                col_categorical Text,
+                                col_bool BOOL,
                                 col_text Text,
                                 col_date DATE,
                                 col_datetime DATETIME,
@@ -37,15 +37,15 @@ def test_maria_ds():
         dt = datetime.datetime.now() - datetime.timedelta(days=i)
 
         query = f"""INSERT INTO test_mindsdb (col_int,
-                                col_float, 
-                                col_categorical, 
-                                col_bool, 
+                                col_float,
+                                col_categorical,
+                                col_bool,
                                 col_text,
                                 col_date,
                                 col_datetime,
                                 col_timestamp,
-                                col_time) 
-                                VALUES (%s, %s,  %s,  %s,  %s, %s, %s, %s, %s) 
+                                col_time)
+                                VALUES (%s, %s,  %s,  %s,  %s, %s, %s, %s, %s)
                                 """
         values = (
             i,
@@ -90,5 +90,3 @@ def test_maria_ds():
 
     # @TODO Timedeltas not supported yet
     # assert_expected_type((analysis['col_time']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMEDELTA)
-
-

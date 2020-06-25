@@ -3,11 +3,15 @@ import os
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
+
+import torch
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
-from mindsdb.libs.controllers.predictor import Predictor
-from mindsdb.libs.data_sources.file_ds import FileDS
-from mindsdb.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
+from sklearn.metrics import r2_score
+
+from mindsdb_native.libs.controllers.predictor import Predictor
+from mindsdb_native.libs.data_sources.file_ds import FileDS
+from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
 from tests.unit_tests.utils import (test_column_types,
                                     generate_value_cols,
@@ -312,3 +316,86 @@ class TestPredictor:
                 expect_columns = [label, label + '_confidence']
                 for col in expect_columns:
                     assert col in row
+
+    # If cuda is not available then we expect the test to fail when trying to use it
+    @pytest.mark.parametrize("use_gpu", [
+        True if torch.cuda.is_available() else pytest.param(True, marks=pytest.mark.xfail),
+        False])
+    @pytest.mark.slow
+    def test_house_pricing(self, use_gpu):
+        """
+        Tests whole pipeline from downloading the dataset to making predictions and explanations.
+        """
+        # Create & Learn
+        mdb = Predictor(name='home_rentals_price')
+        mdb.learn(to_predict='rental_price',
+                  from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+                  backend='lightwood',
+                  stop_training_in_x_seconds=1,
+                  use_gpu=use_gpu)
+
+        def assert_prediction_interface(prediction):
+            assert hasattr(prediction, 'data')
+            assert hasattr(prediction, 'extra_insights')
+            assert hasattr(prediction, 'transaction')
+            assert hasattr(prediction[0], 'explanation')
+            assert hasattr(prediction[0], 'data')
+            assert prediction[0].predict_columns[0] == 'rental_price'
+
+            for item in prediction:
+                # Assert __str__ works
+                print(item)
+
+            print(prediction[0].as_dict())
+            print(prediction[0].as_list())
+            print(prediction[0]['rental_price_confidence'])
+            print(type(prediction[0]['rental_price_confidence']))
+
+            print(prediction[0].explanation)
+            print(prediction[0].raw_predictions())
+
+        test_results = mdb.test(
+            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            accuracy_score_functions=r2_score, predict_args={'use_gpu': use_gpu})
+        assert test_results['rental_price_accuracy'] >= 0.8
+
+        prediction = mdb.predict(
+            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            use_gpu=use_gpu)
+        assert_prediction_interface(prediction)
+        prediction = mdb.predict(when={'sqft': 300}, use_gpu=use_gpu)
+        assert_prediction_interface(prediction)
+
+        amd = mdb.get_model_data('home_rentals_price')
+
+        for k in ['status', 'name', 'version', 'data_source', 'current_phase',
+                  'updated_at', 'created_at',
+                  'train_end_at']:
+            assert isinstance(amd[k], str)
+
+        assert isinstance(amd['predict'], (list, str))
+        assert isinstance(amd['is_active'], bool)
+
+        for k in ['validation_set_accuracy', 'accuracy']:
+            assert isinstance(amd[k], float)
+
+        for k in amd['data_preparation']:
+            assert isinstance(amd['data_preparation'][k], (int, float))
+
+        for k in amd['data_analysis']:
+            assert (len(amd['data_analysis'][k]) > 0)
+            assert isinstance(amd['data_analysis'][k][0], dict)
+
+        model_analysis = amd['model_analysis']
+        assert (len(model_analysis) > 0)
+        assert isinstance(model_analysis[0], dict)
+        input_importance = model_analysis[0]["overall_input_importance"]
+        assert (len(input_importance) > 0)
+        assert isinstance(input_importance, dict)
+
+        for column, importance in zip(input_importance["x"],
+                                      input_importance["y"]):
+            assert isinstance(column, str)
+            assert (len(column) > 0)
+            assert isinstance(importance, (float, int))
+            assert (importance >= 0 and importance <= 10)

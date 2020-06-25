@@ -1,10 +1,10 @@
 import logging
 import pytest
 
-from mindsdb.libs.controllers.transaction import Transaction
-from mindsdb.libs.data_types.mindsdb_logger import MindsdbLogger
-from mindsdb.libs.controllers.predictor import Predictor
-from mindsdb.config import CONFIG
+from mindsdb_native.libs.controllers.transaction import Transaction
+from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
+from mindsdb_native.libs.controllers.predictor import Predictor
+from mindsdb_native.config import CONFIG
 
 
 @pytest.fixture(autouse=True)

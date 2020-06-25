@@ -1,6 +1,6 @@
-import mindsdb
+import mindsdb_native
 
-model = mindsdb.Predictor(name='wine_model')
+model = mindsdb_native.Predictor(name='wine_model')
 predictions = model.predict(when_data='wine_data_predict.tsv')
 
 for index, prediction in enumerate(predictions):
