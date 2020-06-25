@@ -11,7 +11,7 @@ First, install mindsdb [installation guide](https://github.com/ZoranPandovski/mi
 ## Train model
 Create a new python file called train.py, and inside create new model:
 ```Python
-from mindsdb import Predictor
+from mindsdb_native import Predictor
 
 
 # We tell mindsDB what we want to learn and from what data
@@ -28,7 +28,7 @@ Predictor(name='kaggle_house_prices').learn(
 ## Use the model and predict data
 Create new file e.g predict.py and inside use the newly created kaggle_house_sale model.
 ```Python
-from mindsdb import *
+from mindsdb_native import *
 
 # First we initiate MindsDB
 mdb = MindsDB()

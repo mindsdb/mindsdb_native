@@ -44,9 +44,9 @@ matrix:
 
 
 notifications:
-  # send notifications only on master failure
+  # send notifications only on stable failure
   email:
-    only: master
+    only: stable
 cache: pip
 # install dependencies
 install:
@@ -63,15 +63,9 @@ before_script:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then  docker-compose up -d; fi
 script:
   # Unit tests
-  - travis_wait 15 pytest --runslow --durations=20
+  - travis_wait 15 pytest --run-slow --durations=20 tests/unit_tests
   # Integration tests, require docker so only run on linux
-  - cd tests/integration_tests
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pytest; fi
-  # Slow CI tests
-  - cd ../ci_tests
-  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then travis_wait 15 python fast_test.py; fi
-  - if [ "$TRAVIS_OS_NAME" != "windows" ]; then travis_wait 15 python3 full_test.py; fi
-  - cd ../..
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pytest --run-integration tests/integration_tests ; fi
   - pip install flake8
   - flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 after_script:
@@ -84,14 +78,14 @@ deploy:
     password: $PYPI_SYSADMIN_PASSWORD
     distributions: "sdist"
     on:
-      branch: master
+      branch: stable
       condition: $DEPLOYMENT_ENV = "true"
 
 # after pip is deployed, we can deploy to dockerhub
 after_deploy:
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then sleep 15; fi
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then cd distributions/docker; fi
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then docker build -t docker-build .; fi
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then docker tag docker-build $REGISTRY_USER/mindsdb:latest; fi
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then cd ../..; fi
-  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "master" ]]; then docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS" && docker push $REGISTRY_USER/mindsdb && docker logout; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then sleep 15; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then cd distributions/docker; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then docker build -t docker-build .; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then docker tag docker-build $REGISTRY_USER/mindsdb:latest; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then cd ../..; fi
+  -  if [[ "$DEPLOYMENT_ENV" = "true" && "$TRAVIS_BRANCH" = "stable" ]]; then docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS" && docker push $REGISTRY_USER/mindsdb && docker logout; fi

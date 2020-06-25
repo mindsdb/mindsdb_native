@@ -1,8 +1,3 @@
-# CI tests
-Running CI tests locally:
-
-`cd tests/ci_tests && python3 full_test.py`
-
 # Unit tests
 Unit tests use the [pytest](https://docs.pytest.org/en/latest/index.html) testing framework. [pytest-randomly](https://pypi.org/project/pytest-randomly/) is used to fix random seed for reproducibility.
 
@@ -15,7 +10,7 @@ Unit tests use the [pytest](https://docs.pytest.org/en/latest/index.html) testin
 
 ## Useful commands
 
-Run tests including slow tests:
+Run unit tests including slow tests:
 ```pytest --run-slow```
 
 Run tests until first failure:
@@ -35,3 +30,12 @@ Run with a different random-seed (by default fixed to 42):
 ```pytest --randomly-seed=123```
 
 This also randomizes the order of execution of tests.
+
+# Integration tests
+Run integration tests.
+1. Setup environment:
+```docker-compose up -d```
+2. Run the tests :
+```pytest --run-integration tests/integration_tests```
+3. Clean up:
+```docker-compose down```

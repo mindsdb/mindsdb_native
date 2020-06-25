@@ -1,10 +1,12 @@
+import pytest
 import datetime
 import logging
 import pg8000
-from mindsdb import Predictor
-from mindsdb.libs.data_sources.postgres_ds import PostgresDS
+from mindsdb_native import Predictor
+from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
 
 
+@pytest.mark.integration
 def test_postgres_ds():
     HOST = 'localhost'
     USER = 'postgres'

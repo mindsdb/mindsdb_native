@@ -1,3 +1,2 @@
 boto3 >= 1.9.0
-mysql-connector-python >= 8.0.20
 pg8000 >= 1.15.3

@@ -10,7 +10,7 @@ In order to to this we have a dataset "data_sources/home_rentals.csv" (or downlo
 
 """
 
-from mindsdb import Predictor
+from mindsdb_native import Predictor
 
 
 # We tell mindsDB what we want to learn and from what data

@@ -5,9 +5,9 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from mindsdb.libs.data_types.transaction_data import TransactionData
-from mindsdb.libs.phases.data_analyzer.data_analyzer import DataAnalyzer
-from tests.unit_tests.utils import test_column_types
+from mindsdb_native.libs.data_types.transaction_data import TransactionData
+from mindsdb_native.libs.phases.data_analyzer.data_analyzer import DataAnalyzer
+from unit_tests.utils import test_column_types
 
 
 class TestDataAnalyzer:
@@ -21,7 +21,7 @@ class TestDataAnalyzer:
         lmd['data_types'] = {}
         lmd['data_subtypes'] = {}
         lmd['data_preparation'] = {}
-        lmd['force_categorical_encoding'] = {}
+        lmd['force_categorical_encoding'] = []
         lmd['columns_to_ignore'] = []
         lmd['sample_margin_of_error'] = 0.005
         lmd['sample_confidence_level'] = 1 - lmd['sample_margin_of_error']
