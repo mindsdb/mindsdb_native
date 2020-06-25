@@ -13,7 +13,7 @@ from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
-from tests.unit_tests.utils import (test_column_types,
+from unit_tests.utils import (test_column_types,
                                     generate_value_cols,
                                     generate_timeseries_labels,
                                     generate_log_labels,

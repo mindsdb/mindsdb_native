@@ -2,6 +2,7 @@ import os
 import uuid
 import traceback
 import pickle
+from pathlib import Path
 
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
@@ -14,7 +15,6 @@ from mindsdb_native.libs.helpers.general_helpers import check_for_updates, depre
 from mindsdb_native.libs.controllers.functional import (export_storage, export_predictor,
                                                  rename_model, delete_model,
                                                  import_model)
-
 
 class Predictor:
 

@@ -7,6 +7,9 @@ from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native.config import CONFIG
 
 
+pytest_plugins = ("plugin",)
+
+
 @pytest.fixture(autouse=True)
 def config(monkeypatch):
     CONFIG.CHECK_FOR_UPDATES = False
