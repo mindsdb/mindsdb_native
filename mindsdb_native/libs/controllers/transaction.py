@@ -126,24 +126,11 @@ class Transaction:
             self.lmd['is_active'] = False
 
     def _execute_analyze(self):
-        self.lmd['current_phase'] = MODEL_STATUS_PREPARING
-        self.save_metadata()
-
         self._call_phase_module(module_name='DataExtractor')
-        self.save_metadata()
-
         self._call_phase_module(module_name='DataCleaner', stage=0)
-        self.save_metadata()
-
         self._call_phase_module(module_name='TypeDeductor', input_data=self.input_data)
-        self.save_metadata()
-
-        self.lmd['current_phase'] = MODEL_STATUS_DATA_ANALYSIS
         self._call_phase_module(module_name='DataAnalyzer', input_data=self.input_data)
-        self.save_metadata()
-
         self.lmd['current_phase'] = MODEL_STATUS_DONE
-        self.save_metadata()
 
     def _execute_learn(self):
         """
