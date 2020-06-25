@@ -18,6 +18,18 @@ if not os.path.isdir(PACKAGES_DIR):
 CMP_OPERATORS = ['>=', '<=', '==', '<', '>', '!=']
 
 
+def _cmp(val_a, val_b, op):
+    table = {
+        '>=': lambda a, b: a >= b,
+        '<=': lambda a, b: a <= b,
+        '==': lambda a, b: a == b,
+        '<': lambda a, b: a < b,
+        '>': lambda a, b: a > b,
+        '!=': lambda a, b: a != b
+    }
+    return table[op](val_a, val_b)
+
+
 def _split_package_name(package_name):
     """
     example:
@@ -123,12 +135,12 @@ def _get_license_and_requirements(url, cache=dict()):
     return (license_name, requirements)
 
 
-def dep_graph(package_name, D, white_list=None, branch_cache=dict(), visited_chain=list(),):
+def dep_graph(package_name, D, whitelist=None, branch_cache=dict(), visited_chain=list(),):
     print('[{}]'.format(' -> '.join(visited_chain)))
     name, *versions = _split_package_name(package_name)
 
     try:
-        # gropup by version
+        # group by version
         releases = defaultdict(list)
         for ext, version, link in _iter_pypi(name):
             releases[version].append((ext, link))
@@ -146,21 +158,22 @@ def dep_graph(package_name, D, white_list=None, branch_cache=dict(), visited_cha
         return
 
     # filter out versions that we don't need
-    to_drop = []
     if len(versions) > 0:
+        to_drop = []
         for release_v in releases:
             for op, v in versions:
-                if eval('parse_version("{}") {} parse_version("{}")'.format(release_v, op, v)):
+                if _cmp(parse_version(release_v), parse_version(v), op):
                     break
             else:
                 # if none of the conditions was satisfied, drop the relese version
                 # NOTE: dict.pop right here will raise RuntimeError
                 to_drop.append(release_v)
 
-    for release_v in to_drop:
-        releases.pop(release_v, None)
+        for release_v in to_drop:
+            releases.pop(release_v, None)
 
     # extract license and requirements from filtered releases
+    # and make recursive call call for each requirement
     for release_v, distributions in releases.items():
         # for now use first distribution
         # later maybe try other in case of failure to get
@@ -169,8 +182,8 @@ def dep_graph(package_name, D, white_list=None, branch_cache=dict(), visited_cha
 
         key = str((name, release_v))
 
-        if white_list is not None and name in white_list:
-            D[key] = 'WhiteListedBranch'
+        if whitelist is not None and name.lower() in whitelist:
+            D[key] = 'WhiteListed'
         elif name in visited_chain:
             D[key] = 'CircularDependency'
         else:
@@ -186,7 +199,7 @@ def dep_graph(package_name, D, white_list=None, branch_cache=dict(), visited_cha
                         D=D[key]['requirements'],
                         branch_cache=branch_cache,
                         visited_chain=[*visited_chain, name],
-                        white_list=white_list
+                        whitelist=whitelist
                     )
 
 
@@ -195,6 +208,12 @@ if __name__ == '__main__':
         sys.exit('Usage: python ./{} package_name'.format(__file__))
 
     D = dict()
-    dep_graph(sys.argv[1], D, white_list=['nose'])
-    with open('out.json', 'w') as f:
-        f.write(json.dumps(D))
+    try:
+        dep_graph(sys.argv[1], D, whitelist=['nose', 'pygments', 'coverage', 'moch', 'pbr', 'pip', 'sphinx', 'virtualenv', 'tox', 'setuptools'])
+    except Exception:
+        with open('out.json', 'w') as f:
+            f.write(json.dumps(D))
+        raise
+    else:
+        with open('out.json', 'w') as f:
+            f.write(json.dumps(D))
