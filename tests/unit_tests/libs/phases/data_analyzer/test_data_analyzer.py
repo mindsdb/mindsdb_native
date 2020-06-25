@@ -21,7 +21,7 @@ class TestDataAnalyzer:
         lmd['data_types'] = {}
         lmd['data_subtypes'] = {}
         lmd['data_preparation'] = {}
-        lmd['force_categorical_encoding'] = {}
+        lmd['force_categorical_encoding'] = []
         lmd['columns_to_ignore'] = []
         lmd['sample_margin_of_error'] = 0.005
         lmd['sample_confidence_level'] = 1 - lmd['sample_margin_of_error']

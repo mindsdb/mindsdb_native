@@ -7,6 +7,9 @@ from pathlib import Path
 import uuid
 from contextlib import contextmanager
 import os, sys
+import functools
+import inspect
+import warnings
 
 
 from mindsdb_native.__about__ import __version__
@@ -36,7 +39,7 @@ def check_for_updates():
         try:
             with open(uuid_file, 'w') as fp:
                 fp.write(uuid_str)
-        except:
+        except Exception:
             log.warning(f'Cannot store token, Please add write permissions to file: {uuid_file}')
             uuid_str = f'{uuid_str}.NO_WRITE'
 
@@ -46,7 +49,7 @@ def check_for_updates():
         token = '{system}|{version}|{uid}'.format(system=platform.system(), version=__version__, uid=uuid_str)
         try:
             open(mdb_file,'w').write(token)
-        except:
+        except Exception:
             log.warning(f'Cannot store token, Please add write permissions to file: {mdb_file}')
             token = f'{token}.NO_WRITE'
 
@@ -56,7 +59,7 @@ def check_for_updates():
     except Exception as e:
         try:
             log.warning(f'Got reponse: {ret} from update check server !')
-        except:
+        except Exception:
             log.warning(f'Got no response from update check server !')
         log.warning(f'Could not check for updates, got excetpion {e} !')
         return
@@ -66,7 +69,7 @@ def check_for_updates():
             log.warning("There is a new version of MindsDB {version}, please upgrade using:\npip3 uninstall mindsdb --upgrade".format(version=ret['version']))
         else:
             log.debug('MindsDB is up to date!')
-    except:
+    except Exception:
         log.warning('could not check for MindsDB updates')
 
 
@@ -233,3 +236,77 @@ def value_isnan(value):
     except:
         isnan = True
     return isnan
+
+
+def deprecated(reason):
+    """
+    This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emitted
+    when the function is used.
+    """
+    string_types = (type(b''), type(u''))
+
+    if isinstance(reason, string_types):
+
+        # The @deprecated is used with a 'reason'.
+        #
+        # .. code-block:: python
+        #
+        #    @deprecated("please, use another function")
+        #    def old_function(x, y):
+        #      pass
+
+        def decorator(func1):
+
+            if inspect.isclass(func1):
+                fmt1 = "Call to deprecated class {name} ({reason})."
+            else:
+                fmt1 = "Call to deprecated function {name} ({reason})."
+
+            @functools.wraps(func1)
+            def new_func1(*args, **kwargs):
+                warnings.simplefilter('always', DeprecationWarning)
+                warnings.warn(
+                    fmt1.format(name=func1.__name__, reason=reason),
+                    category=DeprecationWarning,
+                    stacklevel=2
+                )
+                warnings.simplefilter('default', DeprecationWarning)
+                return func1(*args, **kwargs)
+
+            return new_func1
+
+        return decorator
+
+    elif inspect.isclass(reason) or inspect.isfunction(reason):
+
+        # The @deprecated is used without any 'reason'.
+        #
+        # .. code-block:: python
+        #
+        #    @deprecated
+        #    def old_function(x, y):
+        #      pass
+
+        func2 = reason
+
+        if inspect.isclass(func2):
+            fmt2 = "Call to deprecated class {name}."
+        else:
+            fmt2 = "Call to deprecated function {name}."
+
+        @functools.wraps(func2)
+        def new_func2(*args, **kwargs):
+            warnings.simplefilter('always', DeprecationWarning)
+            warnings.warn(
+                fmt2.format(name=func2.__name__),
+                category=DeprecationWarning,
+                stacklevel=2
+            )
+            warnings.simplefilter('default', DeprecationWarning)
+            return func2(*args, **kwargs)
+
+        return new_func2
+
+    else:
+        raise TypeError(repr(type(reason)))
