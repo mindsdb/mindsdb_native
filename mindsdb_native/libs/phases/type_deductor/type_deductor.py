@@ -4,11 +4,17 @@ from copy import deepcopy
 from collections import Counter, defaultdict
 from dateutil.parser import parse as parse_datetime
 
-from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES, DATA_TYPES_SUBTYPES
+from mindsdb_native.libs.constants.mindsdb import (
+    DATA_TYPES,
+    DATA_SUBTYPES,
+    DATA_TYPES_SUBTYPES
+)
+from mindsdb_native.libs.helpers.text_helpers import (
+    word_tokenize,
+    cast_string_to_python_type,
+    is_foreign_key
+)
 from mindsdb_native.libs.phases.base_module import BaseModule
-from mindsdb_native.libs.helpers.text_helpers import (word_tokenize,
-                                               cast_string_to_python_type,
-                                               is_foreign_key)
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
@@ -130,13 +136,11 @@ class TypeDeductor(BaseModule):
                          type_check_sequence,
                          type_check_file]
         for element in map(str, data):
-            data_type_guess, subtype_guess = None, None
             for type_checker in type_checkers:
                 data_type_guess, subtype_guess = type_checker(element)
                 if data_type_guess:
                     break
-
-            if not data_type_guess:
+            else:
                 data_type_guess = 'Unknown'
                 subtype_guess = 'Unknown'
 
