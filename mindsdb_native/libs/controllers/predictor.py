@@ -141,11 +141,13 @@ class Predictor:
             data_subtypes = {}
         )
 
+
         Transaction(session=self,
                     light_transaction_metadata=light_transaction_metadata,
                     heavy_transaction_metadata=heavy_transaction_metadata,
                     logger=self.log)
         return get_model_data(None, lmd=light_transaction_metadata)
+
 
     def learn(self,
               to_predict,

@@ -2,8 +2,8 @@ import os
 import pickle
 import shutil
 import zipfile
-
-from mindsdb_native.config import CONFIG, traceback
+import traceback
+from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    MODEL_STATUS_ERROR)
 
@@ -470,4 +470,3 @@ def get_models():
                 print(f"Can't adapt metadata for model: '{model_name}' when calling `get_models()`")
 
     return models
-
