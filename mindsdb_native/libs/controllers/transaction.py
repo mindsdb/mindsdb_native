@@ -1,7 +1,10 @@
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import *
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
-from mindsdb_native.libs.data_types.transaction_output_data import PredictTransactionOutputData, TrainTransactionOutputData
+from mindsdb_native.libs.data_types.transaction_output_data import (
+    PredictTransactionOutputData,
+    TrainTransactionOutputData
+)
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.config import CONFIG
 
@@ -17,7 +20,8 @@ import pandas as pd
 
 class Transaction:
 
-    def __init__(self, session,
+    def __init__(self,
+                 session,
                  light_transaction_metadata,
                  heavy_transaction_metadata,
                  logger=log):
