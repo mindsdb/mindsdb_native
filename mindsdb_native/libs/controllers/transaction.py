@@ -311,5 +311,3 @@ class Transaction:
 
         elif self.lmd['type'] == TRANSACTION_PREDICT:
             self._execute_predict()
-        elif self.lmd['type'] == TRANSACTION_NORMAL_SELECT:
-            self._execute_normal_select()

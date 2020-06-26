@@ -32,12 +32,11 @@ class ModelAnalyzer(BaseModule):
             empty_inpurt_accuracy[col] = evaluate_accuracy(empty_input_predictions[col], self.transaction.input_data.validation_df, self.transaction.lmd['column_stats'], output_columns)
 
         # Get some information about the importance of each column
-        if not self.transaction.lmd['disable_optional_analysis']:
-            self.transaction.lmd['column_importances'] = {}
-            for col in ignorable_input_columns:
-                column_importance = (1 - empty_inpurt_accuracy[col]/normal_accuracy)
-                column_importance = np.ceil(10*column_importance)
-                self.transaction.lmd['column_importances'][col] = float(10 if column_importance > 10 else column_importance)
+        self.transaction.lmd['column_importances'] = {}
+        for col in ignorable_input_columns:
+            column_importance = (1 - empty_inpurt_accuracy[col]/normal_accuracy)
+            column_importance = np.ceil(10*column_importance)
+            self.transaction.lmd['column_importances'][col] = float(10 if column_importance > 10 else column_importance)
 
         # Run Probabilistic Validator
         overall_accuracy_arr = []

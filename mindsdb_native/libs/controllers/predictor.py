@@ -1,8 +1,6 @@
 import os
 import uuid
-import traceback
 import pickle
-from pathlib import Path
 
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
@@ -14,13 +12,12 @@ from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates, deprecated
 from mindsdb_native.libs.controllers.functional import (export_storage, export_predictor,
                                                  rename_model, delete_model,
-                                                 import_model, get_model_data, get_models, analyse_dataset)
+                                                 import_model, get_model_data, get_models)
+
 
 class Predictor:
 
-    def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL,
-                              root_folder=CONFIG.MINDSDB_STORAGE_PATH, # This param is unused, kept for backwards compat
-                 ):
+    def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL):
         """
         This controller defines the API to a MindsDB 'mind', a mind is an object that can learn and predict from data
 
@@ -58,7 +55,7 @@ class Predictor:
     def get_model_data(self, model_name=None, lmd=None):
         if model_name is None:
             model_name = self.name
-        return get_model_data(model_name)
+        return get_model_data(model_name, lmd=lmd)
 
     @deprecated(reason='Use functional.export_storage instead')
     def export(self, mindsdb_storage_dir='mindsdb_storage'):
@@ -145,9 +142,11 @@ class Predictor:
             data_subtypes = {}
         )
 
-        Transaction(session=self, light_transaction_metadata=light_transaction_metadata, heavy_transaction_metadata=heavy_transaction_metadata, logger=self.log)
-        return self.get_model_data(model_name=None, lmd=light_transaction_metadata)
-
+        Transaction(session=self,
+                    light_transaction_metadata=light_transaction_metadata,
+                    heavy_transaction_metadata=heavy_transaction_metadata,
+                    logger=self.log)
+        return get_model_data(None, lmd=light_transaction_metadata)
 
     def learn(self,
               to_predict,
@@ -162,7 +161,6 @@ class Predictor:
               backend='lightwood',
               rebuild_model=True,
               use_gpu=None,
-              disable_optional_analysis=False,
               equal_accuracy_for_all_output_categories=True,
               output_categories_importance_dictionary=None,
               unstable_parameters_dict=None):
@@ -240,7 +238,6 @@ class Predictor:
             name=self.name,
             from_data=from_ds,
             test_from_data=test_from_ds,
-            bucketing_algorithms = {},
             predictions= None,
             model_backend= backend
         )
@@ -268,7 +265,6 @@ class Predictor:
             all_columns_prediction_distribution = None,
             use_gpu = use_gpu,
             columns_to_ignore = ignore_columns,
-            disable_optional_analysis = disable_optional_analysis,
             validation_set_accuracy = None,
             lightwood_data = {},
             ludwig_data = {},
@@ -281,7 +277,6 @@ class Predictor:
             output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
 
             skip_model_training = unstable_parameters_dict.get('skip_model_training', False),
-            skip_stats_generation = unstable_parameters_dict.get('skip_stats_generation', False),
             optimize_model = unstable_parameters_dict.get('optimize_model', False),
             force_disable_cache = unstable_parameters_dict.get('force_disable_cache', False),
             force_categorical_encoding = unstable_parameters_dict.get('force_categorical_encoding', []),
