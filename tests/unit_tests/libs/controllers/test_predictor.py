@@ -1,3 +1,6 @@
+import json
+from unittest import mock
+
 import pytest
 import os
 import numpy as np
@@ -19,8 +22,35 @@ from unit_tests.utils import (test_column_types,
                                     generate_log_labels,
                                     columns_to_file)
 
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
+
 
 class TestPredictor:
+
+    def test_sample_for_training(self):
+        predictor = Predictor(name='test')
+
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+            'categorical_binary': [0, 1] * (n_points // 2),
+        }, index=list(range(n_points)))
+        input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int*input_dataframe.categorical_binary
+
+        mock_function = mock.MagicMock('mindsdb_native.libs.backends.lightwood.sample_data',
+            wraps=sample_data)
+        with mock.patch('mindsdb_native.libs.backends.lightwood.sample_data',
+            mock_function):
+
+            predictor.learn(from_data=input_dataframe,
+                            to_predict='y',
+                            backend='lightwood',
+                            sample_settings={'sample_for_training': True},
+                            stop_training_in_x_seconds=3)
+
+            assert mock_function.called
+
+
     def test_analyze_dataset(self):
         predictor = Predictor(name='test')
 
@@ -58,6 +88,8 @@ class TestPredictor:
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
             assert not col_data['is_foreign_key']
+
+        assert isinstance(json.dumps(model_data), str)
 
     def test_analyze_dataset_empty_column(self):
         predictor = Predictor(name='test')
@@ -367,6 +399,7 @@ class TestPredictor:
         assert_prediction_interface(prediction)
 
         amd = mdb.get_model_data('home_rentals_price')
+        assert isinstance(json.dumps(amd), str)
 
         for k in ['status', 'name', 'version', 'data_source', 'current_phase',
                   'updated_at', 'created_at',

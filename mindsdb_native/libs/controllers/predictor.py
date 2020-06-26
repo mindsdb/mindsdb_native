@@ -1,9 +1,12 @@
 import os
+import sys
+import psutil
 import uuid
 import traceback
 import pickle
 from pathlib import Path
 
+from mindsdb_native.external_libs.stats import calculate_sample_size
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.__about__ import __version__
@@ -15,6 +18,20 @@ from mindsdb_native.libs.helpers.general_helpers import check_for_updates, depre
 from mindsdb_native.libs.controllers.functional import (export_storage, export_predictor,
                                                  rename_model, delete_model,
                                                  import_model, get_model_data, get_models)
+
+
+def get_memory_optimizations(df):
+    df_memory = sys.getsizeof(df)
+    total_memory = psutil.virtual_memory().total
+
+    mem_usage_ratio = df_memory/total_memory
+
+    sample_for_analysis = True if mem_usage_ratio >= 0.05 else False
+    sample_for_training = True if mem_usage_ratio >= 0.15 else False
+    disable_lightwood_transform_cache = True if mem_usage_ratio >= 0.15 else False
+
+    return sample_for_analysis, sample_for_training, disable_lightwood_transform_cache
+
 
 class Predictor:
 
@@ -49,6 +66,24 @@ class Predictor:
                 error_message = '''Cannot read from storage path, please either set the config variable mindsdb.config.set('MINDSDB_STORAGE_PATH',<path>) or give write access to {folder}'''
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
+
+    def prepare_sample_settings(self,
+                                user_provided_settings,
+                                sample_for_analysis,
+                                sample_for_training,
+                                df):
+        default_sample_settings = dict(
+            sample_for_analysis=sample_for_analysis,
+            sample_for_training=sample_for_training,
+            sample_margin_of_error=0.005,
+            sample_confidence_level=1 - 0.005
+        )
+
+        if user_provided_settings:
+            default_sample_settings.update(user_provided_settings)
+        sample_settings = default_sample_settings
+
+        return sample_settings
 
     @deprecated(reason='Use functional.get_models instead')
     def get_models(self):
@@ -109,14 +144,17 @@ class Predictor:
         except Exception as e:
             return False
 
-    def analyse_dataset(self, from_data, sample_margin_of_error=0.005):
+    def analyse_dataset(self, from_data, sample_settings=None):
         """
         Analyse the particular dataset being given
         """
 
         from_ds = getDS(from_data)
         transaction_type = TRANSACTION_ANALYSE
-        sample_confidence_level = 1 - sample_margin_of_error
+
+        sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = get_memory_optimizations(from_ds.df)
+        sample_settings = self.prepare_sample_settings(sample_settings, sample_for_analysis, sample_for_training, from_ds.df)
+
 
         heavy_transaction_metadata = dict(
             name = self.name,
@@ -128,8 +166,6 @@ class Predictor:
             name = self.name,
             model_columns_map = from_ds._col_map,
             type = transaction_type,
-            sample_margin_of_error = sample_margin_of_error,
-            sample_confidence_level = sample_confidence_level,
             model_is_time_series = False,
             model_group_by = [],
             model_order_by = [],
@@ -141,12 +177,12 @@ class Predictor:
             force_categorical_encoding = [],
             handle_text_as_categorical = False,
             data_types = {},
-            data_subtypes = {}
+            data_subtypes = {},
+            sample_settings = sample_settings
         )
 
         Transaction(session=self, light_transaction_metadata=light_transaction_metadata, heavy_transaction_metadata=heavy_transaction_metadata, logger=self.log)
         return get_model_data(model_name=None, lmd=light_transaction_metadata)
-
 
     def learn(self,
               to_predict,
@@ -155,7 +191,6 @@ class Predictor:
               group_by=None,
               window_size=None,
               order_by=None,
-              sample_margin_of_error=0.005,
               ignore_columns=None,
               stop_training_in_x_seconds=None,
               backend='lightwood',
@@ -164,7 +199,8 @@ class Predictor:
               disable_optional_analysis=False,
               equal_accuracy_for_all_output_categories=True,
               output_categories_importance_dictionary=None,
-              unstable_parameters_dict=None):
+              unstable_parameters_dict=None,
+              sample_settings=None):
         """
         Learn to predict a column or columns from the data in 'from_data'
 
@@ -219,7 +255,12 @@ class Predictor:
         test_from_ds = None if test_from_data is None else getDS(test_from_data)
 
         transaction_type = TRANSACTION_LEARN
-        sample_confidence_level = 1 - sample_margin_of_error
+
+        sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = get_memory_optimizations(
+            from_ds.df)
+        sample_settings = self.prepare_sample_settings(sample_settings,
+                                                    sample_for_analysis,
+                                                    sample_for_training, from_ds.df)
 
         if len(predict_columns) == 0:
             error = 'You need to specify a column to predict'
@@ -256,8 +297,7 @@ class Predictor:
             data_source = data_source_name,
             type = transaction_type,
             window_size = window_size,
-            sample_margin_of_error = sample_margin_of_error,
-            sample_confidence_level = sample_confidence_level,
+            sample_settings = sample_settings,
             stop_training_in_x_seconds = stop_training_in_x_seconds,
             rebuild_model = rebuild_model,
             model_accuracy = {'train': {}, 'test': {}},
@@ -282,7 +322,7 @@ class Predictor:
             skip_model_training = unstable_parameters_dict.get('skip_model_training', False),
             skip_stats_generation = unstable_parameters_dict.get('skip_stats_generation', False),
             optimize_model = unstable_parameters_dict.get('optimize_model', False),
-            force_disable_cache = unstable_parameters_dict.get('force_disable_cache', False),
+            force_disable_cache = unstable_parameters_dict.get('force_disable_cache', disable_lightwood_transform_cache),
             force_categorical_encoding = unstable_parameters_dict.get('force_categorical_encoding', []),
             handle_foreign_keys = unstable_parameters_dict.get('handle_foreign_keys', False),
             handle_text_as_categorical = unstable_parameters_dict.get('handle_text_as_categorical', False),

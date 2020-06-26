@@ -1,11 +1,13 @@
 import json
 
 import pytest
+from unittest import mock
 from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.phases.data_analyzer.data_analyzer import DataAnalyzer
 from unit_tests.utils import test_column_types
 
@@ -23,8 +25,14 @@ class TestDataAnalyzer:
         lmd['data_preparation'] = {}
         lmd['force_categorical_encoding'] = []
         lmd['columns_to_ignore'] = []
-        lmd['sample_margin_of_error'] = 0.005
-        lmd['sample_confidence_level'] = 1 - lmd['sample_margin_of_error']
+
+        lmd['sample_settings'] = dict(
+            sample_for_analysis=False,
+            sample_for_training=False,
+            sample_margin_of_error=0.005,
+            sample_confidence_level=1 - 0.005
+        )
+
         return lmd
 
     def get_stats_v2(self, col_names):
@@ -76,7 +84,6 @@ class TestDataAnalyzer:
 
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
-        input_data.sample_df = input_dataframe.iloc[n_points // 2:]
         data_analyzer.run(input_data)
 
         stats_v2 = lmd['stats_v2']
@@ -115,9 +122,45 @@ class TestDataAnalyzer:
         input_dataframe['numeric_int'].iloc[::2] = None
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
-        input_data.sample_df = input_dataframe.iloc[n_points // 2:]
         data_analyzer.run(input_data)
 
         stats_v2 = lmd['stats_v2']
 
         assert stats_v2['numeric_int']['empty']['empty_percentage'] == 50
+
+    def test_sample(self, transaction, lmd):
+        lmd['sample_settings']['sample_for_analysis'] = True
+
+        data_analyzer = DataAnalyzer(session=transaction.session,
+                                     transaction=transaction)
+
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+        }, index=list(range(n_points)))
+
+        stats_v2 = self.get_stats_v2(input_dataframe.columns)
+        stats = self.get_stats(stats_v2)
+        lmd['stats_v2'] = stats_v2
+        lmd['column_stats'] = stats
+
+        input_data = TransactionData()
+        input_data.data_frame = input_dataframe
+
+        mock_function = mock.MagicMock('mindsdb_native.libs.data_types.transaction_data.sample_data',
+                                       wraps=sample_data)
+        with mock.patch('mindsdb_native.libs.data_types.transaction_data.sample_data', mock_function):
+            data_analyzer.run(input_data)
+            assert mock_function.called
+
+        assert sum(lmd['stats_v2']['numeric_int']['histogram']['y']) <= n_points
+
+        lmd['sample_settings']['sample_for_analysis'] = False
+
+        mock_function = mock.MagicMock('mindsdb_native.libs.data_types.transaction_data.sample_data',
+                                       wraps=sample_data)
+        with mock.patch(
+            'mindsdb_native.libs.data_types.transaction_data.sample_data',
+            mock_function):
+            data_analyzer.run(input_data)
+            assert not mock_function.called

@@ -356,7 +356,21 @@ class DataAnalyzer(BaseModule):
         stats_v2 = self.transaction.lmd['stats_v2']
         col_data_dict = {}
 
-        sample_df = input_data.sample_df
+        sample_settings = self.transaction.lmd['sample_settings']
+        if sample_settings['sample_for_analysis']:
+            sample_margin_of_error = sample_settings['sample_margin_of_error']
+            sample_confidence_level = sample_settings['sample_confidence_level']
+
+            sample_df = input_data.sample_df(sample_margin_of_error,
+                                             sample_confidence_level)
+
+            sample_size = len(sample_df)
+            population_size = len(input_data.data_frame)
+            self.transaction.log.info(f'Analyzing a sample of {sample_size} '
+                                      f'from a total population of {population_size}, '
+                                      f'this is equivalent to {round(sample_size * 100 / population_size, 1)}% of your data.')
+        else:
+            sample_df = input_data.data_frame
 
         for col_name in self.transaction.lmd['empty_columns']:
             stats_v2[col_name] = {}
@@ -429,7 +443,7 @@ class DataAnalyzer(BaseModule):
 
         log_interesting_stats(self.log, stats)
 
-        self.transaction.lmd['data_preparation']['accepted_margin_of_error'] = self.transaction.lmd['sample_margin_of_error']
+        self.transaction.lmd['data_preparation']['accepted_margin_of_error'] = self.transaction.lmd['sample_settings']['sample_margin_of_error']
 
         self.transaction.lmd['data_preparation']['total_row_count'] = len(input_data.data_frame)
         self.transaction.lmd['data_preparation']['used_row_count'] = len(sample_df)

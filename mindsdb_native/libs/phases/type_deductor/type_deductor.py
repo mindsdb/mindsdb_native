@@ -244,14 +244,21 @@ class TypeDeductor(BaseModule):
         stats = defaultdict(dict)
         stats_v2 = defaultdict(dict)
 
-        self.transaction.input_data.sample_df = sample_data(
-            input_data.data_frame,
-            self.transaction.lmd['sample_margin_of_error'],
-            self.transaction.lmd['sample_confidence_level'],
-            self.log
-        )
+        sample_settings = self.transaction.lmd['sample_settings']
+        if sample_settings['sample_for_analysis']:
+            sample_margin_of_error = sample_settings['sample_margin_of_error']
+            sample_confidence_level = sample_settings['sample_confidence_level']
 
-        sample_df = self.transaction.input_data.sample_df
+            sample_df = input_data.sample_df(sample_margin_of_error,
+                                             sample_confidence_level)
+
+            sample_size = len(sample_df)
+            population_size = len(input_data.data_frame)
+            self.transaction.log.info(f'Analyzing a sample of {sample_size} '
+                                      f'from a total population of {population_size},'
+                                      f' this is equivalent to {round(sample_size*100/population_size, 1)}% of your data.')
+        else:
+            sample_df = input_data.data_frame
 
         for col_name in sample_df.columns.values:
             col_data = sample_df[col_name].dropna()
