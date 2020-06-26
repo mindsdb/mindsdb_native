@@ -14,7 +14,7 @@ from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates, deprecated
 from mindsdb_native.libs.controllers.functional import (export_storage, export_predictor,
                                                  rename_model, delete_model,
-                                                 import_model, get_model_data, get_models, analyse_dataset)
+                                                 import_model, get_model_data, get_models)
 
 class Predictor:
 
@@ -109,7 +109,6 @@ class Predictor:
         except Exception as e:
             return False
 
-    @deprecated(reason='Use functional.analyse_dataset instead')
     def analyse_dataset(self, from_data, sample_margin_of_error=0.005):
         """
         Analyse the particular dataset being given
@@ -146,7 +145,7 @@ class Predictor:
         )
 
         Transaction(session=self, light_transaction_metadata=light_transaction_metadata, heavy_transaction_metadata=heavy_transaction_metadata, logger=self.log)
-        return self.get_model_data(model_name=None, lmd=light_transaction_metadata)
+        return get_model_data(model_name=None, lmd=light_transaction_metadata)
 
 
     def learn(self,
