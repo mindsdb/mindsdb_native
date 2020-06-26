@@ -5,6 +5,7 @@ import logging
 from mindsdb_native import Predictor
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 from mindsdb_native import MariaDS
+from mindsdb_native.libs.controllers.functional import analyse_dataset
 
 
 @pytest.mark.integration
@@ -69,7 +70,7 @@ def test_maria_ds():
     assert (len(maria_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
-    model_data = mdb.analyse_dataset(from_data=maria_ds)
+    model_data = analyse_dataset(from_data=maria_ds)
     analysis = model_data['data_analysis_v2']
     assert model_data
     assert analysis
