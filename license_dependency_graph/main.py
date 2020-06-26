@@ -18,6 +18,9 @@ if not os.path.isdir(PACKAGES_DIR):
 CMP_OPERATORS = ['>=', '<=', '==', '<', '>', '!=']
 
 
+EMAIL_PARSER = email.parser.HeaderParser()
+
+
 def _cmp(val_a, val_b, op):
     table = {
         '>=': lambda a, b: a >= b,
@@ -83,17 +86,24 @@ def _get_license_and_requirements(url, cache=dict()):
         with open(dist_path, 'wb') as f:
             f.write(res.content)
 
+    requirements = set()
+    licenses = set()
+
     if dist_name.endswith('.tar.gz'):
         with tarfile.open(dist_path, 'r:gz') as tar:
             for member in tar.getmembers():
                 if member.name.endswith('PKG-INFO'):
-                    parser = email.parser.HeaderParser()
                     pkg_info = tar.extractfile(member).read().decode()
-                    license_name = parser.parsestr(pkg_info)['License']
+                    pkg_info_dict = EMAIL_PARSER.parsestr(pkg_info)
+                    if 'license' in pkg_info_dict:
+                        license_name = pkg_info_dict['license']
+                    elif 'License' in pkg_info_dict:
+                        license_name = pkg_info_dict['License']
+                    else:
+                        license_name = 'PKG-INFO doesn\'t contain license'
                     break
             else:
-                license_name = 'failed to find'
-                #raise Exception('failed to find PKG-INFO in {}'.format(dist_name))
+                license_name = 'Failed to find PKG-INFO'
 
             requirements = []
             for member in tar.getmembers():
@@ -101,10 +111,7 @@ def _get_license_and_requirements(url, cache=dict()):
                     lines = tar.extractfile(member).read().decode().split('\n')
                     requirements = []
                     for l in lines:
-                        # this is temporary
-                        if l.startswith('['):
-                            break
-                        else:
+                        if len(l.strip()) > 0 and l.strip()[0].isalpha():
                             requirements.append(l)
                     break
             else:
@@ -116,16 +123,22 @@ def _get_license_and_requirements(url, cache=dict()):
             for member in zip_.namelist():
                 if member.endswith('metadata.json'):
                     metadata_str = zip_.read(member).decode()
-                    metadata = json.loads(metadata_str)
-                    if 'license' in metadata:
-                        license_name = metadata['license']
-                    elif 'License' in metadata:
-                        license_name = metadata['License']
+                    metadata_dict = json.loads(metadata_str)
+                    if 'license' in metadata_dict:
+                        license_name = metadata_dict['license']
+                    elif 'License' in metadata_dict:
+                        license_name = metadata_dict['License']
                     else:
-                        license_name = 'Unknown (failed to find in metadata)'
+                        license_name = 'metadata.json doesn\'t contain license'
                     break
+                elif member.endswith('METADATA'):
+                    metadata = zip_.read(member).decode()
+                    metadata_dict = EMAIL_PARSER.parsestr(pkg_info)
+                    exit(zip_.read(member).decode())
+                finally:
+
             else:
-                license_name = 'Unknown (failed to find metadata)'
+                license_name = 'Found no license info'
                 #print('Warning: failed to find metadata.json in {}'.format(dist_name))
             
             requirements = []
@@ -183,7 +196,7 @@ def dep_graph(package_name, D, whitelist=None, branch_cache=dict(), visited_chai
         key = str((name, release_v))
 
         if whitelist is not None and name.lower() in whitelist:
-            D[key] = 'WhiteListed'
+            D[key] = 'Whitelisted'
         elif name in visited_chain:
             D[key] = 'CircularDependency'
         else:
@@ -209,7 +222,7 @@ if __name__ == '__main__':
 
     D = dict()
     try:
-        dep_graph(sys.argv[1], D, whitelist=['nose', 'pygments', 'coverage', 'moch', 'pbr', 'pip', 'sphinx', 'virtualenv', 'tox', 'setuptools'])
+        dep_graph(sys.argv[1], D)
     except Exception:
         with open('out.json', 'w') as f:
             f.write(json.dumps(D))
