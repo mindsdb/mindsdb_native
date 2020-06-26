@@ -106,7 +106,6 @@ class Predictor:
         except Exception as e:
             return False
 
-    @deprecated(reason='Use functional.analyse_dataset instead')
     def analyse_dataset(self, from_data, sample_margin_of_error=0.005):
         """
         Analyse the particular dataset being given
