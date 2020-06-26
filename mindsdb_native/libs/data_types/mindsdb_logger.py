@@ -3,8 +3,8 @@ import logging
 import colorlog
 import uuid
 
-from mindsdb_native import CONFIG
 from mindsdb_native.libs.helpers.text_helpers import gen_chars
+from mindsdb_native.config import CONFIG
 from inspect import getframeinfo, stack
 
 

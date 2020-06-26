@@ -4,6 +4,7 @@ import traceback
 import pickle
 from pathlib import Path
 
+from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 

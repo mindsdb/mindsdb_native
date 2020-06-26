@@ -8,6 +8,7 @@ from mindsdb_native.config import CONFIG
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import Transaction
+from mindsdb_native.libs.helpers.multi_data_source import getDS
 
 
 def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
