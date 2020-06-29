@@ -46,10 +46,10 @@ class TestPredictor:
                             to_predict='y',
                             backend='lightwood',
                             sample_settings={'sample_for_training': True},
-                            stop_training_in_x_seconds=3)
+                            stop_training_in_x_seconds=1,
+                            use_gpu=False)
 
             assert mock_function.called
-
 
     def test_analyze_dataset(self):
         predictor = Predictor(name='test')
@@ -132,7 +132,8 @@ class TestPredictor:
         mdb.learn(
             from_data=input_dataframe,
             to_predict='numeric_y',
-            stop_training_in_x_seconds=1
+            stop_training_in_x_seconds=1,
+            use_gpu=False
         )
 
         result = mdb.predict(when={"numeric_x": 10, 'categorical_x': 1})
