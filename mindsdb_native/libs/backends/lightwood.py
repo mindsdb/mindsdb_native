@@ -177,14 +177,18 @@ class LightwoodBackend():
             if self.transaction.lmd['sample_settings']['sample_for_training']:
                 sample_margin_of_error = self.transaction.lmd['sample_settings']['sample_margin_of_error']
                 sample_confidence_level = self.transaction.lmd['sample_settings']['sample_confidence_level']
+                sample_percentage = self.transaction.lmd['sample_settings']['sample_percentage']
+                sample_function = self.transaction.hmd['sample_function']
 
-                train_df = sample_data(self.transaction.input_data.train_df,
+                train_df = sample_function(self.transaction.input_data.train_df,
                                        sample_margin_of_error,
-                                       sample_confidence_level)
+                                       sample_confidence_level,
+                                       sample_percentage)
 
-                test_df = sample_data(self.transaction.input_data.test_df,
+                test_df = sample_function(self.transaction.input_data.test_df,
                                        sample_margin_of_error,
-                                       sample_confidence_level)
+                                       sample_confidence_level,
+                                       sample_percentage)
 
                 sample_size = len(train_df)
                 population_size = len(self.transaction.input_data.train_df)

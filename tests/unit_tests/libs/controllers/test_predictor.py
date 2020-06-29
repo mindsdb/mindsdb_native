@@ -22,7 +22,7 @@ from unit_tests.utils import (test_column_types,
                                     generate_value_cols,
                                     generate_timeseries_labels,
                                     generate_log_labels,
-                                    columns_to_file)
+                                    columns_to_file, PickableMock)
 
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
@@ -39,9 +39,11 @@ class TestPredictor:
         }, index=list(range(n_points)))
         input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int*input_dataframe.categorical_binary
 
-        mock_function = mock.MagicMock('mindsdb_native.libs.backends.lightwood.sample_data',
-            wraps=sample_data)
-        with mock.patch('mindsdb_native.libs.backends.lightwood.sample_data',
+
+        mock_function = PickableMock(spec=sample_data,
+                                       wraps=sample_data)
+        setattr(mock_function, '__name__', 'mock_sample_data')
+        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
             mock_function):
 
             predictor.learn(from_data=input_dataframe,

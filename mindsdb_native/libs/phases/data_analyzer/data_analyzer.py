@@ -360,9 +360,13 @@ class DataAnalyzer(BaseModule):
         if sample_settings['sample_for_analysis']:
             sample_margin_of_error = sample_settings['sample_margin_of_error']
             sample_confidence_level = sample_settings['sample_confidence_level']
+            sample_percentage = sample_settings['sample_percentage']
+            sample_function = self.transaction.hmd['sample_function']
 
-            sample_df = input_data.sample_df(sample_margin_of_error,
-                                             sample_confidence_level)
+            sample_df = input_data.sample_df(sample_function,
+                                             sample_margin_of_error,
+                                             sample_confidence_level,
+                                             sample_percentage)
 
             sample_size = len(sample_df)
             population_size = len(input_data.data_frame)

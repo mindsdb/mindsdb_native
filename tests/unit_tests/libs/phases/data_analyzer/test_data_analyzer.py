@@ -30,7 +30,9 @@ class TestDataAnalyzer:
             sample_for_analysis=False,
             sample_for_training=False,
             sample_margin_of_error=0.005,
-            sample_confidence_level=1 - 0.005
+            sample_confidence_level=1 - 0.005,
+            sample_percentage=None,
+            sample_function='sample_data'
         )
 
         return lmd
@@ -130,6 +132,7 @@ class TestDataAnalyzer:
 
     def test_sample(self, transaction, lmd):
         lmd['sample_settings']['sample_for_analysis'] = True
+        transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
 
         data_analyzer = DataAnalyzer(session=transaction.session,
                                      transaction=transaction)
@@ -147,20 +150,13 @@ class TestDataAnalyzer:
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
 
-        mock_function = mock.MagicMock('mindsdb_native.libs.data_types.transaction_data.sample_data',
-                                       wraps=sample_data)
-        with mock.patch('mindsdb_native.libs.data_types.transaction_data.sample_data', mock_function):
-            data_analyzer.run(input_data)
-            assert mock_function.called
+        data_analyzer.run(input_data)
+        assert transaction.hmd['sample_function'].called
 
         assert sum(lmd['stats_v2']['numeric_int']['histogram']['y']) <= n_points
 
         lmd['sample_settings']['sample_for_analysis'] = False
+        transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
 
-        mock_function = mock.MagicMock('mindsdb_native.libs.data_types.transaction_data.sample_data',
-                                       wraps=sample_data)
-        with mock.patch(
-            'mindsdb_native.libs.data_types.transaction_data.sample_data',
-            mock_function):
-            data_analyzer.run(input_data)
-            assert not mock_function.called
+        data_analyzer.run(input_data)
+        assert not transaction.hmd['sample_function'].called

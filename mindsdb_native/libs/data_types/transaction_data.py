@@ -12,11 +12,14 @@ class TransactionData:
         self._sample_df = None
 
     def sample_df(self,
+                  sample_function,
                   sample_margin_of_error,
-                  sample_confidence_level):
+                  sample_confidence_level,
+                  sample_percentage):
         if self._sample_df is None:
-            self._sample_df = sample_data(self.data_frame,
+            self._sample_df = sample_function(self.data_frame,
                                           sample_margin_of_error,
-                                          sample_confidence_level)
+                                          sample_confidence_level,
+                                          sample_percentage)
 
         return self._sample_df

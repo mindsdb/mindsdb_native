@@ -4,7 +4,6 @@ import psutil
 import uuid
 import pickle
 
-from mindsdb_native.external_libs.stats import calculate_sample_size
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.__about__ import __version__
@@ -16,6 +15,7 @@ from mindsdb_native.libs.helpers.general_helpers import check_for_updates, depre
 from mindsdb_native.libs.controllers.functional import (export_storage, export_predictor,
                                                  rename_model, delete_model,
                                                  import_model, get_model_data, get_models)
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 def get_memory_optimizations(df):
@@ -66,20 +66,25 @@ class Predictor:
     def prepare_sample_settings(self,
                                 user_provided_settings,
                                 sample_for_analysis,
-                                sample_for_training,
-                                df):
+                                sample_for_training):
         default_sample_settings = dict(
             sample_for_analysis=sample_for_analysis,
             sample_for_training=sample_for_training,
             sample_margin_of_error=0.005,
-            sample_confidence_level=1 - 0.005
+            sample_confidence_level=1 - 0.005,
+            sample_percentage=None,
+            sample_function=sample_data
         )
 
         if user_provided_settings:
             default_sample_settings.update(user_provided_settings)
         sample_settings = default_sample_settings
 
-        return sample_settings
+        sample_function = sample_settings['sample_function']
+
+        # We need the settings to be JSON serializable, so the actual function will be stored in heavy metadata
+        sample_settings['sample_function'] = sample_settings['sample_function'].__name__
+        return sample_settings, sample_function
 
     @deprecated(reason='Use functional.get_models instead')
     def get_models(self):
@@ -149,12 +154,12 @@ class Predictor:
         transaction_type = TRANSACTION_ANALYSE
 
         sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = get_memory_optimizations(from_ds.df)
-        sample_settings = self.prepare_sample_settings(sample_settings, sample_for_analysis, sample_for_training, from_ds.df)
-
+        sample_settings, sample_function = self.prepare_sample_settings(sample_settings, sample_for_analysis, sample_for_training)
 
         heavy_transaction_metadata = dict(
             name = self.name,
-            from_data = from_ds
+            from_data = from_ds,
+            sample_function = sample_function
         )
 
         light_transaction_metadata = dict(
@@ -219,7 +224,10 @@ class Predictor:
         :param ignore_columns: mindsdb will ignore this column
 
         Optional sampling parameters:
-        :param sample_margin_of_error (DEFAULT 0): Maximum expected difference between the true population parameter, such as the mean, and the sample estimate.
+        :param sample_settings: dictionary of options for sampling from dataset.
+            Includes `sample_for_analysis`. `sample_for_training`, `sample_margin_of_error`, `sample_confidence_level`, `sample_percentage`, `sample_function`.
+            Default values depend on the size of input dataset and available memory.
+            Generally, the bigger the dataset, the more sampling is used.
 
         Optional debug arguments:
         :param stop_training_in_x_seconds: (default None), if set, you want training to finish in a given number of seconds
@@ -257,9 +265,9 @@ class Predictor:
 
         sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = get_memory_optimizations(
             from_ds.df)
-        sample_settings = self.prepare_sample_settings(sample_settings,
+        sample_settings, sample_function = self.prepare_sample_settings(sample_settings,
                                                     sample_for_analysis,
-                                                    sample_for_training, from_ds.df)
+                                                    sample_for_training)
 
         if len(predict_columns) == 0:
             error = 'You need to specify a column to predict'
@@ -280,7 +288,8 @@ class Predictor:
             from_data=from_ds,
             test_from_data=test_from_ds,
             predictions= None,
-            model_backend= backend
+            model_backend= backend,
+            sample_function = sample_function,
         )
 
         light_transaction_metadata = dict(
