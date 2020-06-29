@@ -2,9 +2,11 @@ import os
 import pickle
 import shutil
 import zipfile
-
-from mindsdb_native.libs.constants.mindsdb import *
+import traceback
 from mindsdb_native.config import CONFIG
+from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
+                                                   MODEL_STATUS_ERROR)
+
 
 def export_storage(mindsdb_storage_dir='mindsdb_storage'):
     """
@@ -294,6 +296,7 @@ def _adapt_column(col_stats, col):
 
     return icm
 
+
 def get_model_data(model_name, lmd=None):
     if lmd is None:
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
@@ -443,7 +446,6 @@ def get_model_data(model_name, lmd=None):
             amd['data_analysis']['input_columns_metadata'].append(icm)
 
     return amd
-
 
 
 def get_models():

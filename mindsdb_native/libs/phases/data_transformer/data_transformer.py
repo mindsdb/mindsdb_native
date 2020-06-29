@@ -125,7 +125,9 @@ class DataTransformer(BaseModule):
 
         # Un-bias dataset for training
         for column in self.transaction.lmd['predict_columns']:
-            if self.transaction.lmd['column_stats'][column]['data_type'] == DATA_TYPES.CATEGORICAL and self.transaction.lmd['equal_accuracy_for_all_output_categories'] == True and self.transaction.lmd['type'] == TRANSACTION_LEARN:
+            if (self.transaction.lmd['column_stats'][column]['data_type'] == DATA_TYPES.CATEGORICAL
+                and self.transaction.lmd['equal_accuracy_for_all_output_categories'] is True
+                and self.transaction.lmd['type'] == TRANSACTION_LEARN):
 
                 occurance_map = {}
                 ciclying_map = {}

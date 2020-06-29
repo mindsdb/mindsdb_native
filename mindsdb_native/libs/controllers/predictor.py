@@ -2,9 +2,7 @@ import os
 import sys
 import psutil
 import uuid
-import traceback
 import pickle
-from pathlib import Path
 
 from mindsdb_native.external_libs.stats import calculate_sample_size
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
@@ -35,9 +33,7 @@ def get_memory_optimizations(df):
 
 class Predictor:
 
-    def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL,
-                              root_folder=CONFIG.MINDSDB_STORAGE_PATH, # This param is unused, kept for backwards compat
-                 ):
+    def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL):
         """
         This controller defines the API to a MindsDB 'mind', a mind is an object that can learn and predict from data
 
@@ -93,7 +89,7 @@ class Predictor:
     def get_model_data(self, model_name=None, lmd=None):
         if model_name is None:
             model_name = self.name
-        return get_model_data(model_name)
+        return get_model_data(model_name, lmd=lmd)
 
     @deprecated(reason='Use functional.export_storage instead')
     def export(self, mindsdb_storage_dir='mindsdb_storage'):
@@ -181,8 +177,12 @@ class Predictor:
             sample_settings = sample_settings
         )
 
-        Transaction(session=self, light_transaction_metadata=light_transaction_metadata, heavy_transaction_metadata=heavy_transaction_metadata, logger=self.log)
-        return get_model_data(model_name=None, lmd=light_transaction_metadata)
+
+        Transaction(session=self,
+                    light_transaction_metadata=light_transaction_metadata,
+                    heavy_transaction_metadata=heavy_transaction_metadata,
+                    logger=self.log)
+        return get_model_data(None, lmd=light_transaction_metadata)
 
     def learn(self,
               to_predict,
@@ -196,7 +196,6 @@ class Predictor:
               backend='lightwood',
               rebuild_model=True,
               use_gpu=None,
-              disable_optional_analysis=False,
               equal_accuracy_for_all_output_categories=True,
               output_categories_importance_dictionary=None,
               unstable_parameters_dict=None,
@@ -280,7 +279,6 @@ class Predictor:
             name=self.name,
             from_data=from_ds,
             test_from_data=test_from_ds,
-            bucketing_algorithms = {},
             predictions= None,
             model_backend= backend
         )
@@ -307,7 +305,6 @@ class Predictor:
             all_columns_prediction_distribution = None,
             use_gpu = use_gpu,
             columns_to_ignore = ignore_columns,
-            disable_optional_analysis = disable_optional_analysis,
             validation_set_accuracy = None,
             lightwood_data = {},
             ludwig_data = {},
@@ -320,7 +317,6 @@ class Predictor:
             output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
 
             skip_model_training = unstable_parameters_dict.get('skip_model_training', False),
-            skip_stats_generation = unstable_parameters_dict.get('skip_stats_generation', False),
             optimize_model = unstable_parameters_dict.get('optimize_model', False),
             force_disable_cache = unstable_parameters_dict.get('force_disable_cache', disable_lightwood_transform_cache),
             force_categorical_encoding = unstable_parameters_dict.get('force_categorical_encoding', []),
@@ -380,7 +376,6 @@ class Predictor:
 
         return accuracy_dict
 
-
     def predict(self,
                 when=None,
                 when_data=None,
@@ -412,11 +407,13 @@ class Predictor:
         # lets turn into lists: when
         when = [when] if isinstance(when, dict) else when if when is not None else []
 
+        disable_lightwood_transform_cache = False
         heavy_transaction_metadata = {}
         if when_ds is None:
             heavy_transaction_metadata['when_data'] = None
         else:
             heavy_transaction_metadata['when_data'] = when_ds
+            _, _, disable_lightwood_transform_cache = get_memory_optimizations(when_ds.df)
         heavy_transaction_metadata['model_when_conditions'] = when
         heavy_transaction_metadata['name'] = self.name
 
@@ -429,7 +426,7 @@ class Predictor:
             use_gpu = use_gpu,
             data_preparation = {},
             run_confidence_variation_analysis = run_confidence_variation_analysis,
-            force_disable_cache = unstable_parameters_dict.get('force_disable_cache', False)
+            force_disable_cache = unstable_parameters_dict.get('force_disable_cache', disable_lightwood_transform_cache)
         )
 
         transaction = Transaction(session=self,
