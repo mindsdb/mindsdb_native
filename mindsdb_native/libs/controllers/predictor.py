@@ -5,11 +5,11 @@ import pickle
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
-
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates, deprecated
+from mindsdb_native.libs.helpers.locking import *
 
 
 class Predictor:
@@ -86,6 +86,8 @@ class Predictor:
 
         :return:
         """
+
+        lock_file = learn_lock(self.name)
 
         if ignore_columns is None:
             ignore_columns = []
@@ -203,6 +205,7 @@ class Predictor:
                     light_transaction_metadata=light_transaction_metadata,
                     heavy_transaction_metadata=heavy_transaction_metadata,
                     logger=self.log)
+        unlock(lock_file)
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
         """
@@ -213,13 +216,16 @@ class Predictor:
 
         :return: a dictionary for the form `{f'{target_name}_accuracy': accuracy_func_return}`, e.g. {'rental_price_accuracy':0.99}
         """
+
         if predict_args is None:
             predict_args = {}
 
+        lock_file = predict_lock(self.name)
         predictions = self.predict(when_data=when_data, **predict_args)
 
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{self.name}_light_model_metadata.pickle'), 'rb') as fp:
             lmd = pickle.load(fp)
+        unlock(lock_file)
 
         accuracy_dict = {}
         for col in lmd['predict_columns']:
@@ -240,6 +246,7 @@ class Predictor:
                 unstable_parameters_dict=None,
                 backend=None,
                 run_confidence_variation_analysis=False):
+        lock(self.name)
         """
         You have a mind trained already and you want to make a prediction
 
@@ -287,5 +294,5 @@ class Predictor:
         transaction = Transaction(session=self,
                                   light_transaction_metadata=light_transaction_metadata,
                                   heavy_transaction_metadata=heavy_transaction_metadata)
-
+        unlock(lock_file)
         return transaction.output_data

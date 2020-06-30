@@ -13,7 +13,7 @@ from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    MODEL_STATUS_ERROR)
-
+from mindsdb_native.libs.helpers.locking import *
 
 def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
     """
@@ -25,13 +25,13 @@ def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
     sample_confidence_level = 1 - sample_margin_of_error
 
     heavy_transaction_metadata = dict(
-        #name = self.name,
+        name = None,
         from_data = from_ds
     )
 
     light_transaction_metadata = dict(
         version = str(__version__),
-        #name = self.name,
+        name = None,
         model_columns_map = from_ds._col_map,
         type = transaction_type,
         sample_margin_of_error = sample_margin_of_error,
@@ -57,7 +57,8 @@ def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
         logger=logger
     )
 
-    return get_model_data(lmd=tx.lmd)
+    md = get_model_data(lmd=tx.lmd)
+    return md
 
 
 def export_storage(mindsdb_storage_dir='mindsdb_storage'):
@@ -78,6 +79,7 @@ def export_predictor(model_name):
     :param model: a Predictor
     :param model_name: this is the name of the model you wish to export (defaults to the name of the passed Predictor)
     """
+    lock_file = predict_lock(model_name)
     storage_file = model_name + '.zip'
     with zipfile.ZipFile(storage_file, 'w') as zip_fp:
         for file_name in [model_name + '_heavy_model_metadata.pickle',
@@ -97,6 +99,7 @@ def export_predictor(model_name):
                                  full_path[len(CONFIG.MINDSDB_STORAGE_PATH):])
         except Exception:
             pass
+    unlock(lock_file)
 
     print(f'Exported model to {storage_file}')
 
@@ -109,7 +112,8 @@ def rename_model(old_model_name, new_model_name):
     :param new_model_name: this is the new name of the model
     :return: bool (True/False) True if predictor was renamed successfully
     """
-
+    lock_file1 = delete_lock(new_model_name)
+    lock_file2 = delete_lock(old_model_name)
     if old_model_name == new_model_name:
         return True
 
@@ -169,6 +173,8 @@ def rename_model(old_model_name, new_model_name):
                            old_model_name + '_light_model_metadata.pickle'))
     os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
                            old_model_name + '_heavy_model_metadata.pickle'))
+    unlock(lock_file1)
+    unlock(lock_file2)
     return True
 
 
@@ -179,7 +185,7 @@ def delete_model(model_name):
     :param model_name: name of the model
     :return: bool (True/False) True if model was deleted
     """
-
+    lock_file = delete_lock(model_name)
     with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
         lmd = pickle.load(fp)
 
@@ -196,7 +202,7 @@ def delete_model(model_name):
     for file_name in [model_name + '_heavy_model_metadata.pickle',
                       model_name + '_light_model_metadata.pickle']:
         os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name))
-
+    unlock(lock_file)
 
 def import_model(model_archive_path):
     """
@@ -215,6 +221,7 @@ def import_model(model_archive_path):
             model_names.append(model_name)
 
     for model_name in model_names:
+        lock_file = delete_lock(model_name)
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
             lmd = pickle.load(fp)
 
@@ -226,6 +233,7 @@ def import_model(model_archive_path):
 
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'wb') as fp:
             pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
+        unlock(lock_file)
     print('Model files loaded')
 
 
@@ -277,12 +285,14 @@ def _adapt_column(col_stats, col):
 def get_model_data(model_name=None, lmd=None):
     if model_name is None and lmd is None:
         raise ValueError('provide either model name or lmd')
-    
+
     if lmd is not None:
         pass
     elif model_name is not None:
+        lock_file = get_data_lock(model_name)
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
             lmd = pickle.load(fp)
+            unlock(lock_file)
 
     # ADAPTOR CODE
     amd = {}
