@@ -8,7 +8,7 @@ class TransactionOutputRow:
         self.transaction_output = transaction_output
         self.predict_columns = self.transaction_output.transaction.lmd['predict_columns']
         self.row_index = row_index
-        self.col_stats = self.transaction_output.transaction.lmd['column_stats']
+        self.col_stats = self.transaction_output.transaction.lmd['stats_v2']
         self.data = self.transaction_output.data
         self.explanation = self.new_explain()
 
@@ -46,7 +46,7 @@ class TransactionOutputRow:
                 'prediction_quality': quality
             }
 
-            if self.col_stats[pred_col]['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE):
+            if self.col_stats[pred_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE):
                 if f'{pred_col}_confidence_range' in prediction_row:
                     answers[pred_col]['explanation']['confidence_interval'] = prediction_row[f'{pred_col}_confidence_range']
 

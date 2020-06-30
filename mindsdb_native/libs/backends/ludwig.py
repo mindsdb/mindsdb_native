@@ -156,8 +156,8 @@ class LudwigBackend():
 
             data[tf_col] = []
 
-            col_stats = self.transaction.lmd['column_stats'][col]
-            data_subtype = col_stats['data_subtype']
+            col_stats = self.transaction.lmd['stats_v2'][col]
+            data_subtype = col_stats['typing']['data_subtype']
 
             ludwig_dtype = None
             encoder = None
@@ -226,7 +226,7 @@ class LudwigBackend():
                 elif ludwig_dtype == 'sequence':
                     arr_str = row[col]
                     if arr_str is not None:
-                        arr = list(map(float,arr_str.rstrip(']').lstrip('[').split(self.transaction.lmd['column_stats'][col]['separator'])))
+                        arr = list(map(float,arr_str.rstrip(']').lstrip('[').split(self.transaction.lmd['stats_v2'][col]['separator'])))
                     else:
                         arr = ''
                     data[tf_col].append(arr)

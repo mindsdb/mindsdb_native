@@ -73,14 +73,10 @@ class DataTransformer(BaseModule):
             input_data.test_df[column] = input_data.test_df[column].apply(func)
             input_data.validation_df[column] = input_data.validation_df[column].apply(func)
 
-            self.transaction.lmd['column_stats'][column]['histogram']['x'] = [func(x) for x in self.transaction.lmd['column_stats'][column]['histogram']['x']]
 
             self.transaction.lmd['stats_v2'][column]['histogram']['x'] = [func(x) for x in self.transaction.lmd['stats_v2'][column]['histogram']['x']]
 
-            if 'percentage_buckets' in self.transaction.lmd['column_stats'][column] and self.transaction.lmd['column_stats'][column]['percentage_buckets'] is not None:
-
-                self.transaction.lmd['column_stats'][column]['percentage_buckets'] = [func(x) for x in self.transaction.lmd['column_stats'][column]['percentage_buckets']]
-
+            if 'percentage_buckets' in self.transaction.lmd['stats_v2'][column] and self.transaction.lmd['stats_v2'][column]['percentage_buckets'] is not None:
                 self.transaction.lmd['stats_v2'][column]['percentage_buckets'] = [func(x) for x in self.transaction.lmd['stats_v2'][column]['percentage_buckets']]
         else:
             input_data.data_frame[column] = input_data.data_frame[column].apply(func)
@@ -88,11 +84,11 @@ class DataTransformer(BaseModule):
 
     def run(self, input_data):
         for column in input_data.columns:
-            if column in self.transaction.lmd['columns_to_ignore'] or column not in self.transaction.lmd['column_stats']:
+            if column in self.transaction.lmd['columns_to_ignore'] or column not in self.transaction.lmd['stats_v2']:
                 continue
 
-            data_type = self.transaction.lmd['column_stats'][column]['data_type']
-            data_subtype = self.transaction.lmd['column_stats'][column]['data_subtype']
+            data_type = self.transaction.lmd['stats_v2'][column]['typing']['data_type']
+            data_subtype = self.transaction.lmd['stats_v2'][column]['typing']['data_subtype']
 
             if data_type == DATA_TYPES.NUMERIC:
                 self._aply_to_all_data(input_data, column, self.clean_float_or_none, self.transaction.lmd['type'])
@@ -125,16 +121,16 @@ class DataTransformer(BaseModule):
 
         # Un-bias dataset for training
         for column in self.transaction.lmd['predict_columns']:
-            if (self.transaction.lmd['column_stats'][column]['data_type'] == DATA_TYPES.CATEGORICAL
+            if (self.transaction.lmd['stats_v2'][column]['typing']['data_type'] == DATA_TYPES.CATEGORICAL
                 and self.transaction.lmd['equal_accuracy_for_all_output_categories'] is True
                 and self.transaction.lmd['type'] == TRANSACTION_LEARN):
 
                 occurance_map = {}
                 ciclying_map = {}
 
-                for i in range(0,len(self.transaction.lmd['column_stats'][column]['histogram']['x'])):
-                    ciclying_map[self.transaction.lmd['column_stats'][column]['histogram']['x'][i]] = 0
-                    occurance_map[self.transaction.lmd['column_stats'][column]['histogram']['x'][i]] = self.transaction.lmd['column_stats'][column]['histogram']['y'][i]
+                for i in range(0,len(self.transaction.lmd['stats_v2'][column]['histogram']['x'])):
+                    ciclying_map[self.transaction.lmd['stats_v2'][column]['histogram']['x'][i]] = 0
+                    occurance_map[self.transaction.lmd['stats_v2'][column]['histogram']['x'][i]] = self.transaction.lmd['stats_v2'][column]['histogram']['y'][i]
 
                 max_val_occurances = max(occurance_map.values())
 
