@@ -171,7 +171,7 @@ class LudwigBackend():
                 cell_type = 'rnn'
                 ludwig_dtype = 'order_by_col'
 
-            if data_subtype in DATA_SUBTYPES.ARRAY:
+            if data_subtype == DATA_SUBTYPES.ARRAY:
                 encoder = 'rnn'
                 cell_type = 'rnn'
                 ludwig_dtype = 'sequence'
@@ -179,22 +179,22 @@ class LudwigBackend():
             elif data_subtype in (DATA_SUBTYPES.INT, DATA_SUBTYPES.FLOAT):
                 ludwig_dtype = 'numerical'
 
-            elif data_subtype in (DATA_SUBTYPES.BINARY):
+            elif data_subtype == DATA_SUBTYPES.BINARY:
                 ludwig_dtype = 'category'
 
-            elif data_subtype in (DATA_SUBTYPES.DATE):
+            elif data_subtype == DATA_SUBTYPES.DATE:
                 if col not in self.transaction.lmd['predict_columns']:
                     ludwig_dtype = 'date'
                 else:
                     ludwig_dtype = 'category'
 
-            elif data_subtype in (DATA_SUBTYPES.TIMESTAMP):
+            elif data_subtype == DATA_SUBTYPES.TIMESTAMP:
                 ludwig_dtype = 'numerical'
 
             elif data_subtype in (DATA_SUBTYPES.SINGLE, DATA_SUBTYPES.MULTIPLE):
                 ludwig_dtype = 'category'
 
-            elif data_subtype in (DATA_SUBTYPES.IMAGE):
+            elif data_subtype == DATA_SUBTYPES.IMAGE:
                 has_heavy_data = True
                 ludwig_dtype = 'image'
                 encoder = 'stacked_cnn'
@@ -202,7 +202,7 @@ class LudwigBackend():
                 height = 256
                 width = 256
 
-            elif data_subtype in (DATA_SUBTYPES.TEXT):
+            elif data_subtype == DATA_TYPES.TEXT:
                 ludwig_dtype = 'text'
 
             else:

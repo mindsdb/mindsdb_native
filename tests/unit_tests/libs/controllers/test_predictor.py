@@ -21,6 +21,8 @@ from unit_tests.utils import (test_column_types,
                                     generate_log_labels,
                                     columns_to_file)
 
+from mindsdb_native.libs.controllers.functional import analyse_dataset
+
 
 class TestPredictor:
     def test_analyze_dataset(self):
@@ -48,7 +50,7 @@ class TestPredictor:
                                 range(n_points)],
         }, index=list(range(n_points)))
 
-        model_data = predictor.analyse_dataset(from_data=input_dataframe)
+        model_data = analyse_dataset(from_data=input_dataframe)
         for col, col_data in model_data['data_analysis_v2'].items():
             expected_type = test_column_types[col][0]
             expected_subtype = test_column_types[col][1]
@@ -70,7 +72,7 @@ class TestPredictor:
             'empty_column': [None for i in range(n_points)]
         }, index=list(range(n_points)))
 
-        model_data = predictor.analyse_dataset(from_data=input_dataframe)
+        model_data = analyse_dataset(from_data=input_dataframe)
 
         assert model_data['data_analysis_v2']['empty_column']['empty']['is_empty'] is True
 
@@ -83,7 +85,7 @@ class TestPredictor:
         }, index=list(range(n_points)))
         input_dataframe['numeric_int'].iloc[::2] = None
 
-        model_data = predictor.analyse_dataset(from_data=input_dataframe)
+        model_data = analyse_dataset(from_data=input_dataframe)
 
         assert model_data['data_analysis_v2']['numeric_int']['empty']['empty_percentage'] == 50
 
@@ -195,8 +197,8 @@ class TestPredictor:
         data_source_mod.set_subtypes({'credit_usage': 'Int', 'Average_Credit_Balance': 'Text',
              'existing_credits': 'Binary Category'})
 
-        analysis = Predictor('analyzer1').analyse_dataset(data_source)
-        analysis_mod = Predictor('analyzer2').analyse_dataset(data_source_mod)
+        analysis = analyse_dataset(data_source)
+        analysis_mod = analyse_dataset(data_source_mod)
 
         a1 = analysis['data_analysis_v2']
         a2 = analysis_mod['data_analysis_v2']
@@ -215,7 +217,7 @@ class TestPredictor:
         assert (a1['Average_Credit_Balance']['typing']['data_subtype'] !=
                 a2['Average_Credit_Balance']['typing']['data_subtype'])
         assert (a2['Average_Credit_Balance']['typing'][
-                    'data_subtype'] == DATA_SUBTYPES.TEXT)
+                    'data_subtype'] == DATA_SUBTYPES.SHORT)
         assert (a2['Average_Credit_Balance']['typing'][
                     'data_type'] == DATA_TYPES.SEQUENTIAL)
 

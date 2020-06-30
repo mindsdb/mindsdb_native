@@ -224,7 +224,7 @@ def get_image_histogram(data):
 
 def get_histogram(data, data_type, data_subtype):
     """ Returns a histogram for the data and [optionaly] the percentage buckets"""
-    if data_subtype == DATA_SUBTYPES.TEXT:
+    if data_type == DATA_TYPES.TEXT:
         return get_text_histogram(data), None
     elif data_subtype == DATA_SUBTYPES.ARRAY:
         return get_hist(data), None

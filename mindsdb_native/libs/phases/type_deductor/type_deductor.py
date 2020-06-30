@@ -4,11 +4,17 @@ from copy import deepcopy
 from collections import Counter, defaultdict
 from dateutil.parser import parse as parse_datetime
 
-from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES, DATA_TYPES_SUBTYPES
+from mindsdb_native.libs.constants.mindsdb import (
+    DATA_TYPES,
+    DATA_SUBTYPES,
+    DATA_TYPES_SUBTYPES
+)
+from mindsdb_native.libs.helpers.text_helpers import (
+    word_tokenize,
+    cast_string_to_python_type,
+    is_foreign_key
+)
 from mindsdb_native.libs.phases.base_module import BaseModule
-from mindsdb_native.libs.helpers.text_helpers import (word_tokenize,
-                                               cast_string_to_python_type,
-                                               is_foreign_key)
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
@@ -37,31 +43,6 @@ def get_number_subtype(string):
         return DATA_SUBTYPES.INT
     else:
         return None
-
-
-def get_text_category_subtype(data):
-    """Takes in column data of text values and defines its categorical subtype.
-    If categorical, returns DATA_SUBTYPES.MULTIPLE or DATA_SUBTYPES.SINGLE.
-    If not categorical, returns None"""
-
-    key_count = Counter()
-    max_number_of_words = 0
-
-    for cell in data:
-        key_count[cell] += 1
-
-        words = word_tokenize(cell)
-
-        if max_number_of_words < words:
-            max_number_of_words += words
-
-    # If all sentences are less than or equal and 3 words,
-    # assume it's a category rather than a sentence
-    if max_number_of_words <= 3:
-        if len(key_count.keys()) < 3:
-            return DATA_SUBTYPES.SINGLE
-        else:
-            return DATA_SUBTYPES.MULTIPLE
 
 
 class TypeDeductor(BaseModule):
@@ -130,13 +111,11 @@ class TypeDeductor(BaseModule):
                          type_check_sequence,
                          type_check_file]
         for element in map(str, data):
-            data_type_guess, subtype_guess = None, None
             for type_checker in type_checkers:
                 data_type_guess, subtype_guess = type_checker(element)
                 if data_type_guess:
                     break
-
-            if not data_type_guess:
+            else:
                 data_type_guess = 'Unknown'
                 subtype_guess = 'Unknown'
 
@@ -155,8 +134,14 @@ class TypeDeductor(BaseModule):
         :return: type and type distribution, we can later use type_distribution to determine data quality
         NOTE: type distribution is the count that this column has for belonging cells to each DATA_TYPE
         """
-        type_dist, subtype_dist = {}, {}
         additional_info = {'other_potential_subtypes': [], 'other_potential_types': []}
+
+        if len(data) == 0:
+            self.log.warning(f'Column {col_name} has no data in it. '
+                             f'Please remove {col_name} from the training file or fill in some of the values !')
+            return None, None, None, None, additional_info
+
+        type_dist, subtype_dist = {}, {}
 
         if col_name in self.transaction.lmd['data_subtypes']:
             curr_data_type = self.transaction.lmd['data_types'][col_name]
@@ -166,27 +151,26 @@ class TypeDeductor(BaseModule):
             self.log.info(f'Manually setting the types for column {col_name} to {curr_data_type}->{curr_data_subtype}')
             return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
-        if len(data) == 0:
-            self.log.warning(f'Column {col_name} has no data in it. '
-                             f'Please remove {col_name} from the training file or fill in some of the values !')
-            return None, None, None, None, additional_info
-
         if col_name in self.transaction.lmd['force_categorical_encoding']:
             curr_data_type = DATA_TYPES.CATEGORICAL
             curr_data_subtype = DATA_SUBTYPES.MULTIPLE
-            type_dist[curr_data_type] = len(data)
-            subtype_dist[curr_data_subtype] = len(data)
+            type_dist[DATA_TYPES.CATEGORICAL] = len(data)
+            subtype_dist[DATA_SUBTYPES.MULTIPLE] = len(data)
             return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
         type_dist, subtype_dist, new_additional_info = self.count_data_types_in_column(data)
+        
         if new_additional_info:
             additional_info.update(new_additional_info)
 
         # @TODO consider removing or flagging rows where data type is unknown in the future, might just be corrupt data...
         known_type_dist = {k: v for k, v in type_dist.items() if k != 'Unknown'}
-        max_known_dtype, max_known_dtype_count = None, None
+
         if known_type_dist:
-            max_known_dtype, max_known_dtype_count = max(known_type_dist.items(), key=lambda pair: pair[0])
+            max_known_dtype, max_known_dtype_count = max(known_type_dist.items(), key=lambda kv: kv[0])
+        else:
+            max_known_dtype, max_known_dtype_count = None, None
+
         if max_known_dtype and max_known_dtype_count > type_dist['Unknown']:
             # Data is mostly not unknown, go with type counting results
             curr_data_type = max_known_dtype
@@ -197,16 +181,55 @@ class TypeDeductor(BaseModule):
                                        key=lambda pair: pair[0])
 
         else:
-            # Data contains a lot of Unknown, assume text or categorical
-            categorical_subtype = get_text_category_subtype(data)
-            if categorical_subtype:
-                curr_data_type, curr_data_subtype = DATA_TYPES.CATEGORICAL, categorical_subtype
-                type_dist[DATA_TYPES.CATEGORICAL] = type_dist['Unknown']
-                subtype_dist[categorical_subtype] = subtype_dist['Unknown']
+            # Data contains a lot of Unknown, assume text or categorical    
+
+            import string
+            import flair
+            import langdetect
+            langdetect.DetectorFactory.seed = 0
+
+            nr_words_dist = Counter()
+            nr_words = 0
+            word_dist = Counter()
+            lang_dist = Counter()
+
+            lang_cache = dict()
+
+            for text, sent in zip(data, map(flair.data.Sentence, data)):
+                if text in lang_cache:
+                    lang = lang_cache[text]
+                else:
+                    try:
+                        lang_probs = langdetect.detect_langs(text)
+                    except langdetect.lang_detect_exception.LangDetectException:
+                        lang = 'Unknown'
+                    else:
+                        if len(lang_probs) > 0 and lang_probs[0].prob > 0.84:
+                            lang = lang_probs[0].lang
+                        else:
+                            lang = 'Unknown'
+
+                    lang_cache[text] = lang
+
+                lang_dist[lang] += 1
+
+                nr_words += len(sent)
+
+                nr_words_dist[len(sent)] += 1
+
+                for tok in sent:
+                    word = tok.text.strip(string.punctuation + '"\'«»')
+                    word_dist[word] += 1
+
+            curr_data_type = DATA_TYPES.TEXT
+
+            if nr_words / len(data) > 8 and len(word_dist):
+                curr_data_subtype = DATA_SUBTYPES.RICH
             else:
-                curr_data_type, curr_data_subtype = DATA_TYPES.SEQUENTIAL, DATA_SUBTYPES.TEXT
-                type_dist[DATA_TYPES.SEQUENTIAL] = type_dist['Unknown']
-                subtype_dist[DATA_SUBTYPES.TEXT] = subtype_dist['Unknown']
+                curr_data_subtype = DATA_SUBTYPES.SHORT
+
+            type_dist[curr_data_type] = type_dist['Unknown']
+            subtype_dist[curr_data_subtype] = subtype_dist['Unknown']
 
             del type_dist['Unknown']
             del subtype_dist['Unknown']
@@ -221,16 +244,16 @@ class TypeDeductor(BaseModule):
             nr_vals = len(all_values)
             nr_distinct_vals = len(all_distinct_vals)
 
-            if ((curr_data_subtype == DATA_SUBTYPES.TEXT and self.transaction.lmd['handle_text_as_categorical'])
+            if ((curr_data_type == DATA_TYPES.TEXT and self.transaction.lmd['handle_text_as_categorical'])
                 or ((nr_distinct_vals < nr_vals / 20) and (curr_data_type not in [DATA_TYPES.NUMERIC, DATA_TYPES.DATE] or nr_distinct_vals < 20))):
 
                 additional_info['other_potential_types'].append(curr_data_type)
                 additional_info['other_potential_subtypes'].append(curr_data_subtype)
                 curr_data_type = DATA_TYPES.CATEGORICAL
-                if len(all_distinct_vals) < 3:
-                    curr_data_subtype = DATA_SUBTYPES.SINGLE
-                else:
+                if len(all_distinct_vals) > 2:
                     curr_data_subtype = DATA_SUBTYPES.MULTIPLE
+                else:
+                    curr_data_subtype = DATA_SUBTYPES.SINGLE
                 type_dist = {
                     curr_data_type: len(data)
                 }

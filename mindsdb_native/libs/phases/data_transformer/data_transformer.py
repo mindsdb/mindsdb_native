@@ -111,7 +111,7 @@ class DataTransformer(BaseModule):
             if data_type == DATA_TYPES.CATEGORICAL:
                 self._aply_to_all_data(input_data, column, str, self.transaction.lmd['type'])
 
-            if data_subtype == DATA_SUBTYPES.TEXT:
+            if data_type == DATA_TYPES.TEXT:
                 self._aply_to_all_data(input_data, column, str, self.transaction.lmd['type'])
 
             if self.transaction.hmd['model_backend'] == 'lightwood':

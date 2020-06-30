@@ -2,16 +2,16 @@ import os
 import uuid
 import pickle
 
+from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
-from mindsdb_native.__about__ import __version__
 
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates, deprecated
 from mindsdb_native.libs.controllers.functional import (export_storage, export_predictor,
-                                                 rename_model, delete_model,
+                                                 rename_model, delete_model, analyse_dataset,
                                                  import_model, get_model_data, get_models)
 
 
@@ -106,48 +106,9 @@ class Predictor:
         except Exception as e:
             return False
 
-    def analyse_dataset(self, from_data, sample_margin_of_error=0.005):
-        """
-        Analyse the particular dataset being given
-        """
-
-        from_ds = getDS(from_data)
-        transaction_type = TRANSACTION_ANALYSE
-        sample_confidence_level = 1 - sample_margin_of_error
-
-        heavy_transaction_metadata = dict(
-            name = self.name,
-            from_data = from_ds
-        )
-
-        light_transaction_metadata = dict(
-            version = str(__version__),
-            name = self.name,
-            model_columns_map = from_ds._col_map,
-            type = transaction_type,
-            sample_margin_of_error = sample_margin_of_error,
-            sample_confidence_level = sample_confidence_level,
-            model_is_time_series = False,
-            model_group_by = [],
-            model_order_by = [],
-            columns_to_ignore = [],
-            data_preparation = {},
-            predict_columns = [],
-            empty_columns = [],
-            handle_foreign_keys = True,
-            force_categorical_encoding = [],
-            handle_text_as_categorical = False,
-            data_types = {},
-            data_subtypes = {}
-        )
-
-
-        Transaction(session=self,
-                    light_transaction_metadata=light_transaction_metadata,
-                    heavy_transaction_metadata=heavy_transaction_metadata,
-                    logger=self.log)
-        return get_model_data(None, lmd=light_transaction_metadata)
-
+    @deprecated(reason='Use functional.delete_model instead')
+    def analyse_dataset(self, model_name=None):
+        return analyse_dataset(model_name)
 
     def learn(self,
               to_predict,

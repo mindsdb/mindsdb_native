@@ -5,6 +5,7 @@ import logging
 from mindsdb_native import Predictor
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 from mindsdb_native import MariaDS
+from mindsdb_native.libs.controllers.functional import analyse_dataset
 
 
 @pytest.mark.integration
@@ -69,7 +70,7 @@ def test_maria_ds():
     assert (len(maria_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
-    model_data = mdb.analyse_dataset(from_data=maria_ds)
+    model_data = analyse_dataset(from_data=maria_ds)
     analysis = model_data['data_analysis_v2']
     assert model_data
     assert analysis
@@ -88,7 +89,13 @@ def test_maria_ds():
     assert_expected_type(analysis['col_date']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.DATE)
     assert_expected_type(analysis['col_datetime']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP)
     assert_expected_type(analysis['col_timestamp']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP)
-    assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.SEQUENTIAL, DATA_SUBTYPES.TEXT)
+
+    # Subtype is expected to be either .SHORT or .RICH
+    try:
+        assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT)
+    except AssertionError:
+        assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.RICH)
+
 
     # @TODO Timedeltas not supported yet
     # assert_expected_type((analysis['col_time']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMEDELTA)
