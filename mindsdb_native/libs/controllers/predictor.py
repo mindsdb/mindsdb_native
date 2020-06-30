@@ -15,10 +15,6 @@ from mindsdb_native.libs.controllers.functional import (export_storage, export_p
                                                  import_model, get_model_data, get_models)
 
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 56f543731109d94bee3b74dd45139501b9cf4ab6
 class Predictor:
 
     def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL):

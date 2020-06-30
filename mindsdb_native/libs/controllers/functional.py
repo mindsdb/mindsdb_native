@@ -4,6 +4,9 @@ import shutil
 import zipfile
 import traceback
 from mindsdb_native.config import CONFIG
+
+from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
+                                                   MODEL_STATUS_ERROR)
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import Transaction
@@ -55,7 +58,6 @@ def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
     )
 
     return get_model_data(lmd=tx.lmd)
-
 
 
 def export_storage(mindsdb_storage_dir='mindsdb_storage'):
@@ -347,7 +349,7 @@ def _adapt_column(col_stats, col):
     return icm
 
 
-<<<<<<< HEAD
+
 def get_model_data(model_name=None, lmd=None):
     if model_name is None and lmd is None:
         raise ValueError('provide either model name or lmd')
@@ -355,10 +357,6 @@ def get_model_data(model_name=None, lmd=None):
     if lmd is not None:
         pass
     elif model_name is not None:
-=======
-def get_model_data(model_name, lmd=None):
-    if lmd is None:
->>>>>>> 56f543731109d94bee3b74dd45139501b9cf4ab6
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
             lmd = pickle.load(fp)
 
