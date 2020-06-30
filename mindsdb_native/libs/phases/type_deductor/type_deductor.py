@@ -183,49 +183,43 @@ class TypeDeductor(BaseModule):
         else:
             # Data contains a lot of Unknown, assume text or categorical    
 
+            import string
             import flair
             import langdetect
             langdetect.DetectorFactory.seed = 0
 
-            sentences = list(map(flair.data.Sentence, data))
-
-            sent_dist = Counter()
+            nr_words_dist = Counter()
+            nr_words = 0
             word_dist = Counter()
+            lang_dist = Counter()
 
-            num_words = 0
+            for text, sent in zip(data, map(flair.data.Sentence, data)):
+                try:
+                    lang_probs = langdetect.detect_langs(text)
+                except langdetect.lang_detect_exception.LangDetectException:
+                    lang = 'Unknown'
+                else:
+                    if len(lang_probs) > 0 and lang_probs[0].prob > 0.84:
+                        lang = lang_probs[0].lang
+                    else:
+                        lang = 'Unknown'
+                
+                lang_dist[lang] += 1
 
-            for sent in sentences:
-                sent_dist[sent] += 1
-                num_words += len(sent)
+                nr_words += len(sent)
+
+                nr_words_dist[len(sent)] += 1
+
                 for tok in sent:
-                    word = tok.text.rstrip('!?.,:')
+                    word = tok.text.strip(string.punctuation + '"\'«»')
                     word_dist[word] += 1
 
-            unique_sentences = sent_dist.keys()
-            mean_words_per_sentence = num_words / len(sentences)
-            
-            # print('sent_dist', sent_dist)
-            # print('word_dist', word_dist)
-            # print('num_words', num_words)
-            # print('unique_sentences', unique_sentences)
-            # print('mean_words_per_sentence', mean_words_per_sentence)
-            # exit('bye')
+            curr_data_type = DATA_TYPES.TEXT
 
-            if (len(unique_sentences) / len(sentences)) > 0.5:
-                curr_data_type = DATA_TYPES.TEXT
-
-                if mean_words_per_sentence > 8:
-                    curr_data_subtype = DATA_SUBTYPES.RICH
-                else:
-                    curr_data_subtype = DATA_SUBTYPES.SHORT
-
+            if nr_words / len(data) > 8 and len(word_dist):
+                curr_data_subtype = DATA_SUBTYPES.RICH
             else:
-                curr_data_type = DATA_TYPES.CATEGORICAL
-
-                if len(key_count) > 2:
-                    curr_data_subtype = DATA_SUBTYPES.MULTIPLE
-                else:
-                    curr_data_subtype = DATA_SUBTYPES.SINGLE
+                curr_data_subtype = DATA_SUBTYPES.SHORT
 
             type_dist[curr_data_type] = type_dist['Unknown']
             subtype_dist[curr_data_subtype] = subtype_dist['Unknown']

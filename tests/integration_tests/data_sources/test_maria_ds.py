@@ -88,7 +88,13 @@ def test_maria_ds():
     assert_expected_type(analysis['col_date']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.DATE)
     assert_expected_type(analysis['col_datetime']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP)
     assert_expected_type(analysis['col_timestamp']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP)
-    assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT)
+
+    # Subtype is expected to be either .SHORT or .RICH
+    try:
+        assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT)
+    except AssertionError:
+        assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.RICH)
+
 
     # @TODO Timedeltas not supported yet
     # assert_expected_type((analysis['col_time']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMEDELTA)
