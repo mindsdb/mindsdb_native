@@ -13,8 +13,10 @@ from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates, deprecated
 from mindsdb_native.libs.controllers.functional import (export_storage, export_predictor,
-                                                 rename_model, delete_model,
+                                                 rename_model, delete_model, analyse_dataset,
                                                  import_model, get_model_data, get_models)
+
+
 
 class Predictor:
 
@@ -108,6 +110,10 @@ class Predictor:
             return True
         except Exception as e:
             return False
+
+    @deprecated(reason='Use functional.delete_model instead')
+    def analyse_dataset(self, model_name=None):
+        return analyse_dataset(model_name)
 
     def learn(self,
               to_predict,
