@@ -106,7 +106,7 @@ class Predictor:
         except Exception as e:
             return False
 
-    @deprecated(reason='Use functional.delete_model instead')
+    @deprecated(reason='Use functional.analyse_dataset instead')
     def analyse_dataset(self, model_name=None):
         return analyse_dataset(model_name)
 

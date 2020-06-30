@@ -12,7 +12,8 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
-                                                   MODEL_STATUS_ERROR)
+                                                   MODEL_STATUS_ERROR,
+                                                   TRANSACTION_ANALYSE)
 
 
 def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
