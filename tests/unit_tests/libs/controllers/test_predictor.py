@@ -10,6 +10,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 
 from mindsdb_native.libs.controllers.predictor import Predictor
+from mindsdb_native import F
+
 from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
@@ -271,8 +273,8 @@ class TestPredictor:
             for col in expect_columns:
                 assert col in row
 
-        models = mdb.get_models()
-        model_data = mdb.get_model_data(models[0]['name'])
+        models = F.get_models()
+        model_data = F.get_model_data(models[0]['name'])
         assert model_data
 
     def test_multilabel_prediction(self, tmp_path):
@@ -308,8 +310,8 @@ class TestPredictor:
                   stop_training_in_x_seconds=1)
 
         results = mdb.predict(when_data=test_file_name)
-        models = mdb.get_models()
-        model_data = mdb.get_model_data(models[0]['name'])
+        models = F.get_models()
+        model_data = F.get_model_data(models[0]['name'])
         assert model_data
 
         for i in range(len(results)):
@@ -368,7 +370,7 @@ class TestPredictor:
         prediction = mdb.predict(when={'sqft': 300}, use_gpu=use_gpu)
         assert_prediction_interface(prediction)
 
-        amd = mdb.get_model_data('home_rentals_price')
+        amd = F.get_model_data('home_rentals_price')
 
         for k in ['status', 'name', 'version', 'data_source', 'current_phase',
                   'updated_at', 'created_at',

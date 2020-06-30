@@ -2,9 +2,11 @@ import os
 import pickle
 import shutil
 import zipfile
-
-from mindsdb_native.libs.constants.mindsdb import *
+import traceback
 from mindsdb_native.config import CONFIG
+
+from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
+                                                   MODEL_STATUS_ERROR)
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import Transaction
