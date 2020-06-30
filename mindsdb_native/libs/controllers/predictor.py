@@ -246,7 +246,7 @@ class Predictor:
                 unstable_parameters_dict=None,
                 backend=None,
                 run_confidence_variation_analysis=False):
-        lock(self.name)
+        lock_file = predict_lock(self.name)
         """
         You have a mind trained already and you want to make a prediction
 
