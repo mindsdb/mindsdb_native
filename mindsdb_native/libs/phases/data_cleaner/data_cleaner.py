@@ -18,7 +18,10 @@ class DataCleaner(BaseModule):
                 self.transaction.lmd['empty_columns'].append(col_name)
                 self.log.warning(f'Column "{col_name}" is empty ! We\'ll go ahead and ignore it, please make sure you gave mindsdb the correct data.')
 
-        df = df.drop(columns=self.transaction.lmd['columns_to_ignore'])
+        try:
+            df = df.drop(columns=self.transaction.lmd['columns_to_ignore'])
+        except Exception as e:
+            pass
         return df
 
     def run(self, stage):

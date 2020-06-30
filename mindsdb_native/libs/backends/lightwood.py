@@ -85,7 +85,7 @@ class LightwoodBackend():
         config['input_features'] = []
         config['output_features'] = []
 
-        for col_name in self.transaction.input_data.columns:
+        for col_name in self.transaction.input_data.columns or col_name not in self.transaction.lmd['column_stats']:
             if col_name in self.transaction.lmd['columns_to_ignore']:
                 continue
 
@@ -241,7 +241,7 @@ class LightwoodBackend():
                     conf_arr = [x if x > 0 else 0 for x in predictions[k][confidence_name]]
                     conf_arr = [x if x < 1 else 1 for x in conf_arr]
                     confidence_arr.append(conf_arr)
-                    
+
             if len(confidence_arr) > 0:
                 confidences = []
                 for n in range(len(confidence_arr[0])):
