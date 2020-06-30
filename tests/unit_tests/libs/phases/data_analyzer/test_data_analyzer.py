@@ -15,7 +15,6 @@ class TestDataAnalyzer:
     def lmd(self, transaction):
         lmd = transaction.lmd
         lmd['handle_text_as_categorical'] = False
-        lmd['column_stats'] = {}
         lmd['stats_v2'] = {}
         lmd['empty_columns'] = []
         lmd['data_types'] = {}
@@ -43,11 +42,6 @@ class TestDataAnalyzer:
             result[k]['typing']['data_subtype_dist'] = {v['typing']['data_subtype']: 100}
         return result
 
-    def get_stats(self, stats_v2):
-        result = {}
-        for col, val in stats_v2.items():
-            result[col] = val['typing']
-        return result
 
     def test_data_analysis(self, transaction, lmd):
         """Tests that data analyzer doesn't crash on common types"""
@@ -69,9 +63,8 @@ class TestDataAnalyzer:
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
-        stats = self.get_stats(stats_v2)
+
         lmd['stats_v2'] = stats_v2
-        lmd['column_stats'] = stats
         hmd = transaction.hmd
 
         input_data = TransactionData()
@@ -108,9 +101,8 @@ class TestDataAnalyzer:
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
-        stats = self.get_stats(stats_v2)
+
         lmd['stats_v2'] = stats_v2
-        lmd['column_stats'] = stats
 
         input_dataframe['numeric_int'].iloc[::2] = None
         input_data = TransactionData()

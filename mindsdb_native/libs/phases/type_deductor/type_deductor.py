@@ -241,7 +241,6 @@ class TypeDeductor(BaseModule):
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
     def run(self, input_data):
-        stats = defaultdict(dict)
         stats_v2 = defaultdict(dict)
 
         self.transaction.input_data.sample_df = sample_data(
@@ -269,10 +268,6 @@ class TypeDeductor(BaseModule):
                 'description': """A data type, in programming, is a classification that specifies which type of value a variable has and what type of mathematical, relational or logical operations can be applied to it without causing an error. A string, for example, is a data type that is used to classify text and an integer is a data type used to classify whole numbers."""
             }
 
-            stats[col_name] = deepcopy(type_data)
-            stats[col_name].update(additional_info)
-            del stats[col_name]['description']
-            
             stats_v2[col_name]['typing'] = type_data
             stats_v2[col_name]['additional_info'] = additional_info
 
@@ -280,7 +275,6 @@ class TypeDeductor(BaseModule):
                                                                   col_name,
                                                                   data_subtype,
                                                                   additional_info['other_potential_subtypes'])
-            stats[col_name]['is_foreign_key'] = stats_v2[col_name]['is_foreign_key']
             if stats_v2[col_name]['is_foreign_key'] and self.transaction.lmd['handle_foreign_keys']:
                 self.transaction.lmd['columns_to_ignore'].append(col_name)
 
@@ -296,10 +290,4 @@ class TypeDeductor(BaseModule):
                     # Functionality is specific to mindsdb logger
                     pass
 
-        if not self.transaction.lmd.get('column_stats'):
-            self.transaction.lmd['column_stats'] = {}
-        if not self.transaction.lmd.get('stats_v2'):
-            self.transaction.lmd['stats_v2'] = {}
-
-        self.transaction.lmd['column_stats'].update(stats)
-        self.transaction.lmd['stats_v2'].update(stats_v2)
+        self.transaction.lmd['stats_v2'] = stats_v2

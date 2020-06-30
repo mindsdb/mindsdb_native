@@ -180,8 +180,8 @@ def import_model(model_archive_path):
 def _adapt_column(col_stats, col):
     icm = {
         'column_name': col,
-        'data_type': col_stats['data_type'],
-        'data_subtype': col_stats['data_subtype'],
+        'data_type': col_stats['typing']['data_type'],
+        'data_subtype': col_stats['typing']['data_subtype'],
     }
 
     icm['data_type_distribution'] = {
@@ -189,18 +189,18 @@ def _adapt_column(col_stats, col):
         ,'x': []
         ,'y': []
     }
-    for k in col_stats['data_type_dist']:
+    for k in col_stats['typing']['data_type_dist']:
         icm['data_type_distribution']['x'].append(k)
-        icm['data_type_distribution']['y'].append(col_stats['data_type_dist'][k])
+        icm['data_type_distribution']['y'].append(col_stats['typing']['data_type_dist'][k])
 
     icm['data_subtype_distribution'] = {
         'type': "categorical"
         ,'x': []
         ,'y': []
     }
-    for k in col_stats['data_subtype_dist']:
+    for k in col_stats['typing']['data_subtype_dist']:
         icm['data_subtype_distribution']['x'].append(k)
-        icm['data_subtype_distribution']['y'].append(col_stats['data_subtype_dist'][k])
+        icm['data_subtype_distribution']['y'].append(col_stats['typing']['data_subtype_dist'][k])
 
     icm['data_distribution'] = {}
     icm['data_distribution']['data_histogram'] = {
@@ -208,92 +208,16 @@ def _adapt_column(col_stats, col):
         'x': [],
         'y': []
     }
-    icm['data_distribution']['clusters'] =  [
+    icm['data_distribution']['clusters'] = [
          {
              "group": [],
              "members": []
          }
      ]
 
-
     for i in range(len(col_stats['histogram']['x'])):
         icm['data_distribution']['data_histogram']['x'].append(col_stats['histogram']['x'][i])
         icm['data_distribution']['data_histogram']['y'].append(col_stats['histogram']['y'][i])
-
-    scores = ['consistency_score', 'redundancy_score', 'variability_score']
-    for score in scores:
-        metrics = []
-        if score == 'consistency_score':
-            simple_description = "A low value indicates the data is not very consistent, it's either missing a lot of valus or the type (e.g. number, text, category, date) of values varries quite a lot."
-            metrics.append({
-                  "type": "score",
-                  "name": "Type Distribution",
-                  "score": col_stats['data_type_distribution_score'],
-                  "description": "A low value indicates that we can't consistently determine a single data type (e.g. number, text, category, date) for most values in this column",
-                  "warning": col_stats['data_type_distribution_score_warning']
-            })
-            metrics.append({
-                  "type": "score",
-                  "score": col_stats['empty_cells_score'],
-                  "name": "Empty Cells",
-                  "description": "A low value indicates that a lot of the values in this column are empty or null. A value of 10 means no cell is missing data, a value of 0 means no cell has any data.",
-                  "warning": col_stats['empty_cells_score_warning']
-            })
-            if 'duplicates_score' in col_stats:
-                metrics.append({
-                      "type": "score",
-                      "name": "Value Duplication",
-                      "score": col_stats['duplicates_score'],
-                      "description": "A low value indicates that a lot of the values in this columns are duplicates, as in, the same value shows up more than once in the column. This is not necessarily bad and could be normal for certain data types.",
-                      "warning": col_stats['duplicates_score_warning']
-                })
-
-        if score == 'variability_score':
-            simple_description = "A low value indicates a high possibility of some noise affecting your data collection process. This could mean that the values for this column are not collected or processed correctly."
-            if 'lof_based_outlier_score' in col_stats and 'z_test_based_outlier_score' in col_stats:
-                metrics.append({
-                      "type": "score",
-                      "name": "Z Outlier Score",
-                      "score": col_stats['lof_based_outlier_score'],
-                      "description": "A low value indicates a large number of outliers in your dataset. This is based on distance from the center of 20 clusters as constructed via KNN.",
-                      "warning": col_stats['lof_based_outlier_score_warning']
-                })
-                metrics.append({
-                      "type": "score",
-                      "name": "Z Outlier Score",
-                      "score": col_stats['z_test_based_outlier_score'],
-                      "description": "A low value indicates a large number of data points are more than 3 standard deviations away from the mean value of this column. This means that this column likely has a large amount of outliers",
-                      "warning": col_stats['z_test_based_outlier_score_warning']
-                })
-            metrics.append({
-                  "type": "score",
-                  "name":"Value Distribution",
-                  "score": col_stats['value_distribution_score'],
-                  "description": "A low value indicates the possibility of a large number of outliers, the clusters in which your data is distributed aren't evenly sized.",
-                  "warning": col_stats['value_distribution_score_warning']
-            })
-
-        if score == 'redundancy_score':
-            # CLF based score to be included here once we find a faster way of computing it...
-            similarity_score_based_most_correlated_column = col_stats['most_similar_column_name']
-
-            simple_description = f"A low value indicates that the data in this column is highly redundant (useless) for making any sort of prediction. You should make sure that values heavily related to this column are not already expressed in the \"{similarity_score_based_most_correlated_column}\" column (e.g. if this column is a timestamp, make sure you don't have another column representing the exact same time in ISO datetime format)"
-
-            metrics.append({
-                  "type": "score",
-                  "name": "Matthews Correlation Score",
-                  "score": col_stats['similarity_score'],
-                  "description": f"A low value indicates a large number of values in this column are similar to values in the \"{similarity_score_based_most_correlated_column}\" column",
-                  "warning": col_stats['similarity_score_warning']
-            })
-
-        icm[score.replace('_score','')] = {
-            "score": col_stats[score],
-            "metrics": metrics,
-            "description": simple_description,
-            "warning": col_stats[f'{score}_warning']
-        }
-
     return icm
 
 
@@ -341,7 +265,7 @@ def get_model_data(model_name, lmd=None):
             continue
 
         try:
-            icm = _adapt_column(lmd['column_stats'][col],col)
+            icm = _adapt_column(lmd['stats_v2'][col],col)
         except Exception as e:
             print(e)
             icm = {'column_name': col}
@@ -465,8 +389,7 @@ def get_models():
 
                 models.append(model)
             except Exception as e:
-                print(e)
-                print(traceback.format_exc())
                 print(f"Can't adapt metadata for model: '{model_name}' when calling `get_models()`")
+                raise
 
     return models

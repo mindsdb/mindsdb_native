@@ -39,8 +39,8 @@ def explain_prediction(lmd, prediction_row, confidence, pred_col):
     explain_predictions = {}
 
     predicted_val = prediction_row[pred_col]
-    col_stats = lmd['column_stats'][pred_col]
-    col_type = col_stats['data_type']
+    col_stats = lmd['stats_v2'][pred_col]
+    col_type = col_stats['typing']['data_type']
 
     if 'histogram' in col_stats and ['histogram'] is not None:
         histogram_x = None
