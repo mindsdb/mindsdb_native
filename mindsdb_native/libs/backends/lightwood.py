@@ -96,26 +96,26 @@ class LightwoodBackend():
             lightwood_data_type = None
 
             other_keys = {'encoder_attrs': {}}
-            if data_type in (DATA_TYPES.NUMERIC):
+            if data_type == DATA_TYPES.NUMERIC:
                 lightwood_data_type = 'numeric'
 
-            elif data_type in (DATA_TYPES.CATEGORICAL):
+            elif data_type == DATA_TYPES.CATEGORICAL:
                 lightwood_data_type = 'categorical'
 
             elif data_subtype in (DATA_SUBTYPES.TIMESTAMP, DATA_SUBTYPES.DATE):
                 lightwood_data_type = 'datetime'
 
-            elif data_subtype in (DATA_SUBTYPES.IMAGE):
+            elif data_subtype == DATA_SUBTYPES.IMAGE:
                 lightwood_data_type = 'image'
                 other_keys['encoder_attrs']['aim'] = 'balance'
 
-            elif data_subtype in (DATA_SUBTYPES.AUDIO):
+            elif data_subtype == DATA_SUBTYPES.AUDIO:
                 lightwood_data_type = 'audio'
 
-            elif data_subtype in (DATA_SUBTYPES.TEXT):
+            elif data_type == DATA_TYPES.TEXT:
                 lightwood_data_type = 'text'
 
-            elif data_subtype in (DATA_SUBTYPES.ARRAY):
+            elif data_subtype == DATA_SUBTYPES.ARRAY:
                 lightwood_data_type = 'time_series'
 
             else:

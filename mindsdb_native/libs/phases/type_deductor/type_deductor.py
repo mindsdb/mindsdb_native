@@ -134,8 +134,14 @@ class TypeDeductor(BaseModule):
         :return: type and type distribution, we can later use type_distribution to determine data quality
         NOTE: type distribution is the count that this column has for belonging cells to each DATA_TYPE
         """
-        type_dist, subtype_dist = {}, {}
         additional_info = {'other_potential_subtypes': [], 'other_potential_types': []}
+
+        if len(data) == 0:
+            self.log.warning(f'Column {col_name} has no data in it. '
+                             f'Please remove {col_name} from the training file or fill in some of the values !')
+            return None, None, None, None, additional_info
+
+        type_dist, subtype_dist = {}, {}
 
         if col_name in self.transaction.lmd['data_subtypes']:
             curr_data_type = self.transaction.lmd['data_types'][col_name]
@@ -145,11 +151,6 @@ class TypeDeductor(BaseModule):
             self.log.info(f'Manually setting the types for column {col_name} to {curr_data_type}->{curr_data_subtype}')
             return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
-        if len(data) == 0:
-            self.log.warning(f'Column {col_name} has no data in it. '
-                             f'Please remove {col_name} from the training file or fill in some of the values !')
-            return None, None, None, None, additional_info
-
         if col_name in self.transaction.lmd['force_categorical_encoding']:
             curr_data_type = DATA_TYPES.CATEGORICAL
             curr_data_subtype = DATA_SUBTYPES.MULTIPLE
@@ -158,6 +159,7 @@ class TypeDeductor(BaseModule):
             return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
         type_dist, subtype_dist, new_additional_info = self.count_data_types_in_column(data)
+        
         if new_additional_info:
             additional_info.update(new_additional_info)
 
@@ -181,21 +183,38 @@ class TypeDeductor(BaseModule):
         else:
             # Data contains a lot of Unknown, assume text or categorical    
 
-            from flair.data import Sentence
+            import flair
             import langdetect
             langdetect.DetectorFactory.seed = 0
 
-            key_count = Counter(data)
-            max_number_of_words = max(map(word_tokenize, key_count))
+            sentences = list(map(flair.data.Sentence, data))
 
-            sentences = data
-            unique_sentences = set(sentences)
-            mean_words_per_sentence = sum(len(list(Sentence(x))) for x in data) / len(sentences)
+            sent_dist = Counter()
+            word_dist = Counter()
 
-            if (len(unique_sentences) / len(sentences)) > 0.5 and mean_words_per_sentence > 3:
+            num_words = 0
+
+            for sent in sentences:
+                sent_dist[sent] += 1
+                num_words += len(sent)
+                for tok in sent:
+                    word = tok.text.rstrip('!?.,:')
+                    word_dist[word] += 1
+
+            unique_sentences = sent_dist.keys()
+            mean_words_per_sentence = num_words / len(sentences)
+            
+            # print('sent_dist', sent_dist)
+            # print('word_dist', word_dist)
+            # print('num_words', num_words)
+            # print('unique_sentences', unique_sentences)
+            # print('mean_words_per_sentence', mean_words_per_sentence)
+            # exit('bye')
+
+            if (len(unique_sentences) / len(sentences)) > 0.5:
                 curr_data_type = DATA_TYPES.TEXT
 
-                if mean_words_per_sentence > 5 and len(word_dist) > 500:
+                if mean_words_per_sentence > 8:
                     curr_data_subtype = DATA_SUBTYPES.RICH
                 else:
                     curr_data_subtype = DATA_SUBTYPES.SHORT
@@ -224,7 +243,7 @@ class TypeDeductor(BaseModule):
             nr_vals = len(all_values)
             nr_distinct_vals = len(all_distinct_vals)
 
-            if ((curr_data_subtype == DATA_SUBTYPES.TEXT and self.transaction.lmd['handle_text_as_categorical'])
+            if ((curr_data_type == DATA_TYPES.TEXT and self.transaction.lmd['handle_text_as_categorical'])
                 or ((nr_distinct_vals < nr_vals / 20) and (curr_data_type not in [DATA_TYPES.NUMERIC, DATA_TYPES.DATE] or nr_distinct_vals < 20))):
 
                 additional_info['other_potential_types'].append(curr_data_type)

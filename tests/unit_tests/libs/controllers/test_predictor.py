@@ -213,7 +213,7 @@ class TestPredictor:
         assert (a1['Average_Credit_Balance']['typing']['data_subtype'] !=
                 a2['Average_Credit_Balance']['typing']['data_subtype'])
         assert (a2['Average_Credit_Balance']['typing'][
-                    'data_subtype'] == DATA_SUBTYPES.TEXT)
+                    'data_subtype'] == DATA_SUBTYPES.SHORT)
         assert (a2['Average_Credit_Balance']['typing'][
                     'data_type'] == DATA_TYPES.SEQUENTIAL)
 

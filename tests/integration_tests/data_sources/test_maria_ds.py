@@ -88,7 +88,7 @@ def test_maria_ds():
     assert_expected_type(analysis['col_date']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.DATE)
     assert_expected_type(analysis['col_datetime']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP)
     assert_expected_type(analysis['col_timestamp']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP)
-    assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.SEQUENTIAL, DATA_SUBTYPES.TEXT)
+    assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT)
 
     # @TODO Timedeltas not supported yet
     # assert_expected_type((analysis['col_time']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMEDELTA)
