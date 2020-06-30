@@ -14,6 +14,7 @@ from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    MODEL_STATUS_ERROR)
 from mindsdb_native.libs.helpers.locking import *
+from mindsdb_native.libs.constants.mindsdb import *
 
 def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
     """
