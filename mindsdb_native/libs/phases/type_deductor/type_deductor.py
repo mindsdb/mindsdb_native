@@ -193,17 +193,24 @@ class TypeDeductor(BaseModule):
             word_dist = Counter()
             lang_dist = Counter()
 
+            lang_cache = dict()
+
             for text, sent in zip(data, map(flair.data.Sentence, data)):
-                try:
-                    lang_probs = langdetect.detect_langs(text)
-                except langdetect.lang_detect_exception.LangDetectException:
-                    lang = 'Unknown'
+                if text in lang_cache:
+                    lang = lang_cache[text]
                 else:
-                    if len(lang_probs) > 0 and lang_probs[0].prob > 0.84:
-                        lang = lang_probs[0].lang
-                    else:
+                    try:
+                        lang_probs = langdetect.detect_langs(text)
+                    except langdetect.lang_detect_exception.LangDetectException:
                         lang = 'Unknown'
-                
+                    else:
+                        if len(lang_probs) > 0 and lang_probs[0].prob > 0.84:
+                            lang = lang_probs[0].lang
+                        else:
+                            lang = 'Unknown'
+
+                    lang_cache[text] = lang
+
                 lang_dist[lang] += 1
 
                 nr_words += len(sent)
