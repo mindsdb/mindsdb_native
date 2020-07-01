@@ -22,8 +22,8 @@ def mdb_lock(flags, lock_name, argname=None):
                 final_lock_name = '{}.lock'.format(lock_name)
             else:
                 if argname.startswith('self.'):
-                    argval = getattr(args[0, argname.split('.')[1]])
-                if argname in kwargs:
+                    argval = getattr(args[0], argname.split('.')[1])
+                elif argname in kwargs:
                     argval = kwargs[argname]
                 else:
                     params = inspect.signature(func).parameters
@@ -43,9 +43,9 @@ def mdb_lock(flags, lock_name, argname=None):
             except BaseException:
                 portalocker.unlock(f)
                 print(traceback.format_exc())
-                sys.exit(1)
+                raise
             else:
-                portalocker.unlock(file)
+                portalocker.unlock(f)
                 return ret
 
         return wrapper2

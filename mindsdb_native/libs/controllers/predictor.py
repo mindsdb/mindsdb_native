@@ -44,7 +44,7 @@ class Predictor:
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
-    @mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='learn', argname='self.model_name')
+    @mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
     def learn(self,
               to_predict,
               from_data,
@@ -204,8 +204,9 @@ class Predictor:
                     light_transaction_metadata=light_transaction_metadata,
                     heavy_transaction_metadata=heavy_transaction_metadata,
                     logger=self.log)
+    
 
-
+    @mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
         """
         :param when_data: use this when you have data in either a file, a pandas data frame, or url to a file that you want to predict from
@@ -219,12 +220,10 @@ class Predictor:
         if predict_args is None:
             predict_args = {}
 
-        lock_file = predict_lock(self.name)
         predictions = self.predict(when_data=when_data, **predict_args)
 
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{self.name}_light_model_metadata.pickle'), 'rb') as fp:
             lmd = pickle.load(fp)
-        unlock(lock_file)
 
         accuracy_dict = {}
         for col in lmd['predict_columns']:
@@ -238,6 +237,7 @@ class Predictor:
         return accuracy_dict
 
 
+    @mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
     def predict(self,
                 when=None,
                 when_data=None,
@@ -245,7 +245,6 @@ class Predictor:
                 unstable_parameters_dict=None,
                 backend=None,
                 run_confidence_variation_analysis=False):
-        lock_file = predict_lock(self.name)
         """
         You have a mind trained already and you want to make a prediction
 
@@ -293,5 +292,4 @@ class Predictor:
         transaction = Transaction(session=self,
                                   light_transaction_metadata=light_transaction_metadata,
                                   heavy_transaction_metadata=heavy_transaction_metadata)
-        unlock(lock_file)
         return transaction.output_data
