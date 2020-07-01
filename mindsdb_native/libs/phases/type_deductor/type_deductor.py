@@ -148,6 +148,7 @@ class TypeDeductor(BaseModule):
 
         type_dist, subtype_dist = {}, {}
 
+        # User-provided dtype
         if col_name in self.transaction.lmd['data_subtypes']:
             curr_data_type = self.transaction.lmd['data_types'][col_name]
             curr_data_subtype = self.transaction.lmd['data_subtypes'][col_name]
@@ -156,6 +157,7 @@ class TypeDeductor(BaseModule):
             self.log.info(f'Manually setting the types for column {col_name} to {curr_data_type}->{curr_data_subtype}')
             return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
+        # Forced categorical dtype
         if col_name in self.transaction.lmd['force_categorical_encoding']:
             curr_data_type = DATA_TYPES.CATEGORICAL
             curr_data_subtype = DATA_SUBTYPES.MULTIPLE
@@ -173,86 +175,91 @@ class TypeDeductor(BaseModule):
 
         if known_type_dist:
             max_known_dtype, max_known_dtype_count = max(known_type_dist.items(), key=lambda kv: kv[0])
-
-            # Data is mostly not unknown, go with type counting results
-            if max_known_dtype_count > type_dist['Unknown']:
-                curr_data_type = max_known_dtype
-
-                possible_subtype_counts = [(k, v) for k, v in subtype_dist.items()
-                                        if k in DATA_TYPES_SUBTYPES.subtypes[curr_data_type]]
-                curr_data_subtype, _ = max(possible_subtype_counts,
-                                        key=lambda pair: pair[0])
-
-        # If text is forced to be categorical then
-        # the only option we're left with is categorical
-        elif self.transaction.lmd['handle_text_as_categorical']:
-            curr_data_type = DATA_TYPES.CATEGORICAL
-
-        # Otherwise also check if it's text
         else:
-            lang_dist = defaultdict(lambda: 0)
-            lang_probs_cache = dict()
-            for text, sent in zip(data, map(flair.data.Sentence, data)):
-                if text not in lang_probs_cache:
-                    try:
-                        lang_probs = langdetect.detect_langs(text)
-                    except langdetect.lang_detect_exception.LangDetectException:
-                        lang_probs = []
-                    lang_probs_cache[text] = lang_probs
-                
-                lang_probs = lang_probs_cache[text]
-                if len(lang_probs) > 0 and lang_probs[0].prob > 0.90:
-                    lang_dist[lang_probs[0].lang] += 1
-                else:
-                    lang_dist['Unknown'] += 1
+            max_known_dtype, max_known_dtype_count = None, None
 
-            # Normalize lang probabilities
-            for lang in lang_dist:
-                lang_dist[lang] /= len(data)
-            
-            if lang_dist['Unknown'] > 0.5:
+        nr_vals = len(full_data)
+        nr_distinct_vals = len(set(full_data))
+
+        # Data is mostly not unknown, go with type counting results
+        if max_known_dtype and max_known_dtype_count > type_dist['Unknown']:
+            curr_data_type = max_known_dtype
+
+            possible_subtype_counts = [(k, v) for k, v in subtype_dist.items()
+                                    if k in DATA_TYPES_SUBTYPES.subtypes[curr_data_type]]
+            curr_data_subtype, _ = max(possible_subtype_counts,
+                                    key=lambda pair: pair[0])
+        else:
+            curr_data_type, curr_data_subtype = None, None
+
+        # Categorical
+        if curr_data_type != DATA_TYPES.DATE:
+            if nr_distinct_vals < (nr_vals / 20):
+                if (curr_data_type != DATA_TYPES.NUMERIC) or (nr_distinct_vals < 20):
+                    if curr_data_type is not None:
+                        additional_info['other_potential_types'].append(curr_data_type)
+                        additional_info['other_potential_subtypes'].append(curr_data_subtype)
+                    curr_data_type = DATA_TYPES.CATEGORICAL
+
+        # If curr_data_type is still None, then it's text
+        if curr_data_type is None:
+            if self.transaction.lmd['handle_text_as_categorical']:
                 curr_data_type = DATA_TYPES.CATEGORICAL
             else:
-                curr_data_type = DATA_TYPES.TEXT
-
-                nr_words = 0
-                nr_words_dist = Counter()
-                word_dist = Counter()
+                lang_dist = defaultdict(lambda: 0)
+                lang_probs_cache = dict()
                 for text, sent in zip(data, map(flair.data.Sentence, data)):
-                    nr_words_dist[len(sent)] += 1
-                    nr_words += len(sent)
-                    for tok in sent:
-                        word = tok.text.strip(string.punctuation + '"\'«»')
-                        word_dist[word] += 1
+                    if text not in lang_probs_cache:
+                        try:
+                            lang_probs = langdetect.detect_langs(text)
+                        except langdetect.lang_detect_exception.LangDetectException:
+                            lang_probs = []
+                        lang_probs_cache[text] = lang_probs
+                    
+                    lang_probs = lang_probs_cache[text]
+                    if len(lang_probs) > 0 and lang_probs[0].prob > 0.90:
+                        lang_dist[lang_probs[0].lang] += 1
+                    else:
+                        lang_dist['Unknown'] += 1
 
-                if len(word_dist) > 500 and nr_words / len(data) > 5:
-                    curr_data_subtype = DATA_SUBTYPES.RICH
+                # Normalize lang probabilities
+                for lang in lang_dist:
+                    lang_dist[lang] /= len(data)
+                
+                # If most cells are unknown language then it's categorical
+                if lang_dist['Unknown'] > 0.5:
+                    curr_data_type = DATA_TYPES.CATEGORICAL
                 else:
-                    curr_data_subtype = DATA_SUBTYPES.SHORT
+                    curr_data_type = DATA_TYPES.TEXT
 
-                type_dist = {curr_data_type: len(data)}
-                subtype_dist = {curr_data_subtype: len(data)}
-                return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
+                    nr_words = 0
+                    nr_words_dist = Counter()
+                    word_dist = Counter()
+                    for text, sent in zip(data, map(flair.data.Sentence, data)):
+                        nr_words_dist[len(sent)] += 1
+                        nr_words += len(sent)
+                        for tok in sent:
+                            word = tok.text.strip(string.punctuation + '"\'«»')
+                            word_dist[word] += 1
 
-            del type_dist['Unknown']
-            del subtype_dist['Unknown']
+                    if len(word_dist) > 500 and nr_words / len(data) > 5:
+                        curr_data_subtype = DATA_SUBTYPES.RICH
+                    else:
+                        curr_data_subtype = DATA_SUBTYPES.SHORT
 
-        if curr_data_type != DATA_TYPES.DATE:
-            nr_vals = len(full_data)
-            nr_distinct_vals = len(set(full_data))
+                    type_dist = {curr_data_type: len(data)}
+                    subtype_dist = {curr_data_subtype: len(data)}
+                    return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
-            if (nr_distinct_vals < nr_vals / 20) and (curr_data_type != DATA_TYPES.NUMERIC or nr_distinct_vals < 20):
-                additional_info['other_potential_types'].append(curr_data_type)
-                additional_info['other_potential_subtypes'].append(curr_data_subtype)
-                curr_data_type = DATA_TYPES.CATEGORICAL
-                type_dist = {curr_data_type: len(data)}
-                subtype_dist = {curr_data_subtype: len(data)}
+        if curr_data_type == DATA_TYPES.CATEGORICAL:
+            if nr_distinct_vals > 2:
+                curr_data_subtype = DATA_SUBTYPES.MULTIPLE
+            else:
+                curr_data_subtype = DATA_SUBTYPES.SINGLE
 
-            if curr_data_type == DATA_TYPES.CATEGORICAL:
-                if nr_distinct_vals > 2:
-                    curr_data_subtype = DATA_SUBTYPES.MULTIPLE
-                else:
-                    curr_data_subtype = DATA_SUBTYPES.SINGLE
+        if curr_data_type in [DATA_TYPES.CATEGORICAL, DATA_TYPES.TEXT]:
+            type_dist = {curr_data_type: len(data)}
+            subtype_dist = {curr_data_subtype: len(data)}
 
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 

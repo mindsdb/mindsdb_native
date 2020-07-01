@@ -9,6 +9,7 @@ from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.helpers.multi_data_source import getDS
+from mindsdb_native.libs.helpers.locking import get_data_lock, unlock
 from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    MODEL_STATUS_ERROR,
                                                    TRANSACTION_ANALYSE)
