@@ -90,8 +90,12 @@ class TypeDeductor(BaseModule):
             type_guess, subtype_guess = None, None
             for char in [',', '\t', '|', ' ']:
                 all_nr = True
-                eles = element.rstrip(']').lstrip('[').split(char)
-                for ele in eles:
+                if '[' in element:
+                    ele_arr = element.rstrip(']').lstrip('[').split(char)
+                else:
+                    ele_arr = element.rstrip(')').lstrip('(').split(char)
+
+                for ele in ele_arr:
                     if not get_number_subtype(ele):
                         all_nr = False
                         break
@@ -166,7 +170,7 @@ class TypeDeductor(BaseModule):
             return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
         type_dist, subtype_dist, new_additional_info = self.count_data_types_in_column(data)
-        
+
         if new_additional_info:
             additional_info.update(new_additional_info)
 
@@ -208,24 +212,29 @@ class TypeDeductor(BaseModule):
             else:
                 lang_dist = defaultdict(lambda: 0)
                 lang_probs_cache = dict()
-                for text, sent in zip(data, map(flair.data.Sentence, data)):
-                    if text not in lang_probs_cache:
-                        try:
-                            lang_probs = langdetect.detect_langs(text)
-                        except langdetect.lang_detect_exception.LangDetectException:
-                            lang_probs = []
-                        lang_probs_cache[text] = lang_probs
-                    
-                    lang_probs = lang_probs_cache[text]
-                    if len(lang_probs) > 0 and lang_probs[0].prob > 0.90:
-                        lang_dist[lang_probs[0].lang] += 1
-                    else:
-                        lang_dist['Unknown'] += 1
+
+                try:
+                    # @TODO There's repeat code here, is transformation to `flair.data.Sentence` quick enough that we don't care ?
+                    for text, sent in zip(data, map(flair.data.Sentence, data)):
+                        if text not in lang_probs_cache:
+                            try:
+                                lang_probs = langdetect.detect_langs(text)
+                            except langdetect.lang_detect_exception.LangDetectException:
+                                lang_probs = []
+                            lang_probs_cache[text] = lang_probs
+
+                        lang_probs = lang_probs_cache[text]
+                        if len(lang_probs) > 0 and lang_probs[0].prob > 0.90:
+                            lang_dist[lang_probs[0].lang] += 1
+                        else:
+                            lang_dist['Unknown'] += 1
+                except:
+                    lang_dist = {'Unknown': len(data)}
 
                 # Normalize lang probabilities
                 for lang in lang_dist:
                     lang_dist[lang] /= len(data)
-                
+
                 # If most cells are unknown language then it's categorical
                 if lang_dist['Unknown'] > 0.5:
                     curr_data_type = DATA_TYPES.CATEGORICAL

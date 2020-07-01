@@ -2,7 +2,7 @@ import pytest
 import requests
 from mindsdb_native import Predictor
 from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
-from mindsdb_native.libs.controllers.functional import analyse_dataset
+from mindsdb_native import F
 
 
 @pytest.mark.integration
@@ -34,4 +34,4 @@ def test_clickhouse_ds():
     assert (set(clickhouse_ds.df.columns) == set(['col1', 'col2', 'col3']))
 
     mdb = Predictor(name='analyse_dataset_test_predictor')
-    analyse_dataset(from_data=clickhouse_ds)
+    F.analyse_dataset(from_data=clickhouse_ds)

@@ -14,7 +14,7 @@ from mindsdb_native.libs.helpers.general_helpers import check_for_updates
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
-def get_memory_optimizations(df):
+def _get_memory_optimizations(df):
     df_memory = sys.getsizeof(df)
     total_memory = psutil.virtual_memory().total
 
@@ -26,6 +26,27 @@ def get_memory_optimizations(df):
 
     return sample_for_analysis, sample_for_training, disable_lightwood_transform_cache
 
+def _prepare_sample_settings(user_provided_settings,
+                            sample_for_analysis,
+                            sample_for_training):
+    default_sample_settings = dict(
+        sample_for_analysis=sample_for_analysis,
+        sample_for_training=sample_for_training,
+        sample_margin_of_error=0.005,
+        sample_confidence_level=1 - 0.005,
+        sample_percentage=None,
+        sample_function=sample_data
+    )
+
+    if user_provided_settings:
+        default_sample_settings.update(user_provided_settings)
+    sample_settings = default_sample_settings
+
+    sample_function = sample_settings['sample_function']
+
+    # We need the settings to be JSON serializable, so the actual function will be stored in heavy metadata
+    sample_settings['sample_function'] = sample_settings['sample_function'].__name__
+    return sample_settings, sample_function
 
 class Predictor:
 
@@ -59,30 +80,6 @@ class Predictor:
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
-    def prepare_sample_settings(self,
-                                user_provided_settings,
-                                sample_for_analysis,
-                                sample_for_training):
-        default_sample_settings = dict(
-            sample_for_analysis=sample_for_analysis,
-            sample_for_training=sample_for_training,
-            sample_margin_of_error=0.005,
-            sample_confidence_level=1 - 0.005,
-            sample_percentage=None,
-            sample_function=sample_data
-        )
-
-        if user_provided_settings:
-            default_sample_settings.update(user_provided_settings)
-        sample_settings = default_sample_settings
-
-        sample_function = sample_settings['sample_function']
-
-        # We need the settings to be JSON serializable, so the actual function will be stored in heavy metadata
-        sample_settings['sample_function'] = sample_settings['sample_function'].__name__
-        return sample_settings, sample_function
-
-    @mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
     def learn(self,
               to_predict,
               from_data,
@@ -153,7 +150,12 @@ class Predictor:
         test_from_ds = None if test_from_data is None else getDS(test_from_data)
 
         transaction_type = TRANSACTION_LEARN
-        sample_confidence_level = 1 - sample_margin_of_error
+
+        sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(
+            from_ds.df)
+        sample_settings, sample_function = _prepare_sample_settings(sample_settings,
+                                                    sample_for_analysis,
+                                                    sample_for_training)
 
         if len(predict_columns) == 0:
             error = 'You need to specify a column to predict'
@@ -174,7 +176,7 @@ class Predictor:
             from_data=from_ds,
             test_from_data=test_from_ds,
             predictions= None,
-            model_backend= backend
+            model_backend= backend,
         )
 
         light_transaction_metadata = dict(
@@ -312,6 +314,10 @@ class Predictor:
             heavy_transaction_metadata['when_data'] = None
         else:
             heavy_transaction_metadata['when_data'] = when_ds
+<<<<<<< HEAD
+=======
+            _, _, disable_lightwood_transform_cache = _get_memory_optimizations(when_ds.df)
+>>>>>>> 3cd2f360d9fe60ad9ee776c08351491219014852
         heavy_transaction_metadata['model_when_conditions'] = when
         heavy_transaction_metadata['name'] = self.name
 

@@ -4,7 +4,7 @@ import logging
 import pg8000
 from mindsdb_native import Predictor
 from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
-from mindsdb_native.libs.controllers.functional import analyse_dataset
+from mindsdb_native import F
 
 
 @pytest.mark.integration
@@ -35,4 +35,4 @@ def test_postgres_ds():
     assert (len(mysql_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
-    analyse_dataset(from_data=mysql_ds)
+    F.analyse_dataset(from_data=mysql_ds)
