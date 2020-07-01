@@ -14,12 +14,7 @@ from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    MODEL_STATUS_ERROR,
                                                    TRANSACTION_ANALYSE)
 
-from mindsdb_native.libs.helpers.locking import (
-    get_data_lock,
-    unlock,
-    predict_lock,
-    delete_lock
-)
+from mindsdb_native.libs.helpers.locking import mdb_lock, portalocker
 
 
 def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
@@ -80,13 +75,13 @@ def export_storage(mindsdb_storage_dir='mindsdb_storage'):
     print(f'Exported mindsdb storage to {mindsdb_storage_dir}.zip')
 
 
+@mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='predict', argname='model_name')
 def export_predictor(model_name):
     """Exports a Predictor to a zip file in the CONFIG.MINDSDB_STORAGE_PATH directory.
 
     :param model: a Predictor
     :param model_name: this is the name of the model you wish to export (defaults to the name of the passed Predictor)
     """
-    lock_file = predict_lock(model_name)
     storage_file = model_name + '.zip'
     with zipfile.ZipFile(storage_file, 'w') as zip_fp:
         for file_name in [model_name + '_heavy_model_metadata.pickle',
@@ -106,11 +101,12 @@ def export_predictor(model_name):
                                  full_path[len(CONFIG.MINDSDB_STORAGE_PATH):])
         except Exception:
             pass
-    unlock(lock_file)
 
     print(f'Exported model to {storage_file}')
 
 
+@mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='delete', argname='new_model_name')
+@mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='delete', argname='old_model_name')
 def rename_model(old_model_name, new_model_name):
     """
     If you want to rename an exported model.
@@ -119,8 +115,6 @@ def rename_model(old_model_name, new_model_name):
     :param new_model_name: this is the new name of the model
     :return: bool (True/False) True if predictor was renamed successfully
     """
-    lock_file1 = delete_lock(new_model_name)
-    lock_file2 = delete_lock(old_model_name)
     if old_model_name == new_model_name:
         return True
 
@@ -180,11 +174,10 @@ def rename_model(old_model_name, new_model_name):
                            old_model_name + '_light_model_metadata.pickle'))
     os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
                            old_model_name + '_heavy_model_metadata.pickle'))
-    unlock(lock_file1)
-    unlock(lock_file2)
     return True
 
 
+@mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='delete', argname='model_name')
 def delete_model(model_name):
     """
     If you want to delete exported model files.
@@ -192,7 +185,6 @@ def delete_model(model_name):
     :param model_name: name of the model
     :return: bool (True/False) True if model was deleted
     """
-    lock_file = delete_lock(model_name)
     with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
         lmd = pickle.load(fp)
 
@@ -209,7 +201,7 @@ def delete_model(model_name):
     for file_name in [model_name + '_heavy_model_metadata.pickle',
                       model_name + '_light_model_metadata.pickle']:
         os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name))
-    unlock(lock_file)
+
 
 def import_model(model_archive_path):
     """
@@ -228,19 +220,23 @@ def import_model(model_archive_path):
             model_names.append(model_name)
 
     for model_name in model_names:
-        lock_file = delete_lock(model_name)
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
-            lmd = pickle.load(fp)
 
-        if 'ludwig_data' in lmd and 'ludwig_save_path' in lmd['ludwig_data']:
-            lmd['ludwig_data']['ludwig_save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['ludwig_data']['ludwig_save_path'])))
+        @mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='delete', argname='model_name')
+        def _import(model_name):
+            with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
+                lmd = pickle.load(fp)
 
-        if 'lightwood_data' in lmd and 'save_path' in lmd['lightwood_data']:
-            lmd['lightwood_data']['save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['lightwood_data']['save_path'])))
+            if 'ludwig_data' in lmd and 'ludwig_save_path' in lmd['ludwig_data']:
+                lmd['ludwig_data']['ludwig_save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['ludwig_data']['ludwig_save_path'])))
 
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'wb') as fp:
-            pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
-        unlock(lock_file)
+            if 'lightwood_data' in lmd and 'save_path' in lmd['lightwood_data']:
+                lmd['lightwood_data']['save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['lightwood_data']['save_path'])))
+
+            with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'wb') as fp:
+                pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
+
+        _import(model_name)
+
     print('Model files loaded')
 
 
@@ -289,6 +285,7 @@ def _adapt_column(col_stats, col):
 
 
 
+@mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='get_data', argname='model_name')
 def get_model_data(model_name=None, lmd=None):
     if model_name is None and lmd is None:
         raise ValueError('provide either model name or lmd')
@@ -296,10 +293,13 @@ def get_model_data(model_name=None, lmd=None):
     if lmd is not None:
         pass
     elif model_name is not None:
-        lock_file = get_data_lock(model_name)
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
-            lmd = pickle.load(fp)
-            unlock(lock_file)
+
+        @mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='get_data', argname='model_name')
+        def _get_lmd(model_name):
+            with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
+                return pickle.load(fp)
+
+        lmd = _get_lmd()
 
     # ADAPTOR CODE
     amd = {}
