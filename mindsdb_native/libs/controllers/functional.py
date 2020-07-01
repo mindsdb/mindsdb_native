@@ -21,8 +21,6 @@ from mindsdb_native.libs.helpers.locking import (
     delete_lock
 )
 
-from mindsdb_native.libs.locking import predict_lock
-
 
 def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
     """
