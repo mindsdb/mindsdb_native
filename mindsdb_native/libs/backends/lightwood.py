@@ -7,6 +7,8 @@ from mindsdb_native.config import *
 import pandas as pd
 import lightwood
 
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
+
 
 class LightwoodBackend():
 
@@ -172,8 +174,29 @@ class LightwoodBackend():
             test_df = self._create_timeseries_df(self.transaction.input_data.test_df)
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
-            train_df = self.transaction.input_data.train_df
-            test_df = self.transaction.input_data.test_df
+            if self.transaction.lmd['sample_settings']['sample_for_training']:
+                sample_margin_of_error = self.transaction.lmd['sample_settings']['sample_margin_of_error']
+                sample_confidence_level = self.transaction.lmd['sample_settings']['sample_confidence_level']
+                sample_percentage = self.transaction.lmd['sample_settings']['sample_percentage']
+                sample_function = self.transaction.hmd['sample_function']
+
+                train_df = sample_function(self.transaction.input_data.train_df,
+                                       sample_margin_of_error,
+                                       sample_confidence_level,
+                                       sample_percentage)
+
+                test_df = sample_function(self.transaction.input_data.test_df,
+                                       sample_margin_of_error,
+                                       sample_confidence_level,
+                                       sample_percentage)
+
+                sample_size = len(train_df)
+                population_size = len(self.transaction.input_data.train_df)
+
+                self.transaction.log.warning(f'Training on a sample of {round(sample_size * 100 / population_size, 1)}% your data, results can be unexpected.')
+            else:
+                train_df = self.transaction.input_data.train_df
+                test_df = self.transaction.input_data.test_df
 
         lightwood_config = self._create_lightwood_config()
 

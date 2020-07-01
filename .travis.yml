@@ -60,7 +60,7 @@ install:
 # run tests
 before_script:
   # Travis doesn't support docker on OSX and it doesn't work on Windows too
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then  docker-compose up -d; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 20  docker-compose up -d; fi
 script:
   # Unit tests
   - travis_wait 15 pytest --run-slow --durations=20 tests/unit_tests

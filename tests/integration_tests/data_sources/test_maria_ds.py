@@ -79,8 +79,8 @@ def test_maria_ds():
     def assert_expected_type(column_typing, expected_type, expected_subtype):
         assert column_typing['data_type'] == expected_type
         assert column_typing['data_subtype'] == expected_subtype
-        assert column_typing['data_type_dist'][expected_type] == 199
-        assert column_typing['data_subtype_dist'][expected_subtype] == 199
+        assert column_typing['data_type_dist'][expected_type] == 200
+        assert column_typing['data_subtype_dist'][expected_subtype] == 200
 
 
     assert_expected_type(analysis['col_categorical']['typing'], DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.MULTIPLE)

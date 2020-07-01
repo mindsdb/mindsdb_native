@@ -1,6 +1,8 @@
 import random
 import string
 import datetime
+from unittest import mock
+
 from math import log
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
@@ -150,3 +152,10 @@ def columns_to_file(columns, filename, headers=None):
                 row += str(col[i]) + separator
 
             fp.write(row.rstrip(separator) + '\r\n')
+
+
+class PickableMock(mock.MagicMock):
+    """A MagicMock that can be pickled. Useful for testing Predictor methods,
+    because mindsdb pickles lmd/hmd and sometimes you need to mock something in them."""
+    def __reduce__(self):
+        return (mock.MagicMock, ())

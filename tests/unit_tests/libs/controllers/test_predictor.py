@@ -1,35 +1,59 @@
+import json
 import random
-import pytest
 import os
-import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
 
-import torch
+import pytest
+import numpy as np
+import pandas as pd
+from unittest import mock
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
+import torch
+
 
 from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native import F
-
 from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
-from unit_tests.utils import (
-    test_column_types,
-    generate_value_cols,
-    generate_timeseries_labels,
-    generate_log_labels,
-    generate_short_sentences,
-    generate_rich_sentences,
-    columns_to_file
-)
-
-from mindsdb_native.libs.controllers.functional import analyse_dataset
+from unit_tests.utils import (test_column_types,
+                                    generate_value_cols,
+                                    generate_timeseries_labels,
+                                    generate_log_labels,
+                                    columns_to_file, PickableMock)
 
 
 class TestPredictor:
+
+    def test_sample_for_training(self):
+        predictor = Predictor(name='test')
+
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+            'categorical_binary': [0, 1] * (n_points // 2),
+        }, index=list(range(n_points)))
+        input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int*input_dataframe.categorical_binary
+
+
+        mock_function = PickableMock(spec=sample_data,
+                                       wraps=sample_data)
+        setattr(mock_function, '__name__', 'mock_sample_data')
+        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
+            mock_function):
+
+            predictor.learn(from_data=input_dataframe,
+                            to_predict='y',
+                            backend='lightwood',
+                            sample_settings={'sample_for_training': True},
+                            stop_training_in_x_seconds=1,
+                            use_gpu=False)
+
+            assert mock_function.called
+
     def test_analyze_dataset(self):
         predictor = Predictor(name='test')
 
@@ -67,6 +91,8 @@ class TestPredictor:
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
             assert not col_data['is_foreign_key']
+
+        assert isinstance(json.dumps(model_data), str)
 
     def test_analyze_dataset_empty_column(self):
         predictor = Predictor(name='test')
@@ -109,7 +135,8 @@ class TestPredictor:
         mdb.learn(
             from_data=input_dataframe,
             to_predict='numeric_y',
-            stop_training_in_x_seconds=1
+            stop_training_in_x_seconds=1,
+            use_gpu=False
         )
 
         result = mdb.predict(when={"numeric_x": 10, 'categorical_x': 1})
@@ -376,6 +403,7 @@ class TestPredictor:
         assert_prediction_interface(prediction)
 
         amd = F.get_model_data('home_rentals_price')
+        assert isinstance(json.dumps(amd), str)
 
         for k in ['status', 'name', 'version', 'data_source', 'current_phase',
                   'updated_at', 'created_at',

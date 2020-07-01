@@ -1,4 +1,5 @@
 import json
+from unittest import mock
 from uuid import uuid4
 import pytest
 from datetime import datetime, timedelta
@@ -7,6 +8,7 @@ import pandas as pd
 
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.phases.type_deductor.type_deductor import TypeDeductor
 from unit_tests.utils import (
     test_column_types,
@@ -25,8 +27,16 @@ class TestTypeDeductor:
         lmd['data_preparation'] = {}
         lmd['force_categorical_encoding'] = []
         lmd['columns_to_ignore'] = []
-        lmd['sample_margin_of_error'] = 0.005
-        lmd['sample_confidence_level'] = 1 - lmd['sample_margin_of_error']
+
+        lmd['sample_settings'] = dict(
+            sample_for_analysis=False,
+            sample_for_training=False,
+            sample_margin_of_error=0.005,
+            sample_confidence_level=1 - 0.005,
+            sample_percentage=None,
+            sample_function='sample_data'
+        )
+
         lmd['handle_text_as_categorical'] = False
         return lmd
 
@@ -65,8 +75,8 @@ class TestTypeDeductor:
             expected_subtype = test_column_types[col_name][1]
             assert stats_v2[col_name]['typing']['data_type'] == expected_type
             assert stats_v2[col_name]['typing']['data_subtype'] == expected_subtype
-            assert stats_v2[col_name]['typing']['data_type_dist'][expected_type] == 99
-            assert stats_v2[col_name]['typing']['data_subtype_dist'][expected_subtype] == 99
+            assert stats_v2[col_name]['typing']['data_type_dist'][expected_type] == 100
+            assert stats_v2[col_name]['typing']['data_subtype_dist'][expected_subtype] == 100
 
         for col_name in stats_v2:
             assert not stats_v2[col_name]['is_foreign_key']
@@ -155,5 +165,65 @@ class TestTypeDeductor:
         stats_v2 = lmd['stats_v2']
         assert stats_v2['numeric_float']['typing']['data_type'] == DATA_TYPES.NUMERIC
         assert stats_v2['numeric_float']['typing']['data_subtype'] == DATA_SUBTYPES.FLOAT
-        assert stats_v2['numeric_float']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 97
-        assert stats_v2['numeric_float']['typing']['data_subtype_dist'][DATA_SUBTYPES.FLOAT] == 97
+        assert stats_v2['numeric_float']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 98
+        assert stats_v2['numeric_float']['typing']['data_subtype_dist'][DATA_SUBTYPES.FLOAT] == 98
+
+    def test_sample(self, transaction, lmd):
+        lmd['sample_settings']['sample_for_analysis'] = True
+        transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
+
+        type_deductor = TypeDeductor(session=transaction.session,
+                                     transaction=transaction)
+
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+        }, index=list(range(n_points)))
+
+        input_data = TransactionData()
+        input_data.data_frame = input_dataframe
+
+        type_deductor.run(input_data)
+
+        assert transaction.hmd['sample_function'].called
+
+        stats_v2 = lmd['stats_v2']
+        assert stats_v2['numeric_int']['typing']['data_type'] == DATA_TYPES.NUMERIC
+        assert stats_v2['numeric_int']['typing']['data_subtype'] == DATA_SUBTYPES.INT
+        assert stats_v2['numeric_int']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] <= n_points
+        assert stats_v2['numeric_int']['typing']['data_subtype_dist'][DATA_SUBTYPES.INT] <= n_points
+
+        lmd['sample_settings']['sample_for_analysis'] = False
+        transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
+
+        type_deductor.run(input_data)
+        assert not transaction.hmd['sample_function'].called
+
+    def test_small_dataset_no_sampling(self, transaction, lmd):
+        lmd['sample_settings']['sample_for_analysis'] = True
+        lmd['sample_settings']['sample_margin_of_error'] = 0.95
+        lmd['sample_settings']['sample_confidence_level'] = 0.05
+        transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
+
+        type_deductor = TypeDeductor(session=transaction.session,
+                                     transaction=transaction)
+
+        n_points = 50
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+        }, index=list(range(n_points)))
+
+        input_data = TransactionData()
+        input_data.data_frame = input_dataframe
+
+        type_deductor.run(input_data)
+
+        assert transaction.hmd['sample_function'].called
+
+        stats_v2 = lmd['stats_v2']
+        assert stats_v2['numeric_int']['typing']['data_type'] == DATA_TYPES.NUMERIC
+        assert stats_v2['numeric_int']['typing']['data_subtype'] == DATA_SUBTYPES.INT
+
+        # This ensures that no sampling was applied
+        assert stats_v2['numeric_int']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 50
+        assert stats_v2['numeric_int']['typing']['data_subtype_dist'][DATA_SUBTYPES.INT] == 50
