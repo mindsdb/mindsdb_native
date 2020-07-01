@@ -1,3 +1,4 @@
+import random
 import pytest
 import os
 import numpy as np
@@ -15,11 +16,15 @@ from mindsdb_native import F
 from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
-from unit_tests.utils import (test_column_types,
-                                    generate_value_cols,
-                                    generate_timeseries_labels,
-                                    generate_log_labels,
-                                    columns_to_file)
+from unit_tests.utils import (
+    test_column_types,
+    generate_value_cols,
+    generate_timeseries_labels,
+    generate_log_labels,
+    generate_short_sentences,
+    generate_rich_sentences,
+    columns_to_file
+)
 
 from mindsdb_native.libs.controllers.functional import analyse_dataset
 
@@ -46,8 +51,8 @@ class TestPredictor:
                     n_points // n_category_values))],
             'categorical_binary': [0, 1] * (n_points // 2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
-            'sequential_text': [f'lorem ipsum long text {i}' for i in
-                                range(n_points)],
+            'short_text': generate_short_sentences(n_points),
+            'rich_text': generate_rich_sentences(n_points)
         }, index=list(range(n_points)))
 
         model_data = analyse_dataset(from_data=input_dataframe)
@@ -194,7 +199,7 @@ class TestPredictor:
         data_source.set_subtypes({})
 
         data_source_mod = FileDS(data_url)
-        data_source_mod.set_subtypes({'credit_usage': 'Int', 'Average_Credit_Balance': 'Text',
+        data_source_mod.set_subtypes({'credit_usage': 'Int', 'Average_Credit_Balance': 'Short Text',
              'existing_credits': 'Binary Category'})
 
         analysis = analyse_dataset(data_source)
@@ -219,7 +224,7 @@ class TestPredictor:
         assert (a2['Average_Credit_Balance']['typing'][
                     'data_subtype'] == DATA_SUBTYPES.SHORT)
         assert (a2['Average_Credit_Balance']['typing'][
-                    'data_type'] == DATA_TYPES.SEQUENTIAL)
+                    'data_type'] == DATA_TYPES.TEXT)
 
         assert (a1['existing_credits']['typing']['data_type'] ==
                 a2['existing_credits']['typing']['data_type'])

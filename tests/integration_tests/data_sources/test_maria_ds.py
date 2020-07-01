@@ -50,10 +50,11 @@ def test_maria_ds():
                                 col_time)
                                 VALUES (%s, %s,  %s,  %s,  %s, %s, %s, %s, %s)
                                 """
+        ci = i % 5
         values = (
             i,
             i + 0.01,
-            f"Cat {i}",
+            f"Cat {ci}",
             i % 2 == 0,
             f"long long long text {i}",
             dt.date(),
