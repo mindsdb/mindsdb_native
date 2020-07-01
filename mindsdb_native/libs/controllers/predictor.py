@@ -10,6 +10,21 @@ from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates, deprecated
 from mindsdb_native.libs.helpers.locking import mdb_lock, portalocker
+from mindsdb_native.libs.helpers.general_helpers import check_for_updates
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
+
+
+def get_memory_optimizations(df):
+    df_memory = sys.getsizeof(df)
+    total_memory = psutil.virtual_memory().total
+
+    mem_usage_ratio = df_memory/total_memory
+
+    sample_for_analysis = True if mem_usage_ratio >= 0.05 else False
+    sample_for_training = True if mem_usage_ratio >= 0.15 else False
+    disable_lightwood_transform_cache = True if mem_usage_ratio >= 0.15 else False
+
+    return sample_for_analysis, sample_for_training, disable_lightwood_transform_cache
 
 
 class Predictor:
@@ -43,6 +58,29 @@ class Predictor:
                 error_message = '''Cannot read from storage path, please either set the config variable mindsdb.config.set('MINDSDB_STORAGE_PATH',<path>) or give write access to {folder}'''
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
+
+    def prepare_sample_settings(self,
+                                user_provided_settings,
+                                sample_for_analysis,
+                                sample_for_training):
+        default_sample_settings = dict(
+            sample_for_analysis=sample_for_analysis,
+            sample_for_training=sample_for_training,
+            sample_margin_of_error=0.005,
+            sample_confidence_level=1 - 0.005,
+            sample_percentage=None,
+            sample_function=sample_data
+        )
+
+        if user_provided_settings:
+            default_sample_settings.update(user_provided_settings)
+        sample_settings = default_sample_settings
+
+        sample_function = sample_settings['sample_function']
+
+        # We need the settings to be JSON serializable, so the actual function will be stored in heavy metadata
+        sample_settings['sample_function'] = sample_settings['sample_function'].__name__
+        return sample_settings, sample_function
 
     @mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
     def learn(self,

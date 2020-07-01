@@ -10,9 +10,6 @@ class DataSplitter(BaseModule):
         if group_by is None or len(group_by) == 0:
             group_by = []
             # @TODO: Group by seems not to work on certain datasets and the values get split complete unevenly between train/test/validation
-            #for col in self.transaction.lmd['predict_columns']:
-            #    if self.transaction.lmd['column_stats'][col]['data_type'] == DATA_TYPES.CATEGORICAL:
-            #        group_by.append(col)
             if len(group_by) > 0:
                 try:
                     self.transaction.input_data.data_frame = self.transaction.input_data.data_frame.sort_values(group_by)

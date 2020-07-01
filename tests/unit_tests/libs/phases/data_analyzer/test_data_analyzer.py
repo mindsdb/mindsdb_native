@@ -143,9 +143,7 @@ class TestDataAnalyzer:
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
-        stats = self.get_stats(stats_v2)
         lmd['stats_v2'] = stats_v2
-        lmd['column_stats'] = stats
 
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
