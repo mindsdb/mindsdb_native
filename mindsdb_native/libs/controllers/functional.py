@@ -8,6 +8,7 @@ from mindsdb_native.config import CONFIG
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import Transaction
+from mindsdb_native.libs.controllers.predictor import _get_memory_optimizations, _prepare_sample_settings
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 
 from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
@@ -22,27 +23,30 @@ from mindsdb_native.libs.helpers.locking import (
 )
 
 
-def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
+def analyse_dataset(from_data, sample_settings=None, logger=log):
     """
     Analyse the particular dataset being given
     """
 
     from_ds = getDS(from_data)
     transaction_type = TRANSACTION_ANALYSE
-    sample_confidence_level = 1 - sample_margin_of_error
 
     heavy_transaction_metadata = dict(
         name = None,
         from_data = from_ds
     )
 
+    sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(
+        from_ds.df)
+    sample_settings, sample_function = _prepare_sample_settings(sample_settings,
+                                                sample_for_analysis,
+                                                sample_for_training)
     light_transaction_metadata = dict(
         version = str(__version__),
         name = None,
         model_columns_map = from_ds._col_map,
         type = transaction_type,
-        sample_margin_of_error = sample_margin_of_error,
-        sample_confidence_level = sample_confidence_level,
+        sample_settings = sample_settings,
         model_is_time_series = False,
         model_group_by = [],
         model_order_by = [],
