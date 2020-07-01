@@ -19,27 +19,28 @@ def get_important_missing_cols(lmd, prediction_row, pred_col):
 
 class TransactionOutputRow:
     def __init__(self, transaction_output, row_index):
-        self.transaction_output = transaction_output
-        self.predict_columns = self.transaction_output.transaction.lmd['predict_columns']
-        self.row_index = row_index
-        self.col_stats = self.transaction_output.transaction.lmd['stats_v2']
-        self.data = self.transaction_output.data
+        self._transaction_output = transaction_output
+        self._predict_columns = self._transaction_output._transaction.lmd['predict_columns']
+        self._row_index = row_index
+        self._col_stats = self._transaction_output._transaction.lmd['stats_v2']
+        self._data = self._transaction_output._data
         self.explanation = self.explain()
 
     def __getitem__(self, item):
-        return self.data[item][self.row_index]
+        return self._data[item][self._row_index]
 
     def __contains__(self, item):
-        return item in self.data.keys()
+        return item in self._data.keys()
 
     def explain(self):
         answers = {}
-        for pred_col in self.predict_columns:
+        for pred_col in self._predict_columns:
             answers[pred_col] = {}
 
-            prediction_row = {col: self.data[col][self.row_index] for col in self.data.keys()}
+            prediction_row = {col: self._data[col][self._row_index] for col in self._data.keys()}
 
             answers[pred_col]['predicted_value'] = prediction_row[pred_col]
+
 
             if f'{pred_col}_model_confidence' in prediction_row:
                 answers[pred_col]['confidence'] = round((prediction_row[f'{pred_col}_model_confidence'] * 3 + prediction_row[f'{pred_col}_confidence'] * 1)/4, 4)
@@ -56,47 +57,50 @@ class TransactionOutputRow:
             if answers[pred_col]['confidence'] < 0.2:
                 quality = 'not confident'
 
-            answers[pred_col] = {
-                'prediction_quality': quality
-            }
+            answers[pred_col]['prediction_quality'] = quality
 
-            if self.col_stats[pred_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE):
+            if self._col_stats[pred_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE):
                 if f'{pred_col}_confidence_range' in prediction_row:
                     answers[pred_col]['confidence_interval'] = prediction_row[f'{pred_col}_confidence_range']
 
-            important_missing_cols = get_important_missing_cols(self.transaction_output.transaction.lmd, prediction_row, pred_col)
+            important_missing_cols = get_important_missing_cols(self._transaction_output._transaction.lmd, prediction_row, pred_col)
             answers[pred_col]['important_missing_information'] = important_missing_cols
 
-            if self.transaction_output.input_confidence is not None:
-                answers[pred_col]['confidence_composition'] = {k:v for (k,v) in self.transaction_output.input_confidence[pred_col].items() if v > 0}
+            if self._transaction_output._input_confidence is not None:
+                answers[pred_col]['confidence_composition'] = {k:v for (k,v) in self._transaction_output._input_confidence[pred_col].items() if v > 0}
 
-            if self.transaction_output.extra_insights is not None:
-                answers[pred_col]['extra_insights'] = self.transaction_output.extra_insights[pred_col]
+            if self._transaction_output._extra_insights is not None:
+                answers[pred_col]['extra_insights'] = self._transaction_output._extra_insights[pred_col]
 
         return answers
 
 
-    def epitomize(self):
+    def summarize(self):
         answers = self.explain()
         simple_answers = []
 
         for pred_col in answers:
-            confidence = answers[pred_col]['confidence']
+            confidence = round(answers[pred_col]['confidence']*100,2)
             value = answers[pred_col]['predicted_value']
-            simple_col_answer = f'We are {confidence}% confident the value of "{pred_col}" is {value}'
+            if 'confidence_interval' in answers[pred_col]:
+                start = answers[pred_col]['confidence_interval'][0]
+                end = answers[pred_col]['confidence_interval'][1]
+                simple_col_answer = f'We are {confidence}% confident the value of "{pred_col}" is between {start} and {end}'
+            else:
+                simple_col_answer = f'We are {confidence}% confident the value of "{pred_col}" is {value}'
             simple_answers.append(simple_col_answer)
 
         return '* ' + '\n* '.join(simple_answers)
 
     def __str__(self):
-        return str(self.epitomize())
+        return str(self.summarize())
 
     def as_dict(self):
-        return {key: self.data[key][self.row_index] for key in list(self.data.keys()) if not key.startswith('model_')}
+        return {key: self._data[key][self._row_index] for key in list(self._data.keys()) if not key.startswith('model_')}
 
     def as_list(self):
         #Note that here we will not output the confidence columns
-        return [self.data[col][self.row_index] for col in list(self.data.keys()) if not col.startswith('model_')]
+        return [self._data[col][self._row_index] for col in list(self._data.keys()) if not col.startswith('model_')]
 
     def raw_predictions(self):
-        return {key: self.data[key][self.row_index] for key in list(self.data.keys()) if key.startswith('model_')}
+        return {key: self._data[key][self._row_index] for key in list(self._data.keys()) if key.startswith('model_')}
