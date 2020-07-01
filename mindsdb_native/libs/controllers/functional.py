@@ -288,8 +288,6 @@ def _adapt_column(col_stats, col):
     return icm
 
 
-
-@mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='get_data', argname='model_name')
 def get_model_data(model_name=None, lmd=None):
     if model_name is None and lmd is None:
         raise ValueError('provide either model name or lmd')

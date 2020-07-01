@@ -1,4 +1,6 @@
 import os
+import sys
+import psutil
 import uuid
 import pickle
 
@@ -8,9 +10,8 @@ from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.constants.mindsdb import *
-from mindsdb_native.libs.helpers.general_helpers import check_for_updates, deprecated
-from mindsdb_native.libs.helpers.locking import mdb_lock, portalocker
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates
+from mindsdb_native.libs.helpers.locking import mdb_lock, portalocker
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
@@ -25,6 +26,7 @@ def _get_memory_optimizations(df):
     disable_lightwood_transform_cache = True if mem_usage_ratio >= 0.15 else False
 
     return sample_for_analysis, sample_for_training, disable_lightwood_transform_cache
+
 
 def _prepare_sample_settings(user_provided_settings,
                             sample_for_analysis,
@@ -48,8 +50,8 @@ def _prepare_sample_settings(user_provided_settings,
     sample_settings['sample_function'] = sample_settings['sample_function'].__name__
     return sample_settings, sample_function
 
-class Predictor:
 
+class Predictor:
     def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL):
         """
         This controller defines the API to a MindsDB 'mind', a mind is an object that can learn and predict from data
@@ -58,7 +60,6 @@ class Predictor:
         :param root_folder: the folder where you want to store this mind or load from
         :param log_level: the desired log level
         """
-
         self.name = name
         self.uuid = str(uuid.uuid1())
         self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid)
@@ -80,6 +81,7 @@ class Predictor:
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
+    @mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
     def learn(self,
               to_predict,
               from_data,
@@ -87,7 +89,6 @@ class Predictor:
               group_by=None,
               window_size=None,
               order_by=None,
-              sample_margin_of_error=0.005,
               ignore_columns=None,
               stop_training_in_x_seconds=None,
               backend='lightwood',
@@ -95,7 +96,8 @@ class Predictor:
               use_gpu=None,
               equal_accuracy_for_all_output_categories=True,
               output_categories_importance_dictionary=None,
-              unstable_parameters_dict=None):
+              unstable_parameters_dict=None,
+              sample_settings=None):
         """
         Learn to predict a column or columns from the data in 'from_data'
 
@@ -115,14 +117,16 @@ class Predictor:
         :param ignore_columns: mindsdb will ignore this column
 
         Optional sampling parameters:
-        :param sample_margin_of_error (DEFAULT 0): Maximum expected difference between the true population parameter, such as the mean, and the sample estimate.
+        :param sample_settings: dictionary of options for sampling from dataset.
+            Includes `sample_for_analysis`. `sample_for_training`, `sample_margin_of_error`, `sample_confidence_level`, `sample_percentage`, `sample_function`.
+            Default values depend on the size of input dataset and available memory.
+            Generally, the bigger the dataset, the more sampling is used.
 
         Optional debug arguments:
         :param stop_training_in_x_seconds: (default None), if set, you want training to finish in a given number of seconds
 
         :return:
         """
-
         if ignore_columns is None:
             ignore_columns = []
 
@@ -191,8 +195,7 @@ class Predictor:
             data_source = data_source_name,
             type = transaction_type,
             window_size = window_size,
-            sample_margin_of_error = sample_margin_of_error,
-            sample_confidence_level = sample_confidence_level,
+            sample_settings = sample_settings,
             stop_training_in_x_seconds = stop_training_in_x_seconds,
             rebuild_model = rebuild_model,
             model_accuracy = {'train': {}, 'test': {}},
@@ -215,7 +218,7 @@ class Predictor:
 
             skip_model_training = unstable_parameters_dict.get('skip_model_training', False),
             optimize_model = unstable_parameters_dict.get('optimize_model', False),
-            force_disable_cache = unstable_parameters_dict.get('force_disable_cache', False),
+            force_disable_cache = unstable_parameters_dict.get('force_disable_cache', disable_lightwood_transform_cache),
             force_categorical_encoding = unstable_parameters_dict.get('force_categorical_encoding', []),
             handle_foreign_keys = unstable_parameters_dict.get('handle_foreign_keys', False),
             handle_text_as_categorical = unstable_parameters_dict.get('handle_text_as_categorical', False),
@@ -244,7 +247,6 @@ class Predictor:
                     light_transaction_metadata=light_transaction_metadata,
                     heavy_transaction_metadata=heavy_transaction_metadata,
                     logger=self.log)
-    
 
     @mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
@@ -275,7 +277,6 @@ class Predictor:
             accuracy_dict[f'{col}_accuracy'] = acc_f([x[f'__observed_{col}'] for x in predictions], [x.explanation[col][score_using] for x in predictions])
 
         return accuracy_dict
-
 
     @mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
     def predict(self,
@@ -309,15 +310,13 @@ class Predictor:
         # lets turn into lists: when
         when = [when] if isinstance(when, dict) else when if when is not None else []
 
+        disable_lightwood_transform_cache = False
         heavy_transaction_metadata = {}
         if when_ds is None:
             heavy_transaction_metadata['when_data'] = None
         else:
             heavy_transaction_metadata['when_data'] = when_ds
-<<<<<<< HEAD
-=======
             _, _, disable_lightwood_transform_cache = _get_memory_optimizations(when_ds.df)
->>>>>>> 3cd2f360d9fe60ad9ee776c08351491219014852
         heavy_transaction_metadata['model_when_conditions'] = when
         heavy_transaction_metadata['name'] = self.name
 
@@ -330,7 +329,7 @@ class Predictor:
             use_gpu = use_gpu,
             data_preparation = {},
             run_confidence_variation_analysis = run_confidence_variation_analysis,
-            force_disable_cache = unstable_parameters_dict.get('force_disable_cache', False)
+            force_disable_cache = unstable_parameters_dict.get('force_disable_cache', disable_lightwood_transform_cache)
         )
 
         transaction = Transaction(session=self,
