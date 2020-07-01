@@ -7,7 +7,11 @@ import pandas as pd
 
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
 from mindsdb_native.libs.phases.data_analyzer.data_analyzer import DataAnalyzer
-from unit_tests.utils import test_column_types
+from unit_tests.utils import (
+    test_column_types,
+    generate_short_sentences,
+    generate_rich_sentences
+)
 
 
 class TestDataAnalyzer:
@@ -59,7 +63,9 @@ class TestDataAnalyzer:
             'categorical_binary': [0, 1] * (n_points//2),
             'categorical_int': [x for x in (list(range(n_category_values)) * (n_points // n_category_values))],
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
-            'sequential_text': [f'lorem ipsum long text {i}' for i in range(n_points)],
+            'short_text': generate_short_sentences(n_points),
+            'rich_text': generate_rich_sentences(n_points)
+            
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
@@ -85,7 +91,8 @@ class TestDataAnalyzer:
         assert stats_v2['categorical_str']['unique']['unique_percentage'] == 4.0
 
         # Assert that the histogram on text field is made using words
-        assert isinstance(stats_v2['sequential_text']['histogram']['x'][0], str)
+        assert isinstance(stats_v2['short_text']['histogram']['x'][0], str)
+        assert isinstance(stats_v2['rich_text']['histogram']['x'][0], str)
 
         assert hmd == {}
 

@@ -5,16 +5,22 @@ import zipfile
 import traceback
 from mindsdb_native.config import CONFIG
 
-from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
-                                                   MODEL_STATUS_ERROR)
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.helpers.multi_data_source import getDS
+
 from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
-                                                   MODEL_STATUS_ERROR)
-from mindsdb_native.libs.helpers.locking import *
-from mindsdb_native.libs.constants.mindsdb import *
+                                                   MODEL_STATUS_ERROR,
+                                                   TRANSACTION_ANALYSE)
+
+from mindsdb_native.libs.helpers.locking import (
+    get_data_lock,
+    unlock,
+    predict_lock,
+    delete_lock
+)
+
 
 def analyse_dataset(from_data, sample_margin_of_error=0.005, logger=log):
     """
