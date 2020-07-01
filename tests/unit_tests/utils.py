@@ -13,7 +13,8 @@ test_column_types = {
     'categorical_int': (DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.MULTIPLE),
     'categorical_binary': (DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.SINGLE),
     'sequential_array': (DATA_TYPES.SEQUENTIAL, DATA_SUBTYPES.ARRAY),
-    'sequential_text': (DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT),
+    'text_short': (DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT),
+    'text_rich': (DATA_TYPES.TEXT, DATA_SUBTYPES.RICH)
 }
 
 
