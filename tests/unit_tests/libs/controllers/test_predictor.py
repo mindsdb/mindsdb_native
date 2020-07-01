@@ -338,7 +338,6 @@ class TestPredictor:
             assert hasattr(prediction, 'data')
             assert hasattr(prediction, 'extra_insights')
             assert hasattr(prediction, 'transaction')
-            assert hasattr(prediction[0], 'explanation')
             assert hasattr(prediction[0], 'data')
             assert prediction[0].predict_columns[0] == 'rental_price'
 
