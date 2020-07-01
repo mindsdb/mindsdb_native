@@ -1,16 +1,30 @@
-import logging
-from mindsdb_native.libs.helpers.explain_prediction import explain_prediction, get_important_missing_cols
-from mindsdb_native.libs.constants.mindsdb import *
+import numpy as np
 
+from mindsdb_native.libs.constants.mindsdb import *
+from mindsdb_native.libs.helpers.general_helpers import value_isnan
+
+def get_important_missing_cols(lmd, prediction_row, pred_col):
+    if lmd['column_importances'] is None or len(lmd['column_importances']) < 2:
+        important_cols = [col for col in lmd['columns'] if col not in lmd['predict_columns'] and not col.startswith('model_')]
+    else:
+        top_30_val = np.percentile(list(lmd['column_importances'].values()),70)
+        important_cols = [col for col in lmd['column_importances'] if lmd['column_importances'][col] >= top_30_val]
+
+    important_missing_cols = []
+    for col in important_cols:
+        if col not in prediction_row or prediction_row[col] is None or str(prediction_row[col]) == ''  or str(prediction_row[col]) == 'None' or value_isnan(prediction_row[col]):
+                important_missing_cols.append(col)
+
+    return important_missing_cols
 
 class TransactionOutputRow:
     def __init__(self, transaction_output, row_index):
         self.transaction_output = transaction_output
         self.predict_columns = self.transaction_output.transaction.lmd['predict_columns']
         self.row_index = row_index
-        self.col_stats = self.transaction_output.transaction.lmd['column_stats']
+        self.col_stats = self.transaction_output.transaction.lmd['stats_v2']
         self.data = self.transaction_output.data
-        self.explanation = self.new_explain()
+        self.explanation = self.explain()
 
     def __getitem__(self, item):
         return self.data[item][self.row_index]
@@ -18,7 +32,7 @@ class TransactionOutputRow:
     def __contains__(self, item):
         return item in self.data.keys()
 
-    def new_explain(self):
+    def explain(self):
         answers = {}
         for pred_col in self.predict_columns:
             answers[pred_col] = {}
@@ -46,7 +60,7 @@ class TransactionOutputRow:
                 'prediction_quality': quality
             }
 
-            if self.col_stats[pred_col]['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE):
+            if self.col_stats[pred_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE):
                 if f'{pred_col}_confidence_range' in prediction_row:
                     answers[pred_col]['explanation']['confidence_interval'] = prediction_row[f'{pred_col}_confidence_range']
 
@@ -64,60 +78,9 @@ class TransactionOutputRow:
 
         return answers
 
-    def explain(self):
-        logging.warning('TransactionOutputRow.explain() is outdated, please use the TransactionOutputRow.explanation property.')
-
-        answers = {}
-        for pred_col in self.predict_columns:
-            answers[pred_col] = []
-
-            prediction_row = {col: self.data[col][self.row_index] for col in list(self.data.keys())}
-
-            clusters = [{'value': prediction_row[pred_col], 'confidence': prediction_row[f'{pred_col}_confidence']}]
-
-            for cluster in clusters:
-                pct_confidence = round(cluster['confidence'] * 100)
-                predicted_value = cluster['value']
-
-                if f'{pred_col}_model_confidence' in prediction_row:
-                    new_conf = round((prediction_row[f'{pred_col}_model_confidence'] * 3 + cluster['confidence'] * 1)/4, 4)
-                else:
-                    new_conf = cluster['confidence']
-
-                explanation = explain_prediction(self.transaction_output.transaction.lmd, prediction_row, cluster['confidence'], pred_col)
-                answers[pred_col].append({
-                    'value': predicted_value,
-                    'confidence': new_conf,
-                    'explanation': explanation,
-                    'explaination': explanation,
-                    'simple': f'We are {pct_confidence}% confident the value of "{pred_col}" is {predicted_value}'
-                })
-
-                if self.transaction_output.input_confidence is not None:
-                    for i in range(len(answers[pred_col])):
-                        answers[pred_col][i]['confidence_influence_scores'] = {
-                            'confidence_variation_score': []
-                            ,'column_names': []
-                        }
-                        for c in self.transaction_output.input_confidence:
-                            answers[pred_col][i]['confidence_influence_scores']['confidence_variation_score'].append(self.transaction_output.input_confidence[c])
-                            answers[pred_col][i]['confidence_influence_scores']['column_names'].append(str(c))
-
-                model_result = {
-                    'value': prediction_row[f'model_{pred_col}']
-                }
-
-                if f'{pred_col}_model_confidence' in prediction_row:
-                    model_result['confidence'] = prediction_row[f'{pred_col}_model_confidence']
-
-                answers[pred_col][-1]['model_result'] = model_result
-
-            answers[pred_col] = sorted(answers[pred_col], key=lambda x: x['confidence'], reverse=True)
-
-        return answers
 
     def epitomize(self):
-        answers = self.new_explain()
+        answers = self.explain()
         simple_answers = []
 
         for pred_col in answers:

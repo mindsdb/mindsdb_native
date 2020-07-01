@@ -21,8 +21,8 @@ def word_tokenize(string):
         string = str(string).replace(separator, sep_tag)
 
     words_split = string.split(sep_tag)
-    words = len([word for word in words_split if word and word not in ['', None]])
-    return words
+    num_words = len([word for word in words_split if word and word not in ['', None]])
+    return num_words
 
 
 def clean_float(val):

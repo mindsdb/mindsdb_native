@@ -126,13 +126,13 @@ def get_value_bucket(value, buckets, col_stats, hmd=None):
     if buckets is None:
         return None
 
-    if col_stats['data_subtype'] in (DATA_SUBTYPES.SINGLE, DATA_SUBTYPES.MULTIPLE):
+    if col_stats['typing']['data_subtype'] in (DATA_SUBTYPES.SINGLE, DATA_SUBTYPES.MULTIPLE):
         if value in buckets:
             bucket = buckets.index(value)
         else:
             bucket = len(buckets) # for null values
 
-    elif col_stats['data_subtype'] in (DATA_SUBTYPES.BINARY, DATA_SUBTYPES.INT, DATA_SUBTYPES.FLOAT):
+    elif col_stats['typing']['data_subtype'] in (DATA_SUBTYPES.BINARY, DATA_SUBTYPES.INT, DATA_SUBTYPES.FLOAT):
         bucket = closest(buckets, value)
     else:
         bucket = len(buckets) # for null values

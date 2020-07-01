@@ -1,30 +1,29 @@
 import json
-from unittest import mock
-
-import pytest
+import random
 import os
-import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
 
-import torch
+import pytest
+import numpy as np
+import pandas as pd
+from unittest import mock
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
+import torch
+
 
 from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native import F
-
 from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 from unit_tests.utils import (test_column_types,
                                     generate_value_cols,
                                     generate_timeseries_labels,
                                     generate_log_labels,
                                     columns_to_file, PickableMock)
-
-from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class TestPredictor:
@@ -76,11 +75,11 @@ class TestPredictor:
                     n_points // n_category_values))],
             'categorical_binary': [0, 1] * (n_points // 2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
-            'sequential_text': [f'lorem ipsum long text {i}' for i in
-                                range(n_points)],
+            'short_text': generate_short_sentences(n_points),
+            'rich_text': generate_rich_sentences(n_points)
         }, index=list(range(n_points)))
 
-        model_data = predictor.analyse_dataset(from_data=input_dataframe)
+        model_data = analyse_dataset(from_data=input_dataframe)
         for col, col_data in model_data['data_analysis_v2'].items():
             expected_type = test_column_types[col][0]
             expected_subtype = test_column_types[col][1]
@@ -104,7 +103,7 @@ class TestPredictor:
             'empty_column': [None for i in range(n_points)]
         }, index=list(range(n_points)))
 
-        model_data = predictor.analyse_dataset(from_data=input_dataframe)
+        model_data = analyse_dataset(from_data=input_dataframe)
 
         assert model_data['data_analysis_v2']['empty_column']['empty']['is_empty'] is True
 
@@ -117,7 +116,7 @@ class TestPredictor:
         }, index=list(range(n_points)))
         input_dataframe['numeric_int'].iloc[::2] = None
 
-        model_data = predictor.analyse_dataset(from_data=input_dataframe)
+        model_data = analyse_dataset(from_data=input_dataframe)
 
         assert model_data['data_analysis_v2']['numeric_int']['empty']['empty_percentage'] == 50
 
@@ -227,11 +226,11 @@ class TestPredictor:
         data_source.set_subtypes({})
 
         data_source_mod = FileDS(data_url)
-        data_source_mod.set_subtypes({'credit_usage': 'Int', 'Average_Credit_Balance': 'Text',
+        data_source_mod.set_subtypes({'credit_usage': 'Int', 'Average_Credit_Balance': 'Short Text',
              'existing_credits': 'Binary Category'})
 
-        analysis = Predictor('analyzer1').analyse_dataset(data_source)
-        analysis_mod = Predictor('analyzer2').analyse_dataset(data_source_mod)
+        analysis = analyse_dataset(data_source)
+        analysis_mod = analyse_dataset(data_source_mod)
 
         a1 = analysis['data_analysis_v2']
         a2 = analysis_mod['data_analysis_v2']
@@ -250,9 +249,9 @@ class TestPredictor:
         assert (a1['Average_Credit_Balance']['typing']['data_subtype'] !=
                 a2['Average_Credit_Balance']['typing']['data_subtype'])
         assert (a2['Average_Credit_Balance']['typing'][
-                    'data_subtype'] == DATA_SUBTYPES.TEXT)
+                    'data_subtype'] == DATA_SUBTYPES.SHORT)
         assert (a2['Average_Credit_Balance']['typing'][
-                    'data_type'] == DATA_TYPES.SEQUENTIAL)
+                    'data_type'] == DATA_TYPES.TEXT)
 
         assert (a1['existing_credits']['typing']['data_type'] ==
                 a2['existing_credits']['typing']['data_type'])

@@ -9,7 +9,11 @@ import pandas as pd
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.phases.data_analyzer.data_analyzer import DataAnalyzer
-from unit_tests.utils import test_column_types
+from unit_tests.utils import (
+    test_column_types,
+    generate_short_sentences,
+    generate_rich_sentences
+)
 
 
 class TestDataAnalyzer:
@@ -17,7 +21,6 @@ class TestDataAnalyzer:
     def lmd(self, transaction):
         lmd = transaction.lmd
         lmd['handle_text_as_categorical'] = False
-        lmd['column_stats'] = {}
         lmd['stats_v2'] = {}
         lmd['empty_columns'] = []
         lmd['data_types'] = {}
@@ -53,11 +56,6 @@ class TestDataAnalyzer:
             result[k]['typing']['data_subtype_dist'] = {v['typing']['data_subtype']: 100}
         return result
 
-    def get_stats(self, stats_v2):
-        result = {}
-        for col, val in stats_v2.items():
-            result[col] = val['typing']
-        return result
 
     def test_data_analysis(self, transaction, lmd):
         """Tests that data analyzer doesn't crash on common types"""
@@ -75,13 +73,14 @@ class TestDataAnalyzer:
             'categorical_binary': [0, 1] * (n_points//2),
             'categorical_int': [x for x in (list(range(n_category_values)) * (n_points // n_category_values))],
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
-            'sequential_text': [f'lorem ipsum long text {i}' for i in range(n_points)],
+            'short_text': generate_short_sentences(n_points),
+            'rich_text': generate_rich_sentences(n_points)
+
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
-        stats = self.get_stats(stats_v2)
+
         lmd['stats_v2'] = stats_v2
-        lmd['column_stats'] = stats
         hmd = transaction.hmd
 
         input_data = TransactionData()
@@ -101,7 +100,8 @@ class TestDataAnalyzer:
         assert stats_v2['categorical_str']['unique']['unique_percentage'] == 4.0
 
         # Assert that the histogram on text field is made using words
-        assert isinstance(stats_v2['sequential_text']['histogram']['x'][0], str)
+        assert isinstance(stats_v2['short_text']['histogram']['x'][0], str)
+        assert isinstance(stats_v2['rich_text']['histogram']['x'][0], str)
 
         assert hmd == {}
 
@@ -117,9 +117,8 @@ class TestDataAnalyzer:
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
-        stats = self.get_stats(stats_v2)
+
         lmd['stats_v2'] = stats_v2
-        lmd['column_stats'] = stats
 
         input_dataframe['numeric_int'].iloc[::2] = None
         input_data = TransactionData()
@@ -129,6 +128,7 @@ class TestDataAnalyzer:
         stats_v2 = lmd['stats_v2']
 
         assert stats_v2['numeric_int']['empty']['empty_percentage'] == 50
+
 
     def test_sample(self, transaction, lmd):
         lmd['sample_settings']['sample_for_analysis'] = True
@@ -142,7 +142,7 @@ class TestDataAnalyzer:
             'numeric_int': list(range(n_points)),
         }, index=list(range(n_points)))
 
-        stats_v2 = self.get_stats_v2(input_dataframe.columns)
+        stats_v2 = self.get_stats_v2(input_dataframe.columns)<<<<<<< sampling-interface
         stats = self.get_stats(stats_v2)
         lmd['stats_v2'] = stats_v2
         lmd['column_stats'] = stats

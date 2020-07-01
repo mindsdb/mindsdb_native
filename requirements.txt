@@ -8,7 +8,7 @@ numpy >= 1.15.2
 pandas >= 0.23.4
 pytz >= 2018.5
 requests >= 2.20.0
-scipy >= 1.1.0
+scipy >= 1.1.0, <= 1.4.1
 scikit-learn >=  0.22.1
 colorlog >= 4.0.2
 xlrd >= 1.0.0
@@ -17,3 +17,5 @@ imageio == 2.5.0
 python-dateutil<2.8.1,>=2.1
 pillow<7
 mysql-connector-python >= 8.0.20
+portalocker >= 1.7.0
+flair >= 0.5

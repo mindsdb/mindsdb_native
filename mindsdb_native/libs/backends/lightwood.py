@@ -87,37 +87,37 @@ class LightwoodBackend():
         config['input_features'] = []
         config['output_features'] = []
 
-        for col_name in self.transaction.input_data.columns:
+        for col_name in self.transaction.input_data.columns or col_name not in self.transaction.lmd['stats_v2']:
             if col_name in self.transaction.lmd['columns_to_ignore']:
                 continue
 
-            col_stats = self.transaction.lmd['column_stats'][col_name]
-            data_subtype = col_stats['data_subtype']
-            data_type = col_stats['data_type']
+            col_stats = self.transaction.lmd['stats_v2'][col_name]
+            data_subtype = col_stats['typing']['data_subtype']
+            data_type = col_stats['typing']['data_type']
 
             lightwood_data_type = None
 
             other_keys = {'encoder_attrs': {}}
-            if data_type in (DATA_TYPES.NUMERIC):
+            if data_type == DATA_TYPES.NUMERIC:
                 lightwood_data_type = 'numeric'
 
-            elif data_type in (DATA_TYPES.CATEGORICAL):
+            elif data_type == DATA_TYPES.CATEGORICAL:
                 lightwood_data_type = 'categorical'
 
             elif data_subtype in (DATA_SUBTYPES.TIMESTAMP, DATA_SUBTYPES.DATE):
                 lightwood_data_type = 'datetime'
 
-            elif data_subtype in (DATA_SUBTYPES.IMAGE):
+            elif data_subtype == DATA_SUBTYPES.IMAGE:
                 lightwood_data_type = 'image'
                 other_keys['encoder_attrs']['aim'] = 'balance'
 
-            elif data_subtype in (DATA_SUBTYPES.AUDIO):
+            elif data_subtype == DATA_SUBTYPES.AUDIO:
                 lightwood_data_type = 'audio'
 
-            elif data_subtype in (DATA_SUBTYPES.TEXT):
+            elif data_type == DATA_TYPES.TEXT:
                 lightwood_data_type = 'text'
 
-            elif data_subtype in (DATA_SUBTYPES.ARRAY):
+            elif data_subtype == DATA_SUBTYPES.ARRAY:
                 lightwood_data_type = 'time_series'
 
             else:
@@ -264,7 +264,7 @@ class LightwoodBackend():
                     conf_arr = [x if x > 0 else 0 for x in predictions[k][confidence_name]]
                     conf_arr = [x if x < 1 else 1 for x in conf_arr]
                     confidence_arr.append(conf_arr)
-                    
+
             if len(confidence_arr) > 0:
                 confidences = []
                 for n in range(len(confidence_arr[0])):

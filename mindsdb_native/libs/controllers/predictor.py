@@ -4,17 +4,18 @@ import psutil
 import uuid
 import pickle
 
+from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
-from mindsdb_native.__about__ import __version__
-
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates, deprecated
-from mindsdb_native.libs.controllers.functional import (export_storage, export_predictor,
-                                                 rename_model, delete_model,
-                                                 import_model, get_model_data, get_models)
+from mindsdb_native.libs.helpers.locking import (
+    learn_lock,
+    predict_lock,
+    unlock
+)
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
@@ -104,91 +105,6 @@ class Predictor:
         except Exception:
             return False
 
-    @deprecated(reason='Use functional.export_predictor instead')
-    def export_model(self, model_name=None):
-        """
-        If you want to export a model to a file
-
-        :param model_name: this is the name of the model you wish to export (defaults to the name of the current Predictor)
-        :return: bool (True/False) True if mind was exported successfully
-        """
-        if not model_name:
-            model_name = self.name
-        try:
-            export_predictor(model_name)
-            return True
-        except Exception:
-            return False
-
-    @deprecated(reason='Use functional.import_model instead')
-    def load(self, model_archive_path):
-        return import_model(model_archive_path)
-
-    @deprecated(reason='Use functional.import_model instead')
-    def load_model(self, model_archive_path):
-        return import_model(model_archive_path)
-
-    @deprecated(reason='Use functional.rename_model instead')
-    def rename_model(self, old_model_name, new_model_name):
-        try:
-            return rename_model(old_model_name, new_model_name)
-        except Exception:
-            return False
-
-    @deprecated(reason='Use functional.delete_model instead')
-    def delete_model(self, model_name=None):
-        if not model_name:
-            model_name = self.name
-        try:
-            delete_model(model_name)
-            return True
-        except Exception as e:
-            return False
-
-    def analyse_dataset(self, from_data, sample_settings=None):
-        """
-        Analyse the particular dataset being given
-        """
-
-        from_ds = getDS(from_data)
-        transaction_type = TRANSACTION_ANALYSE
-
-        sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = get_memory_optimizations(from_ds.df)
-        sample_settings, sample_function = self.prepare_sample_settings(sample_settings, sample_for_analysis, sample_for_training)
-
-        heavy_transaction_metadata = dict(
-            name = self.name,
-            from_data = from_ds,
-            sample_function = sample_function
-        )
-
-        light_transaction_metadata = dict(
-            version = str(__version__),
-            name = self.name,
-            model_columns_map = from_ds._col_map,
-            type = transaction_type,
-            model_is_time_series = False,
-            model_group_by = [],
-            model_order_by = [],
-            columns_to_ignore = [],
-            data_preparation = {},
-            predict_columns = [],
-            empty_columns = [],
-            handle_foreign_keys = True,
-            force_categorical_encoding = [],
-            handle_text_as_categorical = False,
-            data_types = {},
-            data_subtypes = {},
-            sample_settings = sample_settings
-        )
-
-
-        Transaction(session=self,
-                    light_transaction_metadata=light_transaction_metadata,
-                    heavy_transaction_metadata=heavy_transaction_metadata,
-                    logger=self.log)
-        return get_model_data(None, lmd=light_transaction_metadata)
-
     def learn(self,
               to_predict,
               from_data,
@@ -234,6 +150,8 @@ class Predictor:
 
         :return:
         """
+
+        lock_file = learn_lock(self.name)
 
         if ignore_columns is None:
             ignore_columns = []
@@ -356,6 +274,7 @@ class Predictor:
                     light_transaction_metadata=light_transaction_metadata,
                     heavy_transaction_metadata=heavy_transaction_metadata,
                     logger=self.log)
+        unlock(lock_file)
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
         """
@@ -366,13 +285,16 @@ class Predictor:
 
         :return: a dictionary for the form `{f'{target_name}_accuracy': accuracy_func_return}`, e.g. {'rental_price_accuracy':0.99}
         """
+
         if predict_args is None:
             predict_args = {}
 
+        lock_file = predict_lock(self.name)
         predictions = self.predict(when_data=when_data, **predict_args)
 
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{self.name}_light_model_metadata.pickle'), 'rb') as fp:
             lmd = pickle.load(fp)
+        unlock(lock_file)
 
         accuracy_dict = {}
         for col in lmd['predict_columns']:
@@ -392,6 +314,7 @@ class Predictor:
                 unstable_parameters_dict=None,
                 backend=None,
                 run_confidence_variation_analysis=False):
+        lock_file = predict_lock(self.name)
         """
         You have a mind trained already and you want to make a prediction
 
@@ -441,5 +364,5 @@ class Predictor:
         transaction = Transaction(session=self,
                                   light_transaction_metadata=light_transaction_metadata,
                                   heavy_transaction_metadata=heavy_transaction_metadata)
-
+        unlock(lock_file)
         return transaction.output_data
