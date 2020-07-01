@@ -10,7 +10,7 @@ from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.constants.mindsdb import *
-from mindsdb_native.libs.helpers.general_helpers import check_for_updates, deprecated
+from mindsdb_native.libs.helpers.general_helpers import check_for_updates
 from mindsdb_native.libs.helpers.locking import (
     learn_lock,
     predict_lock,
@@ -86,24 +86,6 @@ class Predictor:
         # We need the settings to be JSON serializable, so the actual function will be stored in heavy metadata
         sample_settings['sample_function'] = sample_settings['sample_function'].__name__
         return sample_settings, sample_function
-
-    @deprecated(reason='Use functional.get_models instead')
-    def get_models(self):
-        return get_models()
-
-    @deprecated(reason='Use functional.get_model_data instead')
-    def get_model_data(self, model_name=None, lmd=None):
-        if model_name is None:
-            model_name = self.name
-        return get_model_data(model_name, lmd=lmd)
-
-    @deprecated(reason='Use functional.export_storage instead')
-    def export(self, mindsdb_storage_dir='mindsdb_storage'):
-        try:
-            export_storage(mindsdb_storage_dir)
-            return True
-        except Exception:
-            return False
 
     def learn(self,
               to_predict,

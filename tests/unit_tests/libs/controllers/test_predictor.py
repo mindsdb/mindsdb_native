@@ -1,59 +1,30 @@
-import json
-import random
-import os
-from datetime import datetime, timedelta
-
 import pytest
+import os
 import numpy as np
 import pandas as pd
-from unittest import mock
+from datetime import datetime, timedelta
+
+import torch
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
-import torch
-
 
 from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native import F
+
 from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
-from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 from unit_tests.utils import (test_column_types,
                                     generate_value_cols,
                                     generate_timeseries_labels,
                                     generate_log_labels,
-                                    columns_to_file, PickableMock)
+                                    columns_to_file)
+
+from mindsdb_native.libs.controllers.functional import
 
 
 class TestPredictor:
-
-    def test_sample_for_training(self):
-        predictor = Predictor(name='test')
-
-        n_points = 100
-        input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
-            'categorical_binary': [0, 1] * (n_points // 2),
-        }, index=list(range(n_points)))
-        input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int*input_dataframe.categorical_binary
-
-
-        mock_function = PickableMock(spec=sample_data,
-                                       wraps=sample_data)
-        setattr(mock_function, '__name__', 'mock_sample_data')
-        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
-            mock_function):
-
-            predictor.learn(from_data=input_dataframe,
-                            to_predict='y',
-                            backend='lightwood',
-                            sample_settings={'sample_for_training': True},
-                            stop_training_in_x_seconds=1,
-                            use_gpu=False)
-
-            assert mock_function.called
-
     def test_analyze_dataset(self):
         predictor = Predictor(name='test')
 
@@ -75,8 +46,8 @@ class TestPredictor:
                     n_points // n_category_values))],
             'categorical_binary': [0, 1] * (n_points // 2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
-            'short_text': generate_short_sentences(n_points),
-            'rich_text': generate_rich_sentences(n_points)
+            'sequential_text': [f'lorem ipsum long text {i}' for i in
+                                range(n_points)],
         }, index=list(range(n_points)))
 
         model_data = analyse_dataset(from_data=input_dataframe)
@@ -91,8 +62,6 @@ class TestPredictor:
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
             assert not col_data['is_foreign_key']
-
-        assert isinstance(json.dumps(model_data), str)
 
     def test_analyze_dataset_empty_column(self):
         predictor = Predictor(name='test')
@@ -135,8 +104,7 @@ class TestPredictor:
         mdb.learn(
             from_data=input_dataframe,
             to_predict='numeric_y',
-            stop_training_in_x_seconds=1,
-            use_gpu=False
+            stop_training_in_x_seconds=1
         )
 
         result = mdb.predict(when={"numeric_x": 10, 'categorical_x': 1})
@@ -226,7 +194,7 @@ class TestPredictor:
         data_source.set_subtypes({})
 
         data_source_mod = FileDS(data_url)
-        data_source_mod.set_subtypes({'credit_usage': 'Int', 'Average_Credit_Balance': 'Short Text',
+        data_source_mod.set_subtypes({'credit_usage': 'Int', 'Average_Credit_Balance': 'Text',
              'existing_credits': 'Binary Category'})
 
         analysis = analyse_dataset(data_source)
@@ -251,7 +219,7 @@ class TestPredictor:
         assert (a2['Average_Credit_Balance']['typing'][
                     'data_subtype'] == DATA_SUBTYPES.SHORT)
         assert (a2['Average_Credit_Balance']['typing'][
-                    'data_type'] == DATA_TYPES.TEXT)
+                    'data_type'] == DATA_TYPES.SEQUENTIAL)
 
         assert (a1['existing_credits']['typing']['data_type'] ==
                 a2['existing_credits']['typing']['data_type'])
@@ -403,7 +371,6 @@ class TestPredictor:
         assert_prediction_interface(prediction)
 
         amd = F.get_model_data('home_rentals_price')
-        assert isinstance(json.dumps(amd), str)
 
         for k in ['status', 'name', 'version', 'data_source', 'current_phase',
                   'updated_at', 'created_at',
