@@ -7,7 +7,7 @@ from botocore.client import Config
 
 from mindsdb_native.libs.data_types.data_source import DataSource
 from mindsdb_native.libs.data_sources.file_ds import FileDS
-from mindsdb_native.libs.controllers.functional import analyse_dataset
+from mindsdb_native import F
 
 
 class S3DS(DataSource):
@@ -35,4 +35,4 @@ if __name__ == "__main__":
     from mindsdb_native import Predictor
     mdb = Predictor(name='analyse_dataset_test_predictor')
     s3_ds = S3DS(bucket_name='mindsdb-example-data',file_path='home_rentals.csv', access_key=None, secret_key=None)
-    analyse_dataset(from_data=s3_ds)
+    F.analyse_dataset(from_data=s3_ds)

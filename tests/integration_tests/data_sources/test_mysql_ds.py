@@ -3,8 +3,7 @@ import mysql.connector
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
-from mindsdb_native.libs.controllers.functional import analyse_dataset
-
+from mindsdb_native import F
 
 @pytest.mark.integration
 def test_mysql_ds():
@@ -33,4 +32,4 @@ def test_mysql_ds():
     assert (len(mysql_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
-    analyse_dataset(from_data=mysql_ds)
+    F.analyse_dataset(from_data=mysql_ds)

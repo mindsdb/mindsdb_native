@@ -63,9 +63,9 @@ before_script:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 20  docker-compose up -d; fi
 script:
   # Unit tests
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pytest --run-integration tests/integration_tests ; fi
   - travis_wait 15 pytest --run-slow --durations=20 tests/unit_tests
   # Integration tests, require docker so only run on linux
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pytest --run-integration tests/integration_tests ; fi
   - pip install flake8
   - flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 after_script:
