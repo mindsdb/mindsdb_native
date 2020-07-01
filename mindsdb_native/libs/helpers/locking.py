@@ -37,12 +37,12 @@ def mdb_lock(flags, lock_name, argname=None):
             try:
                 ret = func(*args, **kwargs)
             except BaseException:
-                portalocker.unlock(f)
                 print(traceback.format_exc())
                 raise
             else:
-                portalocker.unlock(f)
                 return ret
+            finally:
+                portalocker.unlock(f)
 
         return wrapper2
     return wrapper1
