@@ -56,25 +56,22 @@ class TransactionOutputRow:
             if answers[pred_col]['confidence'] < 0.2:
                 quality = 'not confident'
 
-            answers[pred_col]['explanation'] = {
+            answers[pred_col] = {
                 'prediction_quality': quality
             }
 
             if self.col_stats[pred_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE):
                 if f'{pred_col}_confidence_range' in prediction_row:
-                    answers[pred_col]['explanation']['confidence_interval'] = prediction_row[f'{pred_col}_confidence_range']
+                    answers[pred_col]['confidence_interval'] = prediction_row[f'{pred_col}_confidence_range']
 
             important_missing_cols = get_important_missing_cols(self.transaction_output.transaction.lmd, prediction_row, pred_col)
-            answers[pred_col]['explanation']['important_missing_information'] = important_missing_cols
+            answers[pred_col]['important_missing_information'] = important_missing_cols
 
             if self.transaction_output.input_confidence is not None:
-                answers[pred_col]['explanation']['confidence_composition'] = {k:v for (k,v) in self.transaction_output.input_confidence[pred_col].items() if v > 0}
+                answers[pred_col]['confidence_composition'] = {k:v for (k,v) in self.transaction_output.input_confidence[pred_col].items() if v > 0}
 
             if self.transaction_output.extra_insights is not None:
-                answers[pred_col]['explanation']['extra_insights'] = self.transaction_output.extra_insights[pred_col]
-
-            for k in answers[pred_col]['explanation']:
-                answers[pred_col][k] = answers[pred_col]['explanation'][k]
+                answers[pred_col]['extra_insights'] = self.transaction_output.extra_insights[pred_col]
 
         return answers
 
