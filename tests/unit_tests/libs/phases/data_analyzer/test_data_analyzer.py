@@ -142,10 +142,8 @@ class TestDataAnalyzer:
             'numeric_int': list(range(n_points)),
         }, index=list(range(n_points)))
 
-        stats_v2 = self.get_stats_v2(input_dataframe.columns)<<<<<<< sampling-interface
-        stats = self.get_stats(stats_v2)
+        stats_v2 = self.get_stats_v2(input_dataframe.columns)
         lmd['stats_v2'] = stats_v2
-        lmd['column_stats'] = stats
 
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
