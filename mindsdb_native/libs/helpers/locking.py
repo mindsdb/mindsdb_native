@@ -1,7 +1,7 @@
 import os
 import sys
 import inspect
-
+import traceback
 import portalocker
 
 from mindsdb_native.config import CONFIG
