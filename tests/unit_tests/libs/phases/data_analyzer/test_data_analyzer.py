@@ -65,7 +65,7 @@ class TestDataAnalyzer:
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
             'short_text': generate_short_sentences(n_points),
             'rich_text': generate_rich_sentences(n_points)
-            
+
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
