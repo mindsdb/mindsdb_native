@@ -199,7 +199,7 @@ class TestPredictor:
         data_source.set_subtypes({})
 
         data_source_mod = FileDS(data_url)
-        data_source_mod.set_subtypes({'credit_usage': 'Int', 'Average_Credit_Balance': 'Text',
+        data_source_mod.set_subtypes({'credit_usage': 'Int', 'Average_Credit_Balance': 'Short',
              'existing_credits': 'Binary Category'})
 
         analysis = analyse_dataset(data_source)
