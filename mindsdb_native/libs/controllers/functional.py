@@ -301,7 +301,7 @@ def get_model_data(model_name=None, lmd=None):
             with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
                 return pickle.load(fp)
 
-        lmd = _get_lmd()
+        lmd = _get_lmd(model_name)
 
     # ADAPTOR CODE
     amd = {}

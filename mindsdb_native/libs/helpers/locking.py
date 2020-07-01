@@ -15,9 +15,6 @@ def mdb_lock(flags, lock_name, argname=None):
     """
     def wrapper1(func):
         def wrapper2(*args, **kwargs):
-            print(func, args, kwargs)
-            print(inspect.signature(func).parameters)
-
             if argname is None:
                 final_lock_name = '{}.lock'.format(lock_name)
             else:
@@ -26,12 +23,11 @@ def mdb_lock(flags, lock_name, argname=None):
                 elif argname in kwargs:
                     argval = kwargs[argname]
                 else:
-                    params = inspect.signature(func).parameters
-                    if argname in params:
-                        index = list(params).index(argname)
+                    index = inspect.getfullargspec(func).args.index(argname)
+                    if index < len(args):
                         argval = args[index]
                     else:
-                        raise Exception('argname wan\'t found in *args/**kwargs')
+                        raise Exception('argname wasn\'t found in *args/**kwargs')
                 final_lock_name = '{}_{}.lock'.format(lock_name, argval)
 
             path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, final_lock_name)
