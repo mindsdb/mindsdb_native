@@ -21,15 +21,15 @@ class ModelAnalyzer(BaseModule):
 
         # Make predictions on the validation dataset normally and with various columns missing
         normal_predictions = self.transaction.model_backend.predict('validate')
-        normal_accuracy = evaluate_accuracy(normal_predictions, self.transaction.input_data.validation_df, self.transaction.lmd['column_stats'], output_columns)
+        normal_accuracy = evaluate_accuracy(normal_predictions, self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
 
         empty_input_predictions = {}
         empty_inpurt_accuracy = {}
 
-        ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['column_stats'][x]['data_type'] != DATA_TYPES.FILE_PATH and x not in [y[0] for y in self.transaction.lmd['model_order_by']]]
+        ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH and x not in [y[0] for y in self.transaction.lmd['model_order_by']]]
         for col in ignorable_input_columns:
             empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
-            empty_inpurt_accuracy[col] = evaluate_accuracy(empty_input_predictions[col], self.transaction.input_data.validation_df, self.transaction.lmd['column_stats'], output_columns)
+            empty_inpurt_accuracy[col] = evaluate_accuracy(empty_input_predictions[col], self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
 
         # Get some information about the importance of each column
         self.transaction.lmd['column_importances'] = {}
@@ -46,7 +46,7 @@ class ModelAnalyzer(BaseModule):
         self.transaction.hmd['probabilistic_validators'] = {}
 
         for col in output_columns:
-            pval = ProbabilisticValidator(col_stats=self.transaction.lmd['column_stats'][col], col_name=col, input_columns=input_columns)
+            pval = ProbabilisticValidator(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
             predictions_arr = [normal_predictions] + [empty_input_predictions[col] for col in ignorable_input_columns]
 
             pval.fit(self.transaction.input_data.validation_df, predictions_arr, [[x] for x in ignorable_input_columns])

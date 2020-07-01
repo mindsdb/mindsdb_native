@@ -15,7 +15,6 @@ class TestTypeDeductor:
     @pytest.fixture()
     def lmd(self, transaction):
         lmd = transaction.lmd
-        lmd['column_stats'] = {}
         lmd['stats_v2'] = {}
         lmd['data_types'] = {}
         lmd['data_subtypes'] = {}
