@@ -1,3 +1,6 @@
+import json
+from unittest import mock
+
 import pytest
 import os
 import numpy as np
@@ -19,13 +22,39 @@ from unit_tests.utils import (test_column_types,
                                     generate_value_cols,
                                     generate_timeseries_labels,
                                     generate_log_labels,
-                                    columns_to_file)
+                                    columns_to_file, PickableMock)
+
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class TestPredictor:
-    def test_analyze_dataset(self):
+    def test_sample_for_training(self):
         predictor = Predictor(name='test')
 
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+            'categorical_binary': [0, 1] * (n_points // 2),
+        }, index=list(range(n_points)))
+        input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int*input_dataframe.categorical_binary
+
+
+        mock_function = PickableMock(spec=sample_data,
+                                       wraps=sample_data)
+        setattr(mock_function, '__name__', 'mock_sample_data')
+        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
+            mock_function):
+
+            predictor.learn(from_data=input_dataframe,
+                            to_predict='y',
+                            backend='lightwood',
+                            sample_settings={'sample_for_training': True},
+                            stop_training_in_x_seconds=1,
+                            use_gpu=False)
+
+            assert mock_function.called
+
+    def test_analyze_dataset(self):
         n_points = 100
         n_category_values = 4
         input_dataframe = pd.DataFrame({
@@ -59,9 +88,9 @@ class TestPredictor:
             assert 'nr_warnings' in col_data
             assert not col_data['is_foreign_key']
 
-    def test_analyze_dataset_empty_column(self):
-        predictor = Predictor(name='test')
+        assert isinstance(json.dumps(model_data), str)
 
+    def test_analyze_dataset_empty_column(self):
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
@@ -73,8 +102,6 @@ class TestPredictor:
         assert model_data['data_analysis_v2']['empty_column']['empty']['is_empty'] is True
 
     def test_analyze_dataset_empty_values(self):
-        predictor = Predictor(name='test')
-
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
@@ -87,7 +114,7 @@ class TestPredictor:
 
     @pytest.mark.slow
     def test_explain_prediction(self):
-        mdb = Predictor(name='test_home_rentals')
+        mdb = Predictor(name='test_explain_prediction')
 
         n_points = 100
         input_dataframe = pd.DataFrame({
@@ -100,7 +127,8 @@ class TestPredictor:
         mdb.learn(
             from_data=input_dataframe,
             to_predict='numeric_y',
-            stop_training_in_x_seconds=1
+            stop_training_in_x_seconds=1,
+            use_gpu=False
         )
 
         result = mdb.predict(when={"numeric_x": 10, 'categorical_x': 1})
@@ -367,6 +395,7 @@ class TestPredictor:
         assert_prediction_interface(prediction)
 
         amd = F.get_model_data('home_rentals_price')
+        assert isinstance(json.dumps(amd), str)
 
         for k in ['status', 'name', 'version', 'data_source', 'current_phase',
                   'updated_at', 'created_at',
