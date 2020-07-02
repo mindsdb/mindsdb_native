@@ -26,7 +26,7 @@ def mdb_lock(flags, lock_name, argname=None):
                 final_lock_name = '{}.lock'.format(lock_name)
             else:
                 if argname.startswith('self.'):
-                    assert len(argname.split('.') == 2)
+                    assert len(argname.split('.')) == 2
                     argval = getattr(args[0], argname.lstrip('self.'))
                 elif argname in kwargs:
                     argval = kwargs[argname]
