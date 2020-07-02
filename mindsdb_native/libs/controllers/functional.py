@@ -26,16 +26,18 @@ def analyse_dataset(from_data, sample_settings=None, logger=log):
     from_ds = getDS(from_data)
     transaction_type = TRANSACTION_ANALYSE
 
-    heavy_transaction_metadata = dict(
-        name = None,
-        from_data = from_ds
-    )
-
     sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(
         from_ds.df)
     sample_settings, sample_function = _prepare_sample_settings(sample_settings,
                                                 sample_for_analysis,
                                                 sample_for_training)
+
+    heavy_transaction_metadata = dict(
+        name=None,
+        from_data=from_ds,
+        sample_function=sample_function
+    )
+
     light_transaction_metadata = dict(
         version = str(__version__),
         name = None,

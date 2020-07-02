@@ -127,6 +127,7 @@ class Predictor:
         :return:
         """
         with mdb_lock('exclusive', 'learn_' + self.name):
+
             if ignore_columns is None:
                 ignore_columns = []
 
@@ -181,6 +182,7 @@ class Predictor:
                 test_from_data=test_from_ds,
                 predictions= None,
                 model_backend= backend,
+                sample_function=sample_function
             )
 
             light_transaction_metadata = dict(
