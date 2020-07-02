@@ -20,12 +20,6 @@ def config(tmp_path):
     shutil.rmtree(CONFIG.MINDSDB_STORAGE_PATH)
 
 
-@pytest.fixture(autouse=True)
-def clear_mindsdb_storage():
-    yield None
-    # Execute after each test
-
-
 @pytest.fixture()
 def logger():
     return MindsdbLogger(log_level=logging.DEBUG, uuid='test')
