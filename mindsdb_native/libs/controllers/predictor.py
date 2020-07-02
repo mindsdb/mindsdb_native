@@ -31,6 +31,7 @@ def _get_memory_optimizations(df):
 
     return sample_for_analysis, sample_for_training, disable_lightwood_transform_cache
 
+
 def _prepare_sample_settings(user_provided_settings,
                             sample_for_analysis,
                             sample_for_training):
@@ -52,6 +53,7 @@ def _prepare_sample_settings(user_provided_settings,
     # We need the settings to be JSON serializable, so the actual function will be stored in heavy metadata
     sample_settings['sample_function'] = sample_settings['sample_function'].__name__
     return sample_settings, sample_function
+
 
 class Predictor:
 
@@ -187,6 +189,7 @@ class Predictor:
             test_from_data=test_from_ds,
             predictions= None,
             model_backend= backend,
+            sample_function=sample_function
         )
 
         light_transaction_metadata = dict(
