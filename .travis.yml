@@ -54,16 +54,21 @@ install:
   - if [ "$TRAVIS_OS_NAME" = "windows" ]; then travis_wait 15 pip install --no-cache-dir -e .; fi
   - if [ "$TRAVIS_OS_NAME" = "windows" ]; then travis_wait 15 pip install --no-cache-dir -r requirements_test.txt; fi
   - if [ "$TRAVIS_OS_NAME" = "windows" ]; then travis_wait 15 pip install --no-cache-dir -r optional_requirements_extra_data_sources.txt; fi
-  - if [ "$TRAVIS_OS_NAME" != "windows" ]; then travis_wait 15 pip3 install --user --no-cache-dir -e .; sleep 10s; fi
-  - if [ "$TRAVIS_OS_NAME" != "windows" ]; then travis_wait 15 pip3 install --user --no-cache-dir -r requirements_test.txt; fi
-  - if [ "$TRAVIS_OS_NAME" != "windows" ]; then travis_wait 15 pip3 install --user --no-cache-dir -r optional_requirements_extra_data_sources.txt; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_wait 15 pip3 install --user --no-cache-dir -e .; sleep 10s; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_wait 15 pip3 install --user --no-cache-dir -r requirements_test.txt; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_wait 15 pip3 install --user --no-cache-dir -r optional_requirements_extra_data_sources.txt; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pip3 install --no-cache-dir -e .; sleep 10s; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pip3 install --no-cache-dir -r requirements_test.txt; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pip3 install --no-cache-dir -r optional_requirements_extra_data_sources.txt; fi
+
 # run tests
 before_script:
   # Travis doesn't support docker on OSX and it doesn't work on Windows too
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 20  docker-compose up -d; fi
 script:
   # Unit tests
-  - travis_wait 15 pytest --run-slow --durations=20 tests/unit_tests
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_wait 15 python3 - m pytest --run-slow --durations=20 tests/unit_tests; fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then travis_wait 15 pytest --run-slow --durations=20 tests/unit_tests; fi
   # Integration tests, require docker so only run on linux
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pytest --run-integration tests/integration_tests ; fi
   - pip install flake8
