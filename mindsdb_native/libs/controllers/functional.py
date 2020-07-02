@@ -15,7 +15,7 @@ from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    MODEL_STATUS_ERROR,
                                                    TRANSACTION_ANALYSE)
 
-from mindsdb_native.libs.helpers.locking import mdb_lock, portalocker
+from mindsdb_native.libs.helpers.locking import mdb_lock
 
 
 def analyse_dataset(from_data, sample_settings=None, logger=log):
@@ -79,38 +79,36 @@ def export_storage(mindsdb_storage_dir='mindsdb_storage'):
     print(f'Exported mindsdb storage to {mindsdb_storage_dir}.zip')
 
 
-@mdb_lock(flags='shared', lock_name='predict', argname='model_name')
 def export_predictor(model_name):
     """Exports a Predictor to a zip file in the CONFIG.MINDSDB_STORAGE_PATH directory.
 
     :param model: a Predictor
     :param model_name: this is the name of the model you wish to export (defaults to the name of the passed Predictor)
     """
-    storage_file = model_name + '.zip'
-    with zipfile.ZipFile(storage_file, 'w') as zip_fp:
-        for file_name in [model_name + '_heavy_model_metadata.pickle',
-                          model_name + '_light_model_metadata.pickle',
-                          model_name + '_lightwood_data']:
-            full_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name)
-            zip_fp.write(full_path, os.path.basename(full_path))
+    with mdb_lock('shared', 'predict_' + model_name):
+        storage_file = model_name + '.zip'
+        with zipfile.ZipFile(storage_file, 'w') as zip_fp:
+            for file_name in [model_name + '_heavy_model_metadata.pickle',
+                            model_name + '_light_model_metadata.pickle',
+                            model_name + '_lightwood_data']:
+                full_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name)
+                zip_fp.write(full_path, os.path.basename(full_path))
 
-        # If the backend is ludwig, save the ludwig files
-        try:
-            ludwig_model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                             model_name + '_ludwig_data')
-            for root, dirs, files in os.walk(ludwig_model_path):
-                for file in files:
-                    full_path = os.path.join(root, file)
-                    zip_fp.write(full_path,
-                                 full_path[len(CONFIG.MINDSDB_STORAGE_PATH):])
-        except Exception:
-            pass
+            # If the backend is ludwig, save the ludwig files
+            try:
+                ludwig_model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                                                model_name + '_ludwig_data')
+                for root, dirs, files in os.walk(ludwig_model_path):
+                    for file in files:
+                        full_path = os.path.join(root, file)
+                        zip_fp.write(full_path,
+                                    full_path[len(CONFIG.MINDSDB_STORAGE_PATH):])
+            except Exception:
+                pass
 
-    print(f'Exported model to {storage_file}')
+        print(f'Exported model to {storage_file}')
 
 
-@mdb_lock(flags='exclusive', lock_name='delete', argname='new_model_name')
-@mdb_lock(flags='exclusive', lock_name='delete', argname='old_model_name')
 def rename_model(old_model_name, new_model_name):
     """
     If you want to rename an exported model.
@@ -119,69 +117,72 @@ def rename_model(old_model_name, new_model_name):
     :param new_model_name: this is the new name of the model
     :return: bool (True/False) True if predictor was renamed successfully
     """
-    if old_model_name == new_model_name:
+    lock1 = mdb_lock('exclusive', 'delete_' + new_model_name)
+    lock2 = mdb_lock('exclusive', 'delete_' + old_model_name)
+    with lock1, lock2:
+
+        if old_model_name == new_model_name:
+            return True
+
+        moved_a_backend = False
+        for extension in ['_lightwood_data', '_ludwig_data']:
+            shutil.move(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                                    old_model_name + extension),
+                        os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                                    new_model_name + extension))
+            moved_a_backend = True
+
+        if not moved_a_backend:
+            return False
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            old_model_name + '_light_model_metadata.pickle'),
+                'rb') as fp:
+            lmd = pickle.load(fp)
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            old_model_name + '_heavy_model_metadata.pickle'),
+                'rb') as fp:
+            hmd = pickle.load(fp)
+
+        lmd['name'] = new_model_name
+        hmd['name'] = new_model_name
+
+        renamed_one_backend = False
+        try:
+            lmd['ludwig_data']['ludwig_save_path'] = lmd['ludwig_data'][
+                'ludwig_save_path'].replace(old_model_name, new_model_name)
+            renamed_one_backend = True
+        except Exception:
+            pass
+
+        try:
+            lmd['lightwood_data']['save_path'] = lmd['lightwood_data'][
+                'save_path'].replace(old_model_name, new_model_name)
+            renamed_one_backend = True
+        except Exception:
+            pass
+
+        if not renamed_one_backend:
+            return False
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            new_model_name + '_light_model_metadata.pickle'),
+                'wb') as fp:
+            pickle.dump(lmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            new_model_name + '_heavy_model_metadata.pickle'),
+                'wb') as fp:
+            pickle.dump(hmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+        os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            old_model_name + '_light_model_metadata.pickle'))
+        os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            old_model_name + '_heavy_model_metadata.pickle'))
         return True
 
-    moved_a_backend = False
-    for extension in ['_lightwood_data', '_ludwig_data']:
-        shutil.move(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                 old_model_name + extension),
-                    os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                 new_model_name + extension))
-        moved_a_backend = True
 
-    if not moved_a_backend:
-        return False
-
-    with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           old_model_name + '_light_model_metadata.pickle'),
-              'rb') as fp:
-        lmd = pickle.load(fp)
-
-    with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           old_model_name + '_heavy_model_metadata.pickle'),
-              'rb') as fp:
-        hmd = pickle.load(fp)
-
-    lmd['name'] = new_model_name
-    hmd['name'] = new_model_name
-
-    renamed_one_backend = False
-    try:
-        lmd['ludwig_data']['ludwig_save_path'] = lmd['ludwig_data'][
-            'ludwig_save_path'].replace(old_model_name, new_model_name)
-        renamed_one_backend = True
-    except Exception:
-        pass
-
-    try:
-        lmd['lightwood_data']['save_path'] = lmd['lightwood_data'][
-            'save_path'].replace(old_model_name, new_model_name)
-        renamed_one_backend = True
-    except Exception:
-        pass
-
-    if not renamed_one_backend:
-        return False
-
-    with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           new_model_name + '_light_model_metadata.pickle'),
-              'wb') as fp:
-        pickle.dump(lmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
-
-    with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           new_model_name + '_heavy_model_metadata.pickle'),
-              'wb') as fp:
-        pickle.dump(hmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
-
-    os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           old_model_name + '_light_model_metadata.pickle'))
-    os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           old_model_name + '_heavy_model_metadata.pickle'))
-    return True
-
-
-@mdb_lock(flags='exclusive', lock_name='delete', argname='model_name')
 def delete_model(model_name):
     """
     If you want to delete exported model files.
@@ -189,22 +190,38 @@ def delete_model(model_name):
     :param model_name: name of the model
     :return: bool (True/False) True if model was deleted
     """
-    with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
-        lmd = pickle.load(fp)
+    with mdb_lock('exclusive', 'delete_' + model_name):
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
+            lmd = pickle.load(fp)
 
-        try:
-            os.remove(lmd['lightwood_data']['save_path'])
-        except Exception:
-            pass
+            try:
+                os.remove(lmd['lightwood_data']['save_path'])
+            except Exception:
+                pass
 
-        try:
-            shutil.rmtree(lmd['ludwig_data']['ludwig_save_path'])
-        except Exception:
-            pass
+            try:
+                shutil.rmtree(lmd['ludwig_data']['ludwig_save_path'])
+            except Exception:
+                pass
 
-    for file_name in [model_name + '_heavy_model_metadata.pickle',
-                      model_name + '_light_model_metadata.pickle']:
-        os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name))
+        for file_name in [model_name + '_heavy_model_metadata.pickle',
+                        model_name + '_light_model_metadata.pickle']:
+            os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name))
+
+
+def _import_model_by_name(model_name):
+    with mdb_lock('exclusive', 'detele_' + model_name):
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
+            lmd = pickle.load(fp)
+
+        if 'ludwig_data' in lmd and 'ludwig_save_path' in lmd['ludwig_data']:
+            lmd['ludwig_data']['ludwig_save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['ludwig_data']['ludwig_save_path'])))
+
+        if 'lightwood_data' in lmd and 'save_path' in lmd['lightwood_data']:
+            lmd['lightwood_data']['save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['lightwood_data']['save_path'])))
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'wb') as fp:
+            pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def import_model(model_archive_path):
@@ -224,22 +241,7 @@ def import_model(model_archive_path):
             model_names.append(model_name)
 
     for model_name in model_names:
-
-        @mdb_lock(flags='exclusive', lock_name='delete', argname='model_name')
-        def _import(model_name):
-            with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
-                lmd = pickle.load(fp)
-
-            if 'ludwig_data' in lmd and 'ludwig_save_path' in lmd['ludwig_data']:
-                lmd['ludwig_data']['ludwig_save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['ludwig_data']['ludwig_save_path'])))
-
-            if 'lightwood_data' in lmd and 'save_path' in lmd['lightwood_data']:
-                lmd['lightwood_data']['save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['lightwood_data']['save_path'])))
-
-            with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'wb') as fp:
-                pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
-
-        _import(model_name)
+        _import_model_by_name(model_name)
 
     print('Model files loaded')
 
@@ -295,13 +297,9 @@ def get_model_data(model_name=None, lmd=None):
     if lmd is not None:
         pass
     elif model_name is not None:
-
-        @mdb_lock(flags='shared', lock_name='get_data', argname='model_name')
-        def _get_lmd(model_name):
+        with mdb_lock('shared', 'get_data_' + model_name):
             with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
                 return pickle.load(fp)
-
-        lmd = _get_lmd(model_name)
 
     # ADAPTOR CODE
     amd = {}
