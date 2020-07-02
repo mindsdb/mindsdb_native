@@ -27,7 +27,7 @@ def mdb_lock(flags, lock_name, argname=None):
                     if index < len(args):
                         argval = args[index]
                     else:
-                        raise Exception('argname wasn\'t found in *args/**kwargs')
+                        raise ValueError('argname wasn\'t found in *args/**kwargs')
                 final_lock_name = '{}_{}.lock'.format(lock_name, argval)
 
             path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, final_lock_name)
