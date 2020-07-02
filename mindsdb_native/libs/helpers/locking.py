@@ -6,7 +6,7 @@ import portalocker
 from mindsdb_native.config import CONFIG
 
 
-class mdb_lock():
+class MDBLock():
     """Can be used in a with statement or as a decorator"""
 
     def __init__(self, flags, name):

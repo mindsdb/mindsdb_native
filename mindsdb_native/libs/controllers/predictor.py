@@ -11,7 +11,7 @@ from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import Transaction
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates
-from mindsdb_native.libs.helpers.locking import mdb_lock
+from mindsdb_native.libs.helpers.locking import MDBLock
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
@@ -126,7 +126,7 @@ class Predictor:
 
         :return:
         """
-        with mdb_lock('exclusive', 'learn_' + self.name):
+        with MDBLock('exclusive', 'learn_' + self.name):
 
             if ignore_columns is None:
                 ignore_columns = []
@@ -259,7 +259,7 @@ class Predictor:
 
         :return: a dictionary for the form `{f'{target_name}_accuracy': accuracy_func_return}`, e.g. {'rental_price_accuracy':0.99}
         """
-        with mdb_lock('shared', 'learn_' + self.name):
+        with MDBLock('shared', 'learn_' + self.name):
             if predict_args is None:
                 predict_args = {}
 
@@ -295,7 +295,7 @@ class Predictor:
 
         :return: TransactionOutputData object
         """
-        with mdb_lock('shared', 'learn_' + self.name):
+        with MDBLock('shared', 'learn_' + self.name):
             if unstable_parameters_dict is None:
                 unstable_parameters_dict = {}
 

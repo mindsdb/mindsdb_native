@@ -15,7 +15,7 @@ from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    MODEL_STATUS_ERROR,
                                                    TRANSACTION_ANALYSE)
 
-from mindsdb_native.libs.helpers.locking import mdb_lock
+from mindsdb_native.libs.helpers.locking import MDBLock
 
 
 def analyse_dataset(from_data, sample_settings=None, logger=log):
@@ -87,7 +87,7 @@ def export_predictor(model_name):
     :param model: a Predictor
     :param model_name: this is the name of the model you wish to export (defaults to the name of the passed Predictor)
     """
-    with mdb_lock('shared', 'predict_' + model_name):
+    with MDBLock('shared', 'predict_' + model_name):
         storage_file = model_name + '.zip'
         with zipfile.ZipFile(storage_file, 'w') as zip_fp:
             for file_name in [model_name + '_heavy_model_metadata.pickle',
@@ -119,8 +119,8 @@ def rename_model(old_model_name, new_model_name):
     :param new_model_name: this is the new name of the model
     :return: bool (True/False) True if predictor was renamed successfully
     """
-    lock1 = mdb_lock('exclusive', 'delete_' + new_model_name)
-    lock2 = mdb_lock('exclusive', 'delete_' + old_model_name)
+    lock1 = MDBLock('exclusive', 'delete_' + new_model_name)
+    lock2 = MDBLock('exclusive', 'delete_' + old_model_name)
     with lock1, lock2:
 
         if old_model_name == new_model_name:
@@ -192,7 +192,7 @@ def delete_model(model_name):
     :param model_name: name of the model
     :return: bool (True/False) True if model was deleted
     """
-    with mdb_lock('exclusive', 'delete_' + model_name):
+    with MDBLock('exclusive', 'delete_' + model_name):
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
             lmd = pickle.load(fp)
 
@@ -212,7 +212,7 @@ def delete_model(model_name):
 
 
 def _import_model_by_name(model_name):
-    with mdb_lock('exclusive', 'detele_' + model_name):
+    with MDBLock('exclusive', 'detele_' + model_name):
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
             lmd = pickle.load(fp)
 
@@ -299,7 +299,7 @@ def get_model_data(model_name=None, lmd=None):
     if lmd is not None:
         pass
     elif model_name is not None:
-        with mdb_lock('shared', 'get_data_' + model_name):
+        with MDBLock('shared', 'get_data_' + model_name):
             with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
                 return pickle.load(fp)
 
