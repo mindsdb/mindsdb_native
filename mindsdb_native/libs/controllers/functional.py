@@ -79,7 +79,7 @@ def export_storage(mindsdb_storage_dir='mindsdb_storage'):
     print(f'Exported mindsdb storage to {mindsdb_storage_dir}.zip')
 
 
-@mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='predict', argname='model_name')
+@mdb_lock(flags='shared', lock_name='predict', argname='model_name')
 def export_predictor(model_name):
     """Exports a Predictor to a zip file in the CONFIG.MINDSDB_STORAGE_PATH directory.
 
@@ -109,8 +109,8 @@ def export_predictor(model_name):
     print(f'Exported model to {storage_file}')
 
 
-@mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='delete', argname='new_model_name')
-@mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='delete', argname='old_model_name')
+@mdb_lock(flags='exclusive', lock_name='delete', argname='new_model_name')
+@mdb_lock(flags='exclusive', lock_name='delete', argname='old_model_name')
 def rename_model(old_model_name, new_model_name):
     """
     If you want to rename an exported model.
@@ -181,7 +181,7 @@ def rename_model(old_model_name, new_model_name):
     return True
 
 
-@mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='delete', argname='model_name')
+@mdb_lock(flags='exclusive', lock_name='delete', argname='model_name')
 def delete_model(model_name):
     """
     If you want to delete exported model files.
@@ -225,7 +225,7 @@ def import_model(model_archive_path):
 
     for model_name in model_names:
 
-        @mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='delete', argname='model_name')
+        @mdb_lock(flags='exclusive', lock_name='delete', argname='model_name')
         def _import(model_name):
             with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
                 lmd = pickle.load(fp)
@@ -296,7 +296,7 @@ def get_model_data(model_name=None, lmd=None):
         pass
     elif model_name is not None:
 
-        @mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='get_data', argname='model_name')
+        @mdb_lock(flags='shared', lock_name='get_data', argname='model_name')
         def _get_lmd(model_name):
             with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
                 return pickle.load(fp)

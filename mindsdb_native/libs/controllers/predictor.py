@@ -81,7 +81,7 @@ class Predictor:
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
-    @mdb_lock(flags=portalocker.LOCK_EX+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
+    @mdb_lock(flags='exclusive', lock_name='learn', argname='self.name')
     def learn(self,
               to_predict,
               from_data,
@@ -248,7 +248,7 @@ class Predictor:
                     heavy_transaction_metadata=heavy_transaction_metadata,
                     logger=self.log)
 
-    @mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
+    @mdb_lock(flags='shared', lock_name='learn', argname='self.name')
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
         """
         :param when_data: use this when you have data in either a file, a pandas data frame, or url to a file that you want to predict from
@@ -278,7 +278,7 @@ class Predictor:
 
         return accuracy_dict
 
-    @mdb_lock(flags=portalocker.LOCK_SH+portalocker.LOCK_NB, lock_name='learn', argname='self.name')
+    @mdb_lock(flags='shared', lock_name='learn', argname='self.name')
     def predict(self,
                 when=None,
                 when_data=None,

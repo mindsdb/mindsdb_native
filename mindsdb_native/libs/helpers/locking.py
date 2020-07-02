@@ -13,13 +13,21 @@ def mdb_lock(flags, lock_name, argname=None):
     :argname: str, name of the positional/keyword argument of
     the input function that will be concatenated with :lock_name:
     """
+    if flags == 'shared':
+        flags = portalocker.LOCK_SH + portalocker.LOCK_NB
+    elif flags == 'exclusive':
+        flags = portalocker.LOCK_EX + portalocker.LOCK_NB
+    else:
+        raise ValueError('expected flags to be "shared" or "exclusive"')
+
     def wrapper1(func):
         def wrapper2(*args, **kwargs):
             if argname is None:
                 final_lock_name = '{}.lock'.format(lock_name)
             else:
                 if argname.startswith('self.'):
-                    argval = getattr(args[0], argname.split('.')[1])
+                    assert len(argname.split('.') == 2)
+                    argval = getattr(args[0], argname.lstrip('self.'))
                 elif argname in kwargs:
                     argval = kwargs[argname]
                 else:
