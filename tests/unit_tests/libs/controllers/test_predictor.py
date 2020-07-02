@@ -100,7 +100,7 @@ class TestPredictor:
         mdb.learn(
             from_data=input_dataframe,
             to_predict='numeric_y',
-            stop_training_in_x_seconds=15
+            stop_training_in_x_seconds=1
         )
 
         result = mdb.predict(when={"numeric_x": 10, 'categorical_x': 1})
