@@ -301,7 +301,7 @@ def get_model_data(model_name=None, lmd=None):
     elif model_name is not None:
         with MDBLock('shared', 'get_data_' + model_name):
             with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
-                return pickle.load(fp)
+                lmd = pickle.load(fp)
 
     # ADAPTOR CODE
     amd = {}
