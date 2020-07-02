@@ -38,7 +38,6 @@ class TestPredictor:
         }, index=list(range(n_points)))
         input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int*input_dataframe.categorical_binary
 
-
         mock_function = PickableMock(spec=sample_data,
                                        wraps=sample_data)
         setattr(mock_function, '__name__', 'mock_sample_data')
@@ -48,11 +47,17 @@ class TestPredictor:
             predictor.learn(from_data=input_dataframe,
                             to_predict='y',
                             backend='lightwood',
-                            sample_settings={'sample_for_training': True},
+                            sample_settings={'sample_for_training': True,
+                                             'sample_for_analysis': True},
                             stop_training_in_x_seconds=1,
                             use_gpu=False)
 
             assert mock_function.called
+
+            # 1 call when sampling for analysis
+            # 1 call when sampling training data for lightwood
+            # 1 call when sampling testing data for lightwood
+            assert mock_function.call_count == 3
 
     def test_analyze_dataset(self):
         n_points = 100
@@ -89,6 +94,48 @@ class TestPredictor:
             assert not col_data['is_foreign_key']
 
         assert isinstance(json.dumps(model_data), str)
+
+    def test_sample_for_analysis(self):
+        n_points = 100
+        n_category_values = 4
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+            'numeric_float': np.linspace(0, n_points, n_points),
+            'date_timestamp': [
+                (datetime.now() - timedelta(minutes=int(i))).isoformat() for i in
+                range(n_points)],
+            'date_date': [
+                (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in
+                range(n_points)],
+            'categorical_str': [f'a{x}' for x in (
+                list(range(n_category_values)) * (
+                n_points // n_category_values))],
+            'categorical_int': [x for x in (list(range(n_category_values)) * (
+                n_points // n_category_values))],
+            'categorical_binary': [0, 1] * (n_points // 2),
+            'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)]
+        }, index=list(range(n_points)))
+
+        mock_function = PickableMock(spec=sample_data,
+                                     wraps=sample_data)
+        setattr(mock_function, '__name__', 'mock_sample_data')
+        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
+                        mock_function):
+            model_data = F.analyse_dataset(from_data=input_dataframe,
+                                           sample_settings={'sample_for_analysis': True})
+            assert mock_function.called
+
+        for col, col_data in model_data['data_analysis_v2'].items():
+            expected_type = test_column_types[col][0]
+            expected_subtype = test_column_types[col][1]
+            assert col_data['typing']['data_type'] == expected_type
+            assert col_data['typing']['data_subtype'] == expected_subtype
+
+            assert col_data['empty']
+            assert col_data['histogram']
+            assert 'percentage_buckets' in col_data
+            assert 'nr_warnings' in col_data
+            assert not col_data['is_foreign_key']
 
     def test_analyze_dataset_empty_column(self):
         n_points = 100
