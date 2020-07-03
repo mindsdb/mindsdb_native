@@ -64,7 +64,7 @@ def analyze_sentences(data):
             word = tok.text.strip(string.punctuation + '"\'«»')
             word_dist[word] += 1
 
-    return nr_words, word_dist, nr_words_dist
+    return nr_words, dict(word_dist), dict(nr_words_dist)
 
 
 def word_tokenize(string):
