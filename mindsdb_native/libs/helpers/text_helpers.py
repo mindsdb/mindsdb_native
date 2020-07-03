@@ -10,7 +10,7 @@
 """
 
 from mindsdb_native.libs.constants.mindsdb import *
-from collections import Counter
+from collections import Counter, defaultdict
 import string
 import json
 import hashlib
@@ -18,20 +18,41 @@ import numpy
 import flair
 
 
+def get_language_dist(data):
+    lang_dist = defaultdict(lambda: 0)
+    lang_probs_cache = dict()
+    try:
+        # @TODO There's repeat code here, is transformation to `flair.data.Sentence` quick enough that we don't care ?
+        for text, sent in zip(data, map(flair.data.Sentence, data)):
+            if text not in lang_probs_cache:
+                try:
+                    lang_probs = langdetect.detect_langs(text)
+                except langdetect.lang_detect_exception.LangDetectException:
+                    lang_probs = []
+                lang_probs_cache[text] = lang_probs
+
+            lang_probs = lang_probs_cache[text]
+            if len(lang_probs) > 0 and lang_probs[0].prob > 0.90:
+                lang_dist[lang_probs[0].lang] += 1
+            else:
+                lang_dist['Unknown'] += 1
+    except Exception:
+        lang_dist = {'Unknown': len(data)}
+
+    return lang_dist
+
+
 def analyze_sentences(data):
     """
     :param data: list of str
-    :returns: 
     tuple(
         int: nr words total,
-        tuple(
-            dict: word_dist
-            dict: nr_words_dist
-        )
+        dict: word_dist,
+        dict: nr_words_dist
     )
     """
     nr_words = 0
-    word_dist = Counter()
+    word_dist = defaultdict(lambda: 0)
     nr_words_dist = Counter()
     for text in data:
         sent = flair.data.Sentence(str(text))
