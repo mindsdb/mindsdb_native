@@ -1,3 +1,4 @@
+import string
 from collections import Counter, defaultdict
 
 import numpy as np
@@ -7,6 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import MiniBatchKMeans
 import imagehash
 from PIL import Image
+import flair
 
 from mindsdb_native.libs.helpers.general_helpers import get_value_bucket
 from mindsdb_native.libs.constants.mindsdb import *
@@ -280,6 +282,18 @@ class DataAnalyzer(BaseModule):
                     self.log.warning(x['warning'])
                 stats_v2[col_name]['nr_warnings'] += 1
             self.log.info(f'Finished analyzing column: {col_name} !\n')
+
+            if data_type == DATA_TYPES.TEXT:
+                nr_words_dist = Counter()
+                word_dist = Counter()
+                for text in col_data:
+                    sent = flair.data.Sentence(str(text))
+                    nr_words_dist[len(sent)] += 1
+                    for tok in sent:
+                        word = tok.text.strip(string.punctuation + '"\'«»')
+                        word_dist[word] += 1
+                stats_v2[col_name]['nr_words_dist'] = dict(nr_words_dist)
+                stats_v2[col_name]['words_dist'] = dict(word_dist)
 
         self.transaction.lmd['data_preparation']['accepted_margin_of_error'] = self.transaction.lmd['sample_settings']['sample_margin_of_error']
 

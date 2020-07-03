@@ -242,10 +242,8 @@ class TypeDeductor(BaseModule):
                     curr_data_type = DATA_TYPES.TEXT
 
                     nr_words = 0
-                    nr_words_dist = Counter()
                     word_dist = Counter()
                     for text, sent in zip(data, map(flair.data.Sentence, data)):
-                        nr_words_dist[len(sent)] += 1
                         nr_words += len(sent)
                         for tok in sent:
                             word = tok.text.strip(string.punctuation + '"\'«»')
