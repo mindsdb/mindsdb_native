@@ -287,7 +287,8 @@ class DataAnalyzer(BaseModule):
                 nr_words, word_dist, nr_words_dist = analyze_sentences(
                     map(str, col_data)
                 )
-                stats_v2[col_name]['words_dist'] = dict(word_dist)
+                stats_v2[col_name]['word_dist'] = dict(word_dist)
+                stats_v2[col_name]['nr_words_dist'] = dict(nr_words_dist)
 
         self.transaction.lmd['data_preparation']['accepted_margin_of_error'] = self.transaction.lmd['sample_settings']['sample_margin_of_error']
 
