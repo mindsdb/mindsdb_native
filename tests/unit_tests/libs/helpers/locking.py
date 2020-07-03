@@ -10,13 +10,12 @@ def func():
     raise ExceptionForTest('random exception')
 
 
-def test_locking():
-    for flags in ['shared', 'exclusive']:
-        lock = MDBLock(flags, 'name')
+def test_exclusive_lock():
+    lock = MDBLock('exclusive', 'name')
 
-        with pytest.raises(ExceptionForTest):
-            lock(func)()
+    with pytest.raises(ExceptionForTest):
+        lock(func)()
 
-        with pytest.raises(ExceptionForTest):
-            with lock:
-                func()
+    with pytest.raises(ExceptionForTest):
+        with lock:
+            func()
