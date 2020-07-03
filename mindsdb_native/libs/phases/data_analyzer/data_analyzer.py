@@ -287,6 +287,7 @@ class DataAnalyzer(BaseModule):
                 nr_words, word_dist, nr_words_dist = analyze_sentences(
                     map(str, col_data)
                 )
+                stats_v2[col_name]['avg_words_per_sentence'] = nr_words / len(col_data)
                 stats_v2[col_name]['word_dist'] = dict(word_dist)
                 stats_v2[col_name]['nr_words_dist'] = dict(nr_words_dist)
 
