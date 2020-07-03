@@ -39,7 +39,7 @@ def get_language_dist(data):
     except Exception:
         lang_dist = {'Unknown': len(data)}
 
-    return lang_dist
+    return dict(lang_dist)
 
 
 def analyze_sentences(data):
