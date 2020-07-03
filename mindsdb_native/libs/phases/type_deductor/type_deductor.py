@@ -4,6 +4,7 @@ import sndhdr
 from copy import deepcopy
 from collections import Counter, defaultdict
 from dateutil.parser import parse as parse_datetime
+from mindsdb_native.libs.helpers.text_helpers import analyze_sentences
 
 from mindsdb_native.libs.constants.mindsdb import (
     DATA_TYPES,
@@ -241,13 +242,9 @@ class TypeDeductor(BaseModule):
                 else:
                     curr_data_type = DATA_TYPES.TEXT
 
-                    nr_words = 0
-                    word_dist = Counter()
-                    for text, sent in zip(data, map(flair.data.Sentence, data)):
-                        nr_words += len(sent)
-                        for tok in sent:
-                            word = tok.text.strip(string.punctuation + '"\'«»')
-                            word_dist[word] += 1
+                    nr_words, word_dist, _, = analyze_sentences(
+                        map(str, data)
+                    )
 
                     if len(word_dist) > 500 and nr_words / len(data) > 5:
                         curr_data_subtype = DATA_SUBTYPES.RICH

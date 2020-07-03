@@ -10,9 +10,38 @@
 """
 
 from mindsdb_native.libs.constants.mindsdb import *
+from collections import Counter
+import string
 import json
 import hashlib
 import numpy
+import flair
+
+
+def analyze_sentences(data):
+    """
+    :param data: list of str
+    :returns: 
+    tuple(
+        int: nr words total,
+        tuple(
+            dict: word_dist
+            dict: nr_words_dist
+        )
+    )
+    """
+    nr_words = 0
+    word_dist = Counter()
+    nr_words_dist = Counter()
+    for text in data:
+        sent = flair.data.Sentence(str(text))
+        nr_words_dist[len(sent)] += 1
+        nr_words += len(sent)
+        for tok in sent:
+            word = tok.text.strip(string.punctuation + '"\'«»')
+            word_dist[word] += 1
+
+    return nr_words, word_dist, nr_words_dist
 
 
 def word_tokenize(string):
