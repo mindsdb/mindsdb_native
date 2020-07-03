@@ -281,10 +281,9 @@ class DataAnalyzer(BaseModule):
                     stats_v2[col_name]['bias']['warning'] = warning_str + " This doesn't necessarily mean there's an issue with your data, it just indicates a higher than usual probability there might be some issue."
 
             if data_type == DATA_TYPES.TEXT:
-                lang_dist = get_language_dist(map(str, col_data))
-                nr_words, word_dist, nr_words_dist = analyze_sentences(
-                    map(str, col_data)
-                )
+                lang_dist = get_language_dist(col_data)
+                nr_words, word_dist, nr_words_dist = analyze_sentences(col_data)
+
                 stats_v2[col_name]['avg_words_per_sentence'] = nr_words / len(col_data)
                 stats_v2[col_name]['word_dist'] = dict(word_dist)
                 stats_v2[col_name]['nr_words_dist'] = dict(nr_words_dist)

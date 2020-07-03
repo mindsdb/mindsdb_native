@@ -226,9 +226,7 @@ class TypeDeductor(BaseModule):
                 else:
                     curr_data_type = DATA_TYPES.TEXT
 
-                    nr_words, word_dist, _, = analyze_sentences(
-                        map(str, data)
-                    )
+                    nr_words, word_dist, _, = analyze_sentences(data)
 
                     if len(word_dist) > 500 and nr_words / len(data) > 5:
                         curr_data_subtype = DATA_SUBTYPES.RICH
