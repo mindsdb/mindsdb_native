@@ -16,28 +16,26 @@ import json
 import hashlib
 import numpy
 import flair
+import langdetect
+langdetect.DetectorFactory.seed = 0
 
 
 def get_language_dist(data):
     lang_dist = defaultdict(lambda: 0)
     lang_probs_cache = dict()
-    try:
-        # @TODO There's repeat code here, is transformation to `flair.data.Sentence` quick enough that we don't care ?
-        for text, sent in zip(data, map(flair.data.Sentence, data)):
-            if text not in lang_probs_cache:
-                try:
-                    lang_probs = langdetect.detect_langs(text)
-                except langdetect.lang_detect_exception.LangDetectException:
-                    lang_probs = []
-                lang_probs_cache[text] = lang_probs
+    for text in data:
+        if text not in lang_probs_cache:
+            try:
+                lang_probs = langdetect.detect_langs(text)
+            except langdetect.lang_detect_exception.LangDetectException:
+                lang_probs = []
+            lang_probs_cache[text] = lang_probs
 
-            lang_probs = lang_probs_cache[text]
-            if len(lang_probs) > 0 and lang_probs[0].prob > 0.90:
-                lang_dist[lang_probs[0].lang] += 1
-            else:
-                lang_dist['Unknown'] += 1
-    except Exception:
-        lang_dist = {'Unknown': len(data)}
+        lang_probs = lang_probs_cache[text]
+        if len(lang_probs) > 0 and lang_probs[0].prob > 0.90:
+            lang_dist[lang_probs[0].lang] += 1
+        else:
+            lang_dist['Unknown'] += 1
 
     return dict(lang_dist)
 

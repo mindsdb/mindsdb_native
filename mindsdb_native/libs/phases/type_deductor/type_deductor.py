@@ -23,8 +23,6 @@ from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 import flair
-import langdetect
-langdetect.DetectorFactory.seed = 0
 
 
 def get_file_subtype_if_exists(path):
