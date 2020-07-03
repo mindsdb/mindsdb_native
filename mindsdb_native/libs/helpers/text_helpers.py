@@ -22,6 +22,7 @@ langdetect.DetectorFactory.seed = 0
 
 def get_language_dist(data):
     lang_dist = defaultdict(lambda: 0)
+    lang_dist['Unknown'] = 0
     lang_probs_cache = dict()
     for text in data:
         if text not in lang_probs_cache:
