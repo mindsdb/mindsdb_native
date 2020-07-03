@@ -45,6 +45,8 @@ def get_language_dist(data):
 def analyze_sentences(data):
     """
     :param data: list of str
+
+    :returns: 
     tuple(
         int: nr words total,
         dict: word_dist,
