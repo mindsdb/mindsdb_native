@@ -1,34 +1,41 @@
 import os
-
+import sys
+import inspect
+import traceback
 import portalocker
-
 from mindsdb_native.config import CONFIG
 
 
-def learn_lock(name):
-    learn_lock_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH,f'{name}_learn.lock')
-    f = open(learn_lock_fn, 'a+')
-    portalocker.lock(f, portalocker.LOCK_EX+portalocker.LOCK_NB)
-    return f
+class MDBLock():
+    """Can be used in a with statement or as a decorator"""
 
-def predict_lock(name):
-    learn_lock_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH,f'{name}_learn.lock')
-    f = open(learn_lock_fn, 'a+')
-    portalocker.lock(f, portalocker.LOCK_SH+portalocker.LOCK_NB)
-    return f
+    def __init__(self, flags, name):
+        """
+        :param flags: "shared" or "exclusive"
+        :param name: str
+        """
+        if flags == 'shared':
+            flags = portalocker.LOCK_SH + portalocker.LOCK_NB
+        elif flags == 'exclusive':
+            flags = portalocker.LOCK_EX + portalocker.LOCK_NB
+        else:
+            raise ValueError('expected flags to be "shared" or "exclusive"')
 
-def delete_lock(name):
-    learn_lock(name)
-    delete_lock_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH,f'{name}_delete.lock')
-    f = open(delete_lock_fn, 'a+')
-    portalocker.lock(f, portalocker.LOCK_EX+portalocker.LOCK_NB)
-    return f
+        self._flags = flags
+        self._name = name
+        self._f = None
 
-def get_data_lock(name):
-    delete_lock_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH,f'{name}_delete.lock')
-    f = open(delete_lock_fn, 'a+')
-    portalocker.lock(f, portalocker.LOCK_SH+portalocker.LOCK_NB)
-    return f
+    def __call__(self, func):
+        def wrapper(*args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+        return wrapper
 
-def unlock(file):
-    portalocker.unlock(file)
+    def __enter__(self):
+        path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self._name)
+        self._f = open(path, 'a+')
+        portalocker.lock(self._f, self._flags)
+        return self._f
+
+    def __exit__(self, type, value, traceback):
+        portalocker.unlock(self._f)
