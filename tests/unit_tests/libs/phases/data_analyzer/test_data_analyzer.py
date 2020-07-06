@@ -129,7 +129,6 @@ class TestDataAnalyzer:
 
         assert stats_v2['numeric_int']['empty']['empty_percentage'] == 50
 
-
     def test_sample(self, transaction, lmd):
         lmd['sample_settings']['sample_for_analysis'] = True
         transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)

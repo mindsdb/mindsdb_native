@@ -4,6 +4,10 @@ import sndhdr
 from copy import deepcopy
 from collections import Counter, defaultdict
 from dateutil.parser import parse as parse_datetime
+from mindsdb_native.libs.helpers.text_helpers import (
+    analyze_sentences,
+    get_language_dist
+)
 
 from mindsdb_native.libs.constants.mindsdb import (
     DATA_TYPES,
@@ -19,8 +23,6 @@ from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 import flair
-import langdetect
-langdetect.DetectorFactory.seed = 0
 
 
 def get_file_subtype_if_exists(path):
@@ -210,26 +212,7 @@ class TypeDeductor(BaseModule):
             if self.transaction.lmd['handle_text_as_categorical']:
                 curr_data_type = DATA_TYPES.CATEGORICAL
             else:
-                lang_dist = defaultdict(lambda: 0)
-                lang_probs_cache = dict()
-
-                try:
-                    # @TODO There's repeat code here, is transformation to `flair.data.Sentence` quick enough that we don't care ?
-                    for text, sent in zip(data, map(flair.data.Sentence, data)):
-                        if text not in lang_probs_cache:
-                            try:
-                                lang_probs = langdetect.detect_langs(text)
-                            except langdetect.lang_detect_exception.LangDetectException:
-                                lang_probs = []
-                            lang_probs_cache[text] = lang_probs
-
-                        lang_probs = lang_probs_cache[text]
-                        if len(lang_probs) > 0 and lang_probs[0].prob > 0.90:
-                            lang_dist[lang_probs[0].lang] += 1
-                        else:
-                            lang_dist['Unknown'] += 1
-                except:
-                    lang_dist = {'Unknown': len(data)}
+                lang_dist = get_language_dist(data)
 
                 # Normalize lang probabilities
                 for lang in lang_dist:
@@ -241,15 +224,7 @@ class TypeDeductor(BaseModule):
                 else:
                     curr_data_type = DATA_TYPES.TEXT
 
-                    nr_words = 0
-                    nr_words_dist = Counter()
-                    word_dist = Counter()
-                    for text, sent in zip(data, map(flair.data.Sentence, data)):
-                        nr_words_dist[len(sent)] += 1
-                        nr_words += len(sent)
-                        for tok in sent:
-                            word = tok.text.strip(string.punctuation + '"\'«»')
-                            word_dist[word] += 1
+                    nr_words, word_dist, _, = analyze_sentences(data)
 
                     if len(word_dist) > 500 and nr_words / len(data) > 5:
                         curr_data_subtype = DATA_SUBTYPES.RICH

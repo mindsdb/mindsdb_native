@@ -1,3 +1,4 @@
+import string
 from collections import Counter, defaultdict
 
 import numpy as np
@@ -11,7 +12,12 @@ from PIL import Image
 from mindsdb_native.libs.helpers.general_helpers import get_value_bucket
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
-from mindsdb_native.libs.helpers.text_helpers import splitRecursive, clean_float
+from mindsdb_native.libs.helpers.text_helpers import (
+    splitRecursive,
+    clean_float,
+    analyze_sentences,
+    get_language_dist
+)
 
 
 def clean_int_and_date_data(col_data, log):
@@ -273,6 +279,15 @@ class DataAnalyzer(BaseModule):
                     else:
                         warning_str = "You may want to check if you see something suspicious on the right-hand-side graph."
                     stats_v2[col_name]['bias']['warning'] = warning_str + " This doesn't necessarily mean there's an issue with your data, it just indicates a higher than usual probability there might be some issue."
+
+            if data_type == DATA_TYPES.TEXT:
+                lang_dist = get_language_dist(col_data)
+                nr_words, word_dist, nr_words_dist = analyze_sentences(col_data)
+
+                stats_v2[col_name]['avg_words_per_sentence'] = nr_words / len(col_data)
+                stats_v2[col_name]['word_dist'] = dict(word_dist)
+                stats_v2[col_name]['nr_words_dist'] = dict(nr_words_dist)
+                stats_v2[col_name]['lang_dist'] = lang_dist
 
             stats_v2[col_name]['nr_warnings'] = 0
             for x in stats_v2[col_name].values():

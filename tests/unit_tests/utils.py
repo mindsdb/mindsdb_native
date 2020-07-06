@@ -6,8 +6,6 @@ from unittest import mock
 from math import log
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
-random.seed(0)
-
 test_column_types = {
     'numeric_int': (DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT),
     'numeric_float': (DATA_TYPES.NUMERIC, DATA_SUBTYPES.FLOAT),

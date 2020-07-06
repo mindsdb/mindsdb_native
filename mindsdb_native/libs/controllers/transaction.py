@@ -297,8 +297,8 @@ class Transaction:
                     input_confidence[predicted_col][nulled_col_name] = round(confidence_variation,3)
                     extra_insights[predicted_col]['if_missing'].append({nulled_col_name: nulled_out_predicted_value})
 
-            self.output_data.input_confidence = input_confidence
-            self.output_data.extra_insights = extra_insights
+            self.output_data._input_confidence = input_confidence
+            self.output_data._extra_insights = extra_insights
 
     def run(self):
         if self.lmd['type'] == TRANSACTION_BAD_QUERY:
