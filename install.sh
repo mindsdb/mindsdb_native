@@ -16,8 +16,8 @@ if [ "$mode" = "prod" ]; then
 fi
 
 if [ "$mode" = "dev" ]; then
-    pip3 uninstall mindsdb
-    pip3 uninstall mindsdb --user
+    pip3 uninstall mindsdb-native
+    pip3 uninstall mindsdb-native --user
     python3 setup.py develop --uninstall
     python3 setup.py develop
 fi
