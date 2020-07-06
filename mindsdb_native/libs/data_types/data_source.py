@@ -58,6 +58,9 @@ class DataSource:
         cols = [col if col not in self._col_map else self._col_map[col] for col in column_list]
         self._df = self._df.drop(columns=cols)
 
+    def __getstate__(self): return self.__dict__
+    def __setstate__(self, d): self.__dict__.update(d)
+
     def __getattr__(self, item):
         """
         Map all other functions to the DataFrame
@@ -65,7 +68,8 @@ class DataSource:
         :param item: the attribute to get
         :return: the dataframe attribute
         """
-
+        if item.startswith('__') and item.endswith('__'):
+            raise AttributeError
         return getattr(self._df, item)
 
 

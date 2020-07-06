@@ -51,7 +51,6 @@ class Transaction:
         # variables that can be persisted
 
         self.log = logger
-
         self.run()
 
     def load_metadata(self):
@@ -114,10 +113,13 @@ class Transaction:
         """
         Loads the module and runs it
         """
+        if self.lmd['breakpoint'] == module_name:
+            sys.exit(0)
 
         self.lmd['is_active'] = True
+        self.lmd['phase'] = module_name
         module_path = convert_cammelcase_to_snake_string(module_name)
-        module_full_path = 'mindsdb_native.libs.phases.{module_path}.{module_path}'.format(module_path=module_path)
+        module_full_path = f'mindsdb_native.libs.phases.{module_path}.{module_path}'
         try:
             main_module = importlib.import_module(module_full_path)
             module = getattr(main_module, module_name)
@@ -127,6 +129,7 @@ class Transaction:
             self.log.error(error)
             raise
         finally:
+            self.lmd['phase'] = module_name
             self.lmd['is_active'] = False
 
     def _execute_analyze(self):

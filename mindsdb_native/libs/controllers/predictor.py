@@ -67,6 +67,7 @@ class Predictor:
         self.name = name
         self.uuid = str(uuid.uuid1())
         self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid)
+        self.breakpoint = None
 
         if CONFIG.CHECK_FOR_UPDATES:
             check_for_updates()
@@ -228,7 +229,8 @@ class Predictor:
             force_categorical_encoding = unstable_parameters_dict.get('force_categorical_encoding', []),
             handle_foreign_keys = unstable_parameters_dict.get('handle_foreign_keys', False),
             handle_text_as_categorical = unstable_parameters_dict.get('handle_text_as_categorical', False),
-            use_selfaware_model = unstable_parameters_dict.get('use_selfaware_model', True)
+            use_selfaware_model = unstable_parameters_dict.get('use_selfaware_model', True),
+            breakpoint=self.breakpoint
         )
 
         if rebuild_model is False:
@@ -337,7 +339,8 @@ class Predictor:
             use_gpu = use_gpu,
             data_preparation = {},
             run_confidence_variation_analysis = run_confidence_variation_analysis,
-            force_disable_cache = unstable_parameters_dict.get('force_disable_cache', disable_lightwood_transform_cache)
+            force_disable_cache = unstable_parameters_dict.get('force_disable_cache', disable_lightwood_transform_cache),
+            breakpoint=self.breakpoint
         )
 
         transaction = Transaction(session=self,
