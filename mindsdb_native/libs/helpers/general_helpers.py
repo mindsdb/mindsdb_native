@@ -60,7 +60,7 @@ def check_for_updates():
 
     try:
         if 'version' in ret and ret['version'] != __version__:
-            log.warning("There is a new version of MindsDB {version}, please upgrade using:\npip3 install mindsdb-native --upgrade".format(version=ret['version']))
+            log.warning("There is a new version of MindsDB {version}, please upgrade using:\npip3 install mindsdb_native --upgrade".format(version=ret['version']))
         else:
             log.debug('MindsDB is up to date!')
     except Exception:
