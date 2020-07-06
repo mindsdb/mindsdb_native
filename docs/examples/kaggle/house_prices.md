@@ -34,7 +34,7 @@ from mindsdb_native import *
 mdb = MindsDB()
 
 # Here we use the model to make predictions (NOTE: You need to run train.py first)
-result = mdb.predict(predict='SalePrice', when={"MSSubClass": 20, "MSZoning": "Rh","LotFrontage":80,"LotArea":11622}, model_name='kaggle_house_sale')
+result = mdb.predict(predict='SalePrice', wehn_data={"MSSubClass": 20, "MSZoning": "Rh","LotFrontage":80,"LotArea":11622}, model_name='kaggle_house_sale')
 
 print(result)
 # you can now print the results

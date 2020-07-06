@@ -4,7 +4,7 @@ mdb = Predictor(name='real_estate_desc')
 
 # Here we use the model to make predictions (NOTE: You need to run train.py first)
 result = mdb.predict(
-    when={
+    wehn_data={
         "description": """A true gem
  rooms: 2
   bathrooms: 0
