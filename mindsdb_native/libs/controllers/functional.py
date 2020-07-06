@@ -55,7 +55,8 @@ def analyse_dataset(from_data, sample_settings=None, logger=log):
         force_categorical_encoding = [],
         handle_text_as_categorical = False,
         data_types = {},
-        data_subtypes = {}
+        data_subtypes = {},
+        breakpoint = None
     )
 
     tx = Transaction(
