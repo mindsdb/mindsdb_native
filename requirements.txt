@@ -17,3 +17,5 @@ imageio == 2.5.0
 python-dateutil<2.8.1,>=2.1
 pillow<7
 mysql-connector-python >= 8.0.20
+portalocker >= 1.7.0
+flair >= 0.5
