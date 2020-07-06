@@ -85,10 +85,9 @@ class Predictor:
     def learn(self,
               to_predict,
               from_data,
-              test_from_data=None,
-              group_by=None,
-              window_size=None,
-              order_by=None,
+              group_by=None,    # @TODO: Move this logic to datasource
+              window_size=None, # @TODO: Move this logic to datasource
+              order_by=None,    # @TODO: Move this logic to datasource
               ignore_columns=None,
               stop_training_in_x_seconds=None,
               backend='lightwood',
@@ -96,7 +95,7 @@ class Predictor:
               use_gpu=None,
               equal_accuracy_for_all_output_categories=True,
               output_categories_importance_dictionary=None,
-              unstable_parameters_dict=None,
+              advanced_args=None,
               sample_settings=None):
         """
         Learn to predict a column or columns from the data in 'from_data'
@@ -104,9 +103,6 @@ class Predictor:
         Mandatory arguments:
         :param to_predict: what column or columns you want to predict
         :param from_data: the data that you want to learn from, this can be either a file, a pandas data frame, or url or a mindsdb data source
-
-        Optional arguments:
-        :param test_from_data: If you would like to test this learning from a different data set
 
         Optional Time series arguments:
         :param order_by: this order by defines the time series, it can be a list. By default it sorts each sort by column in ascending manner, if you want to change this pass a touple ('column_name', 'boolean_for_ascending <default=true>')
@@ -148,12 +144,11 @@ class Predictor:
             # each element ('column_name', 'boolean_for_ascending <default=true>')
             order_by = [col_name if isinstance(col_name, tuple) else (col_name, True) for col_name in order_by]
 
-            if unstable_parameters_dict is None:
-                unstable_parameters_dict = {}
+            if advanced_args is None:
+                advanced_args = {}
 
             from_ds = getDS(from_data)
 
-            test_from_ds = None if test_from_data is None else getDS(test_from_data)
 
             transaction_type = TRANSACTION_LEARN
 
@@ -180,7 +175,6 @@ class Predictor:
             heavy_transaction_metadata = dict(
                 name=self.name,
                 from_data=from_ds,
-                test_from_data=test_from_ds,
                 predictions= None,
                 model_backend= backend,
                 sample_function=sample_function
@@ -219,13 +213,10 @@ class Predictor:
                 equal_accuracy_for_all_output_categories = equal_accuracy_for_all_output_categories,
                 output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
 
-                skip_model_training = unstable_parameters_dict.get('skip_model_training', False),
-                optimize_model = unstable_parameters_dict.get('optimize_model', False),
-                force_disable_cache = unstable_parameters_dict.get('force_disable_cache', disable_lightwood_transform_cache),
-                force_categorical_encoding = unstable_parameters_dict.get('force_categorical_encoding', []),
-                handle_foreign_keys = unstable_parameters_dict.get('handle_foreign_keys', False),
-                handle_text_as_categorical = unstable_parameters_dict.get('handle_text_as_categorical', False),
-                use_selfaware_model = unstable_parameters_dict.get('use_selfaware_model', True),
+                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
+                force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
+                handle_foreign_keys = advanced_args.get('handle_foreign_keys', True),
+                use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 breakpoint=self.breakpoint
             )
 
@@ -245,7 +236,7 @@ class Predictor:
                 for k in ['data_preparation', 'rebuild_model', 'data_source', 'type', 'columns_to_ignore', 'sample_margin_of_error', 'sample_confidence_level', 'stop_training_in_x_seconds']:
                     if old_lmd[k] is not None: light_transaction_metadata[k] = old_lmd[k]
 
-                for k in ['from_data', 'test_from_data']:
+                for k in ['from_data']:
                     if old_hmd[k] is not None: heavy_transaction_metadata[k] = old_hmd[k]
             Transaction(session=self,
                         light_transaction_metadata=light_transaction_metadata,
@@ -282,10 +273,9 @@ class Predictor:
             return accuracy_dict
 
     def predict(self,
-                when=None,
                 when_data=None,
                 use_gpu=None,
-                unstable_parameters_dict=None,
+                advanced_args=None,
                 backend=None,
                 run_confidence_variation_analysis=False):
         """
@@ -298,8 +288,8 @@ class Predictor:
         :return: TransactionOutputData object
         """
         with MDBLock('shared', 'learn_' + self.name):
-            if unstable_parameters_dict is None:
-                unstable_parameters_dict = {}
+            if advanced_args is None:
+                advanced_args = {}
 
             if run_confidence_variation_analysis is True and when_data is not None:
                 error_msg = 'run_confidence_variation_analysis=True is a valid option only when predicting a single data point via `when`'
@@ -307,10 +297,12 @@ class Predictor:
                 raise ValueError(error_msg)
 
             transaction_type = TRANSACTION_PREDICT
-            when_ds = None if when_data is None else getDS(when_data)
-
-            # lets turn into lists: when
-            when = [when] if isinstance(when, dict) else when if when is not None else []
+            if isinstance(when_data, dict):
+                when = [when_data]
+            elif isinstance(when_data, list):
+                when = when_data
+            else:
+                when_ds = None if when_data is None else getDS(when_data)
 
             disable_lightwood_transform_cache = False
             heavy_transaction_metadata = {}
@@ -331,7 +323,7 @@ class Predictor:
                 use_gpu = use_gpu,
                 data_preparation = {},
                 run_confidence_variation_analysis = run_confidence_variation_analysis,
-                force_disable_cache = unstable_parameters_dict.get('force_disable_cache', disable_lightwood_transform_cache),
+                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 breakpoint=self.breakpoint
             )
 

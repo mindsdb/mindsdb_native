@@ -18,7 +18,7 @@ from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
 from mindsdb_native.libs.helpers.locking import MDBLock
 
 
-def analyse_dataset(from_data, sample_settings=None, logger=log):
+def analyse_dataset(from_data, sample_settings=None):
     """
     Analyse the particular dataset being given
     """
@@ -53,7 +53,6 @@ def analyse_dataset(from_data, sample_settings=None, logger=log):
         empty_columns = [],
         handle_foreign_keys = True,
         force_categorical_encoding = [],
-        handle_text_as_categorical = False,
         data_types = {},
         data_subtypes = {},
         breakpoint = None
@@ -63,7 +62,7 @@ def analyse_dataset(from_data, sample_settings=None, logger=log):
         session=None,
         light_transaction_metadata=light_transaction_metadata,
         heavy_transaction_metadata=heavy_transaction_metadata,
-        logger=logger
+        logger=log
     )
 
     md = get_model_data(lmd=tx.lmd)
