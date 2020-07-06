@@ -15,15 +15,15 @@ def test_language_analysis():
         'de': ['führen', 'Stelle', 'heißen', 'konnten', 'schlimm', 'mögen', 'Nähe'],
     }
 
-    m = 7
-    n = 10
+    sent_size = 7
+    num_sents = 10
 
     for lang, words in WORDS.items():
-        sentences = [random.sample(words, m) for _ in range(n)]
+        sentences = [random.sample(words, sent_size) for _ in range(num_sents)]
 
         nr_words, word_dist, nr_words_dist = analyze_sentences(' '.join(sent) for sent in sentences)
 
-        assert nr_words == len(sentences * m)
+        assert nr_words == len(sentences * sent_size)
 
         word_dist_test = dict()
         nr_words_dist_test = dict()
@@ -44,7 +44,3 @@ def test_language_analysis():
         lang_dist = get_language_dist(' '.join(sent) for sent in sentences)
         assert lang_dist[lang] == len(sentences)
         assert 'Unknown' in lang_dist and lang_dist['Unknown'] == 0
-
-
-if __name__ == '__main__':
-    test_get_language_dist()
