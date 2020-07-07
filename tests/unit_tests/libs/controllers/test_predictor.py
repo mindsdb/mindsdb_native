@@ -179,7 +179,12 @@ class TestPredictor:
 
         model_data = F.get_model_data('test_drop_duplicates')
 
-        assert model_data
+        assert model_data['data_preparation']['total_row_count'] == n_points+1
+
+        # Duplicate row was not used for training
+        assert sum([model_data['data_preparation']['train_row_count'],
+                   model_data['data_preparation']['validation_row_count'],
+                   model_data['data_preparation']['test_row_count']]) == n_points
 
     @pytest.mark.slow
     def test_explain_prediction(self):

@@ -3,6 +3,7 @@ import datetime
 import math
 
 import pandas as pd
+import numpy as np
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
@@ -64,26 +65,25 @@ def _clean_float_or_none(val):
 
 
 class DataTransformer(BaseModule):
-    def remove_duplicate_rows(self, df):
-        initial_len = len(df)
-        df.drop_duplicates(inplace=True)
-        no_dropped = len(df) - initial_len
+    def remove_duplicate_rows_from_all_data(self, input_data):
+        duplicated = input_data.data_frame.duplicated(keep='first')
+        duplicate_idx = input_data.data_frame.index[duplicated]
+
+        input_data.data_frame.drop(duplicate_idx, inplace=True)
+        if input_data.train_idx is not None:
+            input_data.train_idx = np.array([i for i in input_data.train_idx if i not in duplicate_idx])
+            input_data.validation_idx = np.array([i for i in input_data.validation_idx if i not in duplicate_idx])
+            input_data.test_idx = np.array([i for i in input_data.test_idx if i not in duplicate_idx])
+
+        no_dropped = sum(duplicated)
         if no_dropped > 0:
             self.log.warning(f'Dropped {no_dropped} duplicate rows.')
 
-    def remove_duplicate_rows_from_all_data(self, input_data, transaction_type):
-        if input_data.data_frame is None:
-            self.remove_duplicate_rows(input_data.train_df)
-            self.remove_duplicate_rows(input_data.test_df)
-            self.remove_duplicate_rows(input_data.validation_df)
-        else:
-            self.remove_duplicate_rows(input_data.data_frame)
-
     def _apply_to_all_data(self, input_data, column, func, transaction_type):
         if transaction_type == TRANSACTION_LEARN:
-            input_data.train_df[column] = input_data.train_df[column].apply(func)
-            input_data.test_df[column] = input_data.test_df[column].apply(func)
-            input_data.validation_df[column] = input_data.validation_df[column].apply(func)
+            input_data.data_frame.loc[input_data.train_idx, column] = input_data.data_frame.loc[input_data.train_idx, column].apply(func)
+            input_data.data_frame.loc[input_data.validation_idx, column] = input_data.data_frame.loc[input_data.validation_idx, column].apply(func)
+            input_data.data_frame.loc[input_data.test_idx, column] = input_data.data_frame.loc[input_data.test_idx, column].apply(func)
 
             self.transaction.lmd['stats_v2'][column]['histogram']['x'] = [func(x) for x in self.transaction.lmd['stats_v2'][column]['histogram']['x']]
 
@@ -184,4 +184,22 @@ class DataTransformer(BaseModule):
                         if int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times)) > 0:
                             exec(f'{dfn} = {dfn}.append(valid_rows[0:int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times))])')
 
-        self.remove_duplicate_rows_from_all_data(input_data, transaction_type=transaction_type)
+        self.remove_duplicate_rows_from_all_data(input_data)
+
+        if self.transaction.input_data.train_idx is not None:
+            self.transaction.lmd['data_preparation']['test_row_count'] = len(self.transaction.input_data.test_df)
+            self.transaction.lmd['data_preparation']['train_row_count'] = len(self.transaction.input_data.train_df)
+            self.transaction.lmd['data_preparation']['validation_row_count'] = len(self.transaction.input_data.validation_df)
+
+            if self.transaction.lmd['type'] == TRANSACTION_LEARN:
+                data = {
+                    'subsets': [
+                        [len(self.transaction.input_data.train_df), 'Train'],
+                        [len(self.transaction.input_data.test_df), 'Test'],
+                        [len(self.transaction.input_data.validation_df), 'Validation']
+                    ],
+                    'label': 'Number of rows per subset'
+                }
+
+                self.log.info('We have split the input data into:')
+                self.log.infoChart(data, type='pie')
