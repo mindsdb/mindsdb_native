@@ -297,6 +297,9 @@ class Predictor:
                 raise ValueError(error_msg)
 
             transaction_type = TRANSACTION_PREDICT
+            when_ds = None
+            when = None
+            
             if isinstance(when_data, dict):
                 when = [when_data]
             elif isinstance(when_data, list):
