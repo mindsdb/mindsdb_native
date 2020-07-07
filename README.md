@@ -59,7 +59,7 @@ MindsDB is an Explainable AutoML framework for developers built on top of Pytorc
 * **Desktop**: You can use MindsDB on your own computer in under a minute, if you already have a python environment setup, just run the following command:
 
 ```bash
- pip install mindsdb --user
+ pip install mindsdb_native --user
 ```
 
 >Note: Python 64 bit version is required. Depending on your environment, you might have to use `pip3` instead of `pip` in the above command.*
