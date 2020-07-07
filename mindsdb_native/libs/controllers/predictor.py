@@ -274,7 +274,7 @@ class Predictor:
             return accuracy_dict
 
     def predict(self,
-                when_data=None,
+                when_data,
                 use_gpu=None,
                 advanced_args=None,
                 backend=None,
@@ -315,7 +315,7 @@ class Predictor:
             else:
                 heavy_transaction_metadata['when_data'] = when_ds
                 _, _, disable_lightwood_transform_cache = _get_memory_optimizations(when_ds.df)
-            heavy_transaction_metadata['model_when_conditions'] = when
+            heavy_transaction_metadata['when'] = when
             heavy_transaction_metadata['name'] = self.name
 
             if backend is not None:
