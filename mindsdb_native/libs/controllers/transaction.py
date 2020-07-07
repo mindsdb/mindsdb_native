@@ -47,6 +47,8 @@ class Transaction:
 
         tx_instance.run()
 
+        return tx_instance
+
     def __init__(self,
                  session,
                  light_transaction_metadata,
