@@ -28,9 +28,8 @@ services:
     ports:
       - 8123:8123
   mongodb:
-    image: 'mongo'
+    image: mongo:latest
     environment:
-      - MONGO_INITDB_DATABASE: database
       - MONGO_INITDB_ROOT_USERNAME: admin
       - MONGO_INITDB_ROOT_PASSWORD: 123
     ports:
