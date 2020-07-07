@@ -233,10 +233,12 @@ class LightwoodBackend():
 
         if mode == 'predict':
             df = self.transaction.input_data.data_frame
-        if mode == 'validate':
+        elif mode == 'validate':
             df = self.transaction.input_data.validation_df
         elif mode == 'test':
             df = self.transaction.input_data.test_df
+        elif mode == 'predict_on_train_data':
+            df = self.transaction.input_data.train_df
 
         if self.transaction.lmd['model_order_by'] is not None and len(self.transaction.lmd['model_order_by']) > 0:
             df = self._create_timeseries_df(df)

@@ -45,6 +45,28 @@ class ModelAnalyzer(BaseModule):
         self.transaction.lmd['accuracy_samples'] = {}
         self.transaction.hmd['probabilistic_validators'] = {}
 
+        predictions = self.transaction.model_backend.predict('predict_on_train_data', ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore'])
+        train_accuracy = evaluate_accuracy(predictions, self.transaction.input_data.train_df, self.transaction.lmd['stats_v2'], output_columns)
+
+        predictions = self.transaction.model_backend.predict('test', ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore'])
+        test_accuracy = evaluate_accuracy(predictions, self.transaction.input_data.test_df, self.transaction.lmd['stats_v2'], output_columns)
+
+        predictions = self.transaction.model_backend.predict('validate', ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore'])
+        validation_accuracy = evaluate_accuracy(predictions, self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
+
+        self.transaction.lmd['model_accuracy'] = {
+            'train': train_accuracy,
+            'test': test_accuracy,
+            'validation': validation_accuracy,
+        }
+
+        print(self.transaction.lmd)
+        exit('bye')
+
+        for col in ignorable_input_columns:
+            empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
+            empty_inpurt_accuracy[col] = evaluate_accuracy(empty_input_predictions[col], self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
+
         for col in output_columns:
             pval = ProbabilisticValidator(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
             predictions_arr = [normal_predictions] + [empty_input_predictions[col] for col in ignorable_input_columns]
@@ -60,3 +82,5 @@ class ModelAnalyzer(BaseModule):
 
         self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr)/len(overall_accuracy_arr)
 
+        print(self.transaction.lmd)
+        exit('bye')
