@@ -37,6 +37,7 @@ class Transaction:
         if tx_type in TYPE_TO_CLASS:
             tx_class = TYPE_TO_CLASS[tx_type]
         else:
+            tx_class = Transaction
             raise ValueError('unknown transaction type: {}'.format(tx_type))
         
         tx_instance = object.__new__(tx_class)
@@ -45,7 +46,8 @@ class Transaction:
                              heavy_transaction_metadata,
                              logger)
 
-        tx_instance.run()
+        if tx_type in TYPE_TO_CLASS:
+            tx_instance.run()
 
         return tx_instance
 
