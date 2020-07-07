@@ -6,10 +6,10 @@ from mindsdb_native.libs.data_sources.ms_sql_ds import MSSQLDS
 from mindsdb_native import F
 
 @pytest.mark.integration
-def test_mysql_ds():
-    HOST = '.'
+def test_mssql_ds():
+    HOST = 'localhost'
     USER = 'sa'
-    PASSWORD = ''
+    PASSWORD = '123'
     DATABASE = 'db'
     PORT = 1433
 
@@ -25,9 +25,9 @@ def test_mysql_ds():
     con.commit()
     con.close()
 
-    mysql_ds = MSSQLDS(table='test_mindsdb', host=HOST, user=USER,
+    mssql_ds = MSSQLDS(table='test_mindsdb', host=HOST, user=USER,
                        password=PASSWORD, database=DATABASE, port=PORT)
-    assert (len(mysql_ds._df) == 200)
+    assert (len(mssql_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
-    F.analyse_dataset(from_data=mysql_ds)
+    F.analyse_dataset(from_data=mssql_ds)

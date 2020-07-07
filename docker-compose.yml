@@ -27,3 +27,9 @@ services:
     image: yandex/clickhouse-server:20.1
     ports:
       - 8123:8123
+    version: "3"
+  mssql:
+    image: "mcr.microsoft.com/mssql/server"
+    environment:
+      SA_PASSWORD: "123"
+      ACCEPT_EULA: "Y"
