@@ -39,16 +39,7 @@ class Transaction:
         else:
             tx_class = Transaction
         
-        tx_instance = object.__new__(tx_class)
-        tx_instance.__init__(session,
-                             light_transaction_metadata,
-                             heavy_transaction_metadata,
-                             logger)
-
-        if tx_type in TYPE_TO_CLASS:
-            tx_instance.run()
-
-        return tx_instance
+        return object.__new__(tx_class)
 
     def __init__(self,
                  session,
@@ -78,6 +69,8 @@ class Transaction:
         # variables that can be persisted
 
         self.log = logger
+
+        self.run()
 
     def load_metadata(self):
         try:
@@ -159,7 +152,7 @@ class Transaction:
             self.lmd['is_active'] = False
 
     def run(self):
-        raise NotImplementedError
+        pass
 
 class LearnTransaction(Transaction):
     def _run(self):
