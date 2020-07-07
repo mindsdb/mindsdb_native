@@ -20,7 +20,6 @@ class TestDataAnalyzer:
     @pytest.fixture(scope='function')
     def lmd(self, transaction):
         lmd = transaction.lmd
-        lmd['handle_text_as_categorical'] = False
         lmd['stats_v2'] = {}
         lmd['empty_columns'] = []
         lmd['data_types'] = {}

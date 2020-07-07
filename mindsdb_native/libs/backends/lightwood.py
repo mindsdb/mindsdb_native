@@ -142,9 +142,6 @@ class LightwoodBackend():
             else:
                 config['output_features'].append(col_config)
 
-        if self.transaction.lmd['optimize_model']:
-            config['optimizer'] = lightwood.model_building.BasicAxOptimizer
-
         config['data_source'] = {}
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
 
@@ -200,27 +197,25 @@ class LightwoodBackend():
 
         lightwood_config = self._create_lightwood_config()
 
-        if self.transaction.lmd['skip_model_training'] == True:
-            self.predictor = lightwood.Predictor(load_from_path=os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_lightwood_data'))
+
+        self.predictor = lightwood.Predictor(lightwood_config)
+
+        # Evaluate less often for larger datasets and vice-versa
+        eval_every_x_epochs = int(round(1 * pow(10,6) * (1/len(train_df))))
+
+        # Within some limits
+        if eval_every_x_epochs > 200:
+            eval_every_x_epochs = 200
+        if eval_every_x_epochs < 3:
+            eval_every_x_epochs = 3
+
+        logging.getLogger().setLevel(logging.DEBUG)
+        if self.transaction.lmd['stop_training_in_x_seconds'] is None:
+            self.predictor.learn(from_data=train_df, test_data=test_df, callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
         else:
-            self.predictor = lightwood.Predictor(lightwood_config)
+            self.predictor.learn(from_data=train_df, test_data=test_df, stop_training_after_seconds=self.transaction.lmd['stop_training_in_x_seconds'], callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
 
-            # Evaluate less often for larger datasets and vice-versa
-            eval_every_x_epochs = int(round(1 * pow(10,6) * (1/len(train_df))))
-
-            # Within some limits
-            if eval_every_x_epochs > 200:
-                eval_every_x_epochs = 200
-            if eval_every_x_epochs < 3:
-                eval_every_x_epochs = 3
-
-            logging.getLogger().setLevel(logging.DEBUG)
-            if self.transaction.lmd['stop_training_in_x_seconds'] is None:
-                self.predictor.learn(from_data=train_df, test_data=test_df, callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
-            else:
-                self.predictor.learn(from_data=train_df, test_data=test_df, stop_training_after_seconds=self.transaction.lmd['stop_training_in_x_seconds'], callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
-
-            self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
+        self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
 
         self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_lightwood_data')
         self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
