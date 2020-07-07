@@ -1,24 +1,19 @@
 import platform
 import re
 import pickle
-import urllib
 import requests
 from pathlib import Path
 import uuid
 from contextlib import contextmanager
-import os, sys
-import functools
-import inspect
-import warnings
 
 from sklearn.metrics import balanced_accuracy_score
+import os
+import sys
 
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.constants.mindsdb import *
-import imagehash
-from PIL import Image
 
 
 def check_for_updates():
@@ -49,7 +44,7 @@ def check_for_updates():
     else:
         token = '{system}|{version}|{uid}'.format(system=platform.system(), version=__version__, uid=uuid_str)
         try:
-            open(mdb_file,'w').write(token)
+            open(mdb_file, 'w').write(token)
         except Exception:
             log.warning(f'Cannot store token, Please add write permissions to file: {mdb_file}')
             token = f'{token}.NO_WRITE'
@@ -59,19 +54,19 @@ def check_for_updates():
         ret = ret.json()
     except Exception as e:
         try:
-            log.warning(f'Got reponse: {ret} from update check server !')
+            log.warning(f'Got reponse: {ret} from update check server!')
         except Exception:
-            log.warning(f'Got no response from update check server !')
-        log.warning(f'Could not check for updates, got excetpion {e} !')
+            log.warning(f'Got no response from update check server!')
+        log.warning(f'Could not check for updates, got excetpion: {e}!')
         return
 
     try:
-        if 'version' in ret and ret['version']!= __version__:
-            log.warning("There is a new version of MindsDB {version}, please upgrade using:\npip3 uninstall mindsdb --upgrade".format(version=ret['version']))
+        if 'version' in ret and ret['version'] != __version__:
+            log.warning("There is a new version of MindsDB {version}, please upgrade using:\npip3 install mindsdb_native --upgrade".format(version=ret['version']))
         else:
             log.debug('MindsDB is up to date!')
     except Exception:
-        log.warning('could not check for MindsDB updates')
+        log.warning('Could not check for MindsDB updates')
 
 
 def convert_cammelcase_to_snake_string(cammel_string):
