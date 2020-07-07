@@ -10,7 +10,7 @@ from mindsdb_native import F
 def test_mongodb_ds():
 
     HOST = 'localhost'
-    USER = 'admin'
+    USER = 'root'
     PASSWORD = '123'
     DATABASE = 'database'
     COLLECTION_NAME = 'test_mindsdb'
