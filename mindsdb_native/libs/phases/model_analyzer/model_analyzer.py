@@ -60,10 +60,6 @@ class ModelAnalyzer(BaseModule):
             'validation': validation_accuracy,
         }
 
-        for col in ignorable_input_columns:
-            empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
-            empty_inpurt_accuracy[col] = evaluate_accuracy(empty_input_predictions[col], self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
-
         for col in output_columns:
             pval = ProbabilisticValidator(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
             predictions_arr = [normal_predictions] + [empty_input_predictions[col] for col in ignorable_input_columns]
