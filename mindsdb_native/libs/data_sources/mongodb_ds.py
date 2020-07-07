@@ -12,14 +12,14 @@ class MongoDS(DataSource):
         if query is None:
             query = f'SELECT * FROM {table}'
 
-        client = MongoClient(host=host, post=port, username=user,
-                             password=password, authSource=database,
-                             authMechanism='SCRAM-SHA-256')
+        conn = MongoClient(host=host, post=port, username=user,
+                           password=password, authSource=database,
+                           authMechanism='SCRAM-SHA-256')
+        
+        db = conn[database]
+        cursor = db[collection].find(query)
 
-        con = pg8000.connect(database=database, user=user, password=password,
-                             host=host, port=port)
-        df = pd.read_sql(query, con=con)
-        con.close()
+        df = pd.DataFrame(list(cursor))
 
         df.columns = [x.decode('utf-8') for x in df.columns]
         for col_name in df.columns:
