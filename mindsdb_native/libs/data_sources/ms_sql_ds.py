@@ -10,7 +10,7 @@ class MSSQLDS(DataSource):
         if query is None:
             query = f'SELECT * FROM {table}'
 
-        con = pymssql.connect(server=host, user=user,
+        con = pymssql.connect(server=host, user=user, port=port,
                               password=password, database=database)  
 
         df = pd.read_sql(query, con=con)
