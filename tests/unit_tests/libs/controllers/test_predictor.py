@@ -159,6 +159,28 @@ class TestPredictor:
 
         assert model_data['data_analysis_v2']['numeric_int']['empty']['empty_percentage'] == 50
 
+    def test_predictor_drop_duplicates(self):
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+        }, index=list(range(n_points)))
+        input_dataframe['y'] = input_dataframe['numeric_int'] + 1
+
+        # Add duplicate row
+        input_dataframe = input_dataframe.append(input_dataframe.iloc[99], ignore_index=True)
+
+        mdb = Predictor(name='test_drop_duplicates')
+        mdb.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False
+        )
+
+        model_data = F.get_model_data('test_drop_duplicates')
+
+        assert model_data
+
     @pytest.mark.slow
     def test_explain_prediction(self):
         mdb = Predictor(name='test_explain_prediction')

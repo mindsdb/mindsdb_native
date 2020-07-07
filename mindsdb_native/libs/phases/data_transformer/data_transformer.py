@@ -1,78 +1,89 @@
 from dateutil.parser import parse as parse_datetime
 import datetime
 import math
-import sys
 
 import pandas as pd
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.text_helpers import clean_float
-from mindsdb_native.libs.helpers.debugging import *
+
+
+def _handle_nan(x):
+    if x is not None and math.isnan(x):
+        return 0
+    else:
+        return x
+
+
+def _try_round(x):
+    try:
+        return round(x)
+    except Exception:
+        return None
+
+
+def _standardize_date(date_str):
+    try:
+        # will return a datetime object
+        date = parse_datetime(date_str)
+    except Exception:
+        try:
+            date = datetime.datetime.utcfromtimestamp(date_str)
+        except Exception:
+            return None
+    return date.strftime('%Y-%m-%d')
+
+
+def _standardize_datetime(date_str):
+    try:
+        # will return a datetime object
+        dt = parse_datetime(str(date_str))
+    except Exception:
+        try:
+            dt = datetime.datetime.utcfromtimestamp(date_str)
+        except Exception:
+            return None
+
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def _lightwood_datetime_processing(dt):
+    dt = pd.to_datetime(dt, errors='coerce')
+    try:
+        return dt.timestamp()
+    except Exception:
+        return None
+
+
+def _clean_float_or_none(val):
+    try:
+        return clean_float(val)
+    except Exception:
+        return None
 
 
 class DataTransformer(BaseModule):
+    def remove_duplicate_rows(self, df):
+        initial_len = len(df)
+        df.drop_duplicates(inplace=True)
+        no_dropped = len(df) - initial_len
+        if no_dropped > 0:
+            self.log.warning(f'Dropped {no_dropped} duplicate rows.')
 
-    @staticmethod
-    def _handle_nan(x):
-        if x is not None and math.isnan(x):
-            return 0
+    def remove_duplicate_rows_from_all_data(self, input_data, transaction_type):
+        if input_data.data_frame is None:
+            self.remove_duplicate_rows(input_data.train_df)
+            self.remove_duplicate_rows(input_data.test_df)
+            self.remove_duplicate_rows(input_data.validation_df)
         else:
-            return x
+            self.remove_duplicate_rows(input_data.data_frame)
 
-    @staticmethod
-    def _try_round(x):
-        try:
-            return round(x)
-        except:
-            return None
-
-    @staticmethod
-    def _standardize_date(date_str):
-        try:
-            # will return a datetime object
-            date = parse_datetime(date_str)
-        except:
-            try:
-                date = datetime.datetime.utcfromtimestamp(date_str)
-            except:
-                return None
-        return date.strftime('%Y-%m-%d')
-
-    @staticmethod
-    def _standardize_datetime(date_str):
-        try:
-            # will return a datetime object
-            dt = parse_datetime(str(date_str))
-        except:
-            try:
-                dt = datetime.datetime.utcfromtimestamp(date_str)
-            except:
-                return None
-
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
-
-    @staticmethod
-    def _lightwood_datetime_processing(dt):
-        dt = pd.to_datetime(dt, errors = 'coerce')
-        try:
-            return dt.timestamp()
-        except:
-            return None
-
-    @staticmethod
-    def clean_float_or_none(val):
-        try:
-            return clean_float(val)
-        except:
-            return None
-
-    def _aply_to_all_data(self, input_data, column, func, transaction_type):
+    def _apply_to_all_data(self, input_data, column, func, transaction_type):
         if transaction_type == TRANSACTION_LEARN:
             input_data.train_df[column] = input_data.train_df[column].apply(func)
             input_data.test_df[column] = input_data.test_df[column].apply(func)
             input_data.validation_df[column] = input_data.validation_df[column].apply(func)
-
 
             self.transaction.lmd['stats_v2'][column]['histogram']['x'] = [func(x) for x in self.transaction.lmd['stats_v2'][column]['histogram']['x']]
 
@@ -81,8 +92,8 @@ class DataTransformer(BaseModule):
         else:
             input_data.data_frame[column] = input_data.data_frame[column].apply(func)
 
-
     def run(self, input_data):
+        transaction_type = self.transaction.lmd['type']
         for column in input_data.columns:
             if column in self.transaction.lmd['columns_to_ignore'] or column not in self.transaction.lmd['stats_v2']:
                 continue
@@ -91,30 +102,30 @@ class DataTransformer(BaseModule):
             data_subtype = self.transaction.lmd['stats_v2'][column]['typing']['data_subtype']
 
             if data_type == DATA_TYPES.NUMERIC:
-                self._aply_to_all_data(input_data, column, self.clean_float_or_none, self.transaction.lmd['type'])
-                self._aply_to_all_data(input_data, column, self._handle_nan, self.transaction.lmd['type'])
+                self._apply_to_all_data(input_data, column, _clean_float_or_none, transaction_type)
+                self._apply_to_all_data(input_data, column, _handle_nan, transaction_type)
 
                 if data_subtype == DATA_SUBTYPES.INT:
-                    self._aply_to_all_data(input_data, column, DataTransformer._try_round, self.transaction.lmd['type'])
+                    self._apply_to_all_data(input_data, column, _try_round, transaction_type)
 
             if data_type == DATA_TYPES.DATE:
                 if data_subtype == DATA_SUBTYPES.DATE:
-                    self._aply_to_all_data(input_data, column, self._standardize_date, self.transaction.lmd['type'])
+                    self._apply_to_all_data(input_data, column, _standardize_date, transaction_type)
 
                 elif data_subtype == DATA_SUBTYPES.TIMESTAMP:
-                    self._aply_to_all_data(input_data, column, self._standardize_datetime, self.transaction.lmd['type'])
+                    self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type)
 
             if data_type == DATA_TYPES.CATEGORICAL:
-                self._aply_to_all_data(input_data, column, str, self.transaction.lmd['type'])
+                self._apply_to_all_data(input_data, column, str, transaction_type)
 
             if data_type == DATA_TYPES.TEXT:
-                self._aply_to_all_data(input_data, column, str, self.transaction.lmd['type'])
+                self._apply_to_all_data(input_data, column, str, transaction_type)
 
             if self.transaction.hmd['model_backend'] == 'lightwood':
                 if data_type == DATA_TYPES.DATE:
-                    self._aply_to_all_data(input_data, column, self._standardize_datetime, self.transaction.lmd['type'])
-                    self._aply_to_all_data(input_data, column, self._lightwood_datetime_processing, self.transaction.lmd['type'])
-                    self._aply_to_all_data(input_data, column, self._handle_nan, self.transaction.lmd['type'])
+                    self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type)
+                    self._apply_to_all_data(input_data, column, _lightwood_datetime_processing, transaction_type)
+                    self._apply_to_all_data(input_data, column, _handle_nan, transaction_type)
 
         # Initialize this here, will be overwritten if `equal_accuracy_for_all_output_categories` is specified to be True in order to account for it
         self.transaction.lmd['weight_map'] = self.transaction.lmd['output_categories_importance_dictionary']
@@ -172,3 +183,5 @@ class DataTransformer(BaseModule):
 
                         if int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times)) > 0:
                             exec(f'{dfn} = {dfn}.append(valid_rows[0:int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times))])')
+
+        self.remove_duplicate_rows_from_all_data(input_data, transaction_type=transaction_type)
