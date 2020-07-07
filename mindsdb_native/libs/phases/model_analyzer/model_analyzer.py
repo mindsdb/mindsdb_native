@@ -45,41 +45,48 @@ class ModelAnalyzer(BaseModule):
         self.transaction.lmd['accuracy_samples'] = {}
         self.transaction.hmd['probabilistic_validators'] = {}
 
-        # Training data accuracy
-        predictions = self.transaction.model_backend.predict(
-            'predict_on_train_data',
-            ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
-        )
-        self.transaction.lmd['train_accuracy'] = evaluate_accuracy(
-            predictions,
-            self.transaction.input_data.train_df,
-            self.transaction.lmd['stats_v2'],
-            output_columns
-        )
 
-        # Testing data accuracy
-        predictions = self.transaction.model_backend.predict(
-            'test',
-            ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
-        )
-        self.transaction.lmd['test_accuracy'] = evaluate_accuracy(
-            predictions,
-            self.transaction.input_data.test_df,
-            self.transaction.lmd['stats_v2'],
-            output_columns
-        )
+        self.transaction.lmd['train_accuracy'] = {}
+        self.transaction.lmd['test_accuracy'] = {}
+        self.transaction.lmd['valid_accuracy'] = {}
 
-        # Validation data accuracy
-        predictions = self.transaction.model_backend.predict(
-            'validate',
-            ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
-        )
-        self.transaction.lmd['valid_accuracy'] = evaluate_accuracy(
-            predictions,
-            self.transaction.input_data.validation_df,
-            self.transaction.lmd['stats_v2'],
-            output_columns
-        )
+        for col in output_columns:
+
+            # Training data accuracy
+            predictions = self.transaction.model_backend.predict(
+                'predict_on_train_data',
+                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
+            )
+            self.transaction.lmd['train_accuracy'][col] = evaluate_accuracy(
+                predictions,
+                self.transaction.input_data.train_df,
+                self.transaction.lmd['stats_v2'],
+                [col]
+            )
+
+            # Testing data accuracy
+            predictions = self.transaction.model_backend.predict(
+                'test',
+                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
+            )
+            self.transaction.lmd['test_accuracy'][col] = evaluate_accuracy(
+                predictions,
+                self.transaction.input_data.test_df,
+                self.transaction.lmd['stats_v2'],
+                [col]
+            )
+
+            # Validation data accuracy
+            predictions = self.transaction.model_backend.predict(
+                'validate',
+                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
+            )
+            self.transaction.lmd['valid_accuracy'][col] = evaluate_accuracy(
+                predictions,
+                self.transaction.input_data.validation_df,
+                self.transaction.lmd['stats_v2'],
+                [col]
+            )
 
         for col in output_columns:
             pval = ProbabilisticValidator(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
