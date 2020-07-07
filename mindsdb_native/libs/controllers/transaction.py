@@ -19,6 +19,33 @@ import pandas as pd
 
 
 class Transaction:
+    def __new__(cls,
+                session,
+                light_transaction_metadata,
+                heavy_transaction_metadata,
+                logger=log):
+
+        TYPE_TO_CLASS = {
+            TRANSACTION_BAD_QUERY: BadTransaction,
+            TRANSACTION_LEARN: LearnTransaction,
+            TRANSACTION_ANALYSE: AnalyseTransaction,
+            TRANSACTION_PREDICT: PredictTransaction
+        }
+
+        tx_type = light_transaction_metadata['type']
+
+        if tx_type in TYPE_TO_CLASS:
+            tx_class = TYPE_TO_CLASS[tx_type]
+        else:
+            raise ValueError('unknown transaction type: {}'.format(tx_type))
+        
+        tx_instance = object.__new__(tx_class)
+        tx_instance.__init__(session,
+                             light_transaction_metadata,
+                             heavy_transaction_metadata,
+                             logger)
+
+        tx_instance.run()
 
     def __init__(self,
                  session,
@@ -29,11 +56,8 @@ class Transaction:
         A transaction is the interface to start some MindsDB operation within a session
 
         :param session:
-        :type session: utils.controllers.session_controller.SessionController
-        :param transaction_type:
-        :param transaction_metadata:
-        :type transaction_metadata: dict
-        :type heavy_transaction_metadata: dict
+        :param transaction_metadata: dict
+        :param heavy_transaction_metadata: dict
         """
 
         self.session = session
@@ -132,17 +156,9 @@ class Transaction:
             self.lmd['phase'] = module_name
             self.lmd['is_active'] = False
 
-    def _execute_analyze(self):
-        self._call_phase_module(module_name='DataExtractor')
-        self._call_phase_module(module_name='DataCleaner', stage=0)
-        self._call_phase_module(module_name='TypeDeductor', input_data=self.input_data)
-        self._call_phase_module(module_name='DataAnalyzer', input_data=self.input_data)
-        self.lmd['current_phase'] = MODEL_STATUS_DONE
 
-    def _execute_learn(self):
-        """
-        :return:
-        """
+class LearnTransaction(Transaction):
+    def _run(self):
         try:
             self.lmd['current_phase'] = MODEL_STATUS_PREPARING
             self.save_metadata()
@@ -187,7 +203,24 @@ class Transaction:
             self.log.error(str(e))
             raise e
 
-    def _execute_predict(self):
+    def run(self):
+        if CONFIG.EXEC_LEARN_IN_THREAD == False:
+            self._run()
+        else:
+            _thread.start_new_thread(self._run(), ())
+
+
+class AnalyseTransaction(Transaction):
+    def run(self):
+        self._call_phase_module(module_name='DataExtractor')
+        self._call_phase_module(module_name='DataCleaner', stage=0)
+        self._call_phase_module(module_name='TypeDeductor', input_data=self.input_data)
+        self._call_phase_module(module_name='DataAnalyzer', input_data=self.input_data)
+        self.lmd['current_phase'] = MODEL_STATUS_DONE
+
+
+class PredictTransaction(Transaction):
+    def run(self):
         old_lmd = {}
         for k in self.lmd: old_lmd[k] = self.lmd[k]
 
@@ -300,21 +333,8 @@ class Transaction:
             self.output_data._input_confidence = input_confidence
             self.output_data._extra_insights = extra_insights
 
+
+class BadTransaction(Transaction):
     def run(self):
-        if self.lmd['type'] == TRANSACTION_BAD_QUERY:
-            self.log.error(self.errorMsg)
-            self.error = True
-            return
-
-        if self.lmd['type'] == TRANSACTION_LEARN:
-            if CONFIG.EXEC_LEARN_IN_THREAD == False:
-                self._execute_learn()
-            else:
-                _thread.start_new_thread(self._execute_learn, ())
-            return
-
-        if self.lmd['type'] == TRANSACTION_ANALYSE:
-            self._execute_analyze()
-
-        elif self.lmd['type'] == TRANSACTION_PREDICT:
-            self._execute_predict()
+        logger.error(self.errorMsg)
+        self.error = True
