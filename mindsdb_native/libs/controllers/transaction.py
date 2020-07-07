@@ -75,7 +75,6 @@ class Transaction:
         # variables that can be persisted
 
         self.log = logger
-        self.run()
 
     def load_metadata(self):
         try:
