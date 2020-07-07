@@ -156,6 +156,8 @@ class Transaction:
             self.lmd['phase'] = module_name
             self.lmd['is_active'] = False
 
+    def run(self):
+        raise NotImplementedError
 
 class LearnTransaction(Transaction):
     def _run(self):
