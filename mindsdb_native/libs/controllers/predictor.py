@@ -236,8 +236,9 @@ class Predictor:
                 for k in ['data_preparation', 'rebuild_model', 'data_source', 'type', 'columns_to_ignore', 'sample_margin_of_error', 'sample_confidence_level', 'stop_training_in_x_seconds']:
                     if old_lmd[k] is not None: light_transaction_metadata[k] = old_lmd[k]
 
-                for k in ['from_data']:
-                    if old_hmd[k] is not None: heavy_transaction_metadata[k] = old_hmd[k]
+                if old_hmd['from_data'] is not None:     
+                    heavy_transaction_metadata['from_data'] = old_hmd['from_data']
+                    
             Transaction(session=self,
                         light_transaction_metadata=light_transaction_metadata,
                         heavy_transaction_metadata=heavy_transaction_metadata,
