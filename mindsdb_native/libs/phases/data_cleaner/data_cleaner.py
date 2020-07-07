@@ -15,11 +15,17 @@ class DataCleaner(BaseModule):
     def remove_missing_targets(self, df):
         initial_len = len(df)
         df.dropna(subset=self.transaction.lmd['predict_columns'], inplace=True)
-        no_dropped = len(df) - initial_len
+        no_dropped = initial_len - len(df)
         if no_dropped > 0:
             self.log.warning(
                 f'Dropped {no_dropped} rows because they had null values in one or more of the columns that we are trying to predict. Please always provide non-null values in the columns you want to predict !')
-        return df
+
+    def remove_duplicate_rows(self, df):
+        initial_len = len(df)
+        df.drop_duplicates(inplace=True)
+        no_dropped = initial_len - len(df)
+        if no_dropped > 0:
+            self.log.warning(f'Dropped {no_dropped} duplicate rows.')
 
     def run(self):
         df = self.transaction.input_data.data_frame
@@ -29,6 +35,7 @@ class DataCleaner(BaseModule):
         self.transaction.lmd['columns_to_ignore'] += empty_columns
         df.drop(columns=self.transaction.lmd['columns_to_ignore'], inplace=True)
 
-        df = self.remove_missing_targets(df)
+        self.remove_missing_targets(df)
+        self.remove_duplicate_rows(df)
 
         self.transaction.input_data.data_frame = df

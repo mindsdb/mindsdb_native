@@ -152,6 +152,7 @@ class TestPredictor:
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
+            'numeric_int2': list(range(n_points)),
         }, index=list(range(n_points)))
         input_dataframe['numeric_int'].iloc[::2] = None
 
@@ -179,9 +180,12 @@ class TestPredictor:
 
         model_data = F.get_model_data('test_drop_duplicates')
 
-        assert model_data['data_preparation']['total_row_count'] == n_points+1
+        # Ensure duplicate row was not used for training
 
-        # Duplicate row was not used for training
+        assert model_data['data_preparation']['total_row_count'] == n_points
+        assert model_data['data_preparation']['used_row_count'] <= n_points
+
+
         assert sum([model_data['data_preparation']['train_row_count'],
                    model_data['data_preparation']['validation_row_count'],
                    model_data['data_preparation']['test_row_count']]) == n_points

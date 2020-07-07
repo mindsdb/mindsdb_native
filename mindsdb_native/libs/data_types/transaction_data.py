@@ -1,4 +1,3 @@
-from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class TransactionData:
@@ -8,21 +7,9 @@ class TransactionData:
 
         self._sample_df = None
 
-        self.train_idx = None
-        self.validation_idx = None
-        self.test_idx = None
-
-    @property
-    def train_df(self):
-        return self.data_frame.loc[self.train_idx]
-
-    @property
-    def test_df(self):
-        return self.data_frame.loc[self.test_idx]
-
-    @property
-    def validation_df(self):
-        return self.data_frame.loc[self.validation_idx]
+        self.train_df = None
+        self.validation_df = None
+        self.test_df = None
 
     def sample_df(self,
                   sample_function,
