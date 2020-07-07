@@ -38,7 +38,6 @@ class Transaction:
             tx_class = TYPE_TO_CLASS[tx_type]
         else:
             tx_class = Transaction
-            raise ValueError('unknown transaction type: {}'.format(tx_type))
         
         tx_instance = object.__new__(tx_class)
         tx_instance.__init__(session,
