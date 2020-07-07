@@ -64,24 +64,6 @@ def _clean_float_or_none(val):
 
 
 class DataTransformer(BaseModule):
-    def remove_duplicate_rows_from_all_data(self, input_data):
-        duplicated = input_data.data_frame.duplicated(keep='first')
-        duplicate_idx = input_data.data_frame.index[duplicated]
-
-        input_data.data_frame.drop(duplicate_idx, inplace=True)
-        if input_data.train_df is None:
-            duplicated = input_data.data_frame.duplicated(keep='first')
-            duplicate_idx = input_data.data_frame.index[duplicated]
-            input_data.data_frame.drop(duplicate_idx, inplace=True)
-        else:
-            input_data.train_df.drop(duplicate_idx, inplace=True)
-            input_data.validation_df.drop(duplicate_idx, inplace=True)
-            input_data.test_df.drop(duplicate_idx, inplace=True)
-
-        no_dropped = sum(duplicated)
-        if no_dropped > 0:
-            self.log.warning(f'Dropped {no_dropped} duplicate rows.')
-
     def _apply_to_all_data(self, input_data, column, func, transaction_type):
         if transaction_type == TRANSACTION_LEARN:
             input_data.train_df[column] = input_data.train_df[column].apply(func)
