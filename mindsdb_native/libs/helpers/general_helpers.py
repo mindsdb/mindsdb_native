@@ -143,7 +143,7 @@ def evaluate_regression_accuracy(column, predictions, true_values):
     for true, interval in zip(true_values, pred_confidence_intervals):
         if true >= interval[0] and true <= interval[1]:
             within_interval += 1
-    return within_interval/len(true_values) if true_values else 0
+    return within_interval/len(true_values)
 
 
 def evaluate_classification_accuracy(column, predictions, true_values):
