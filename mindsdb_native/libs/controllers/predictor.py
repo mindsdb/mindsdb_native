@@ -283,8 +283,7 @@ class Predictor:
         """
         You have a mind trained already and you want to make a prediction
 
-        :param when: use this if you have certain conditions for a single prediction
-        :param when_data: use this when you have data in either a file, a pandas data frame, or url to a file that you want to predict from
+        :param when_data: python dict, file path, a pandas data frame, or url to a file that you want to predict from
         :param run_confidence_variation_analysis: Run a confidence variation analysis on each of the given input column, currently only works when making single predictions via `when`
 
         :return: TransactionOutputData object
@@ -293,6 +292,14 @@ class Predictor:
             if advanced_args is None:
                 advanced_args = {}
 
+<<<<<<< HEAD
+=======
+            if run_confidence_variation_analysis is True and isinstance(when_data, list) and len(when_data) > 1:
+                error_msg = 'run_confidence_variation_analysis=True is a valid option only when predicting a single data point'
+                self.log.error(error_msg)
+                raise ValueError(error_msg)
+
+>>>>>>> 74254d267fb9e6698f7eebd6f164abfa2994d84d
             transaction_type = TRANSACTION_PREDICT
             when_ds = None
             when = None

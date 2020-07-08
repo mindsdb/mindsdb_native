@@ -16,8 +16,8 @@ class ClickhouseDS(DataSource):
             log.error(err_msg)
             raise Exception(err_msg)
         
-        query = f'{query.rstrip(" ;")} FORMAT JSON'
-        log.info(f'Getting data via the query: "{query}""')
+        query = '{} FORMAT JSON'.format(query.rstrip(" ;\n"))
+        log.info(f'Getting data via the query: "{query}"')
 
         params = {'user': user}
         if password is not None:
