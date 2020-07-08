@@ -5,6 +5,8 @@ import requests
 from pathlib import Path
 import uuid
 from contextlib import contextmanager
+
+from sklearn.metrics import balanced_accuracy_score, accuracy_score
 import os
 import sys
 
@@ -134,30 +136,44 @@ def get_value_bucket(value, buckets, col_stats, hmd=None):
     return bucket
 
 
-def evaluate_accuracy(predictions, full_dataset, col_stats, output_columns, hmd=None):
-    score = 0
-    for output_column in output_columns:
-        cummulative_scores = 0
-        if 'percentage_buckets' in col_stats[output_column]:
-            buckets = col_stats[output_column]['percentage_buckets']
+def evaluate_regression_accuracy(column, predictions, true_values):
+    pred_confidence_intervals = predictions[f'{column}_confidence_range']
+
+    within_interval = 0
+    for true, interval in zip(true_values, pred_confidence_intervals):
+        if true >= interval[0] and true <= interval[1]:
+            within_interval += 1
+    return within_interval/len(true_values)
+
+
+def evaluate_classification_accuracy(column, predictions, true_values):
+    pred_values = predictions[column]
+    return balanced_accuracy_score(true_values, pred_values)
+
+
+def evaluate_generic_accuracy(column, predictions, true_values):
+    pred_values = predictions[column]
+    return accuracy_score(true_values, pred_values)
+
+
+def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, hmd=None):
+    column_scores = []
+    for column in output_columns:
+        col_type = col_stats[column]['typing']['data_type']
+        if col_type == DATA_TYPES.NUMERIC:
+            evaluator = evaluate_regression_accuracy
+        elif col_type == DATA_TYPES.CATEGORICAL:
+            evaluator = evaluate_classification_accuracy
         else:
-            buckets = None
+            evaluator = evaluate_generic_accuracy
+        column_score = evaluator(column, predictions, data_frame[column])
+        column_scores.append(column_score)
 
-        i = 0
-        for real_value in full_dataset[output_column]:
-            pred_val_bucket = get_value_bucket(predictions[output_column][i], buckets, col_stats[output_column], hmd)
-            if pred_val_bucket is None:
-                if predictions[output_column][i] == real_value:
-                    cummulative_scores += 1
-            elif pred_val_bucket == get_value_bucket(real_value, buckets, col_stats[output_column], hmd):
-                cummulative_scores += 1
-            i += 1
-
-        score += cummulative_scores/len(predictions[output_column])
-    score = score/len(output_columns)
+    score = sum(column_scores)/len(column_scores) if column_scores else 0.
     if score == 0:
         score = 0.00000001
     return score
+
 
 class suppress_stdout_stderr(object):
     def __init__(self):
