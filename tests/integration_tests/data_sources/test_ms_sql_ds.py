@@ -5,11 +5,12 @@ from mindsdb_native import Predictor
 from mindsdb_native.libs.data_sources.ms_sql_ds import MSSQLDS
 from mindsdb_native import F
 
+
 @pytest.mark.integration
 def test_mssql_ds():
     HOST = 'localhost'
     USER = 'sa'
-    PASSWORD = '123'
+    PASSWORD = '123ABCdef'
     DATABASE = 'db'
     PORT = 1433
 
