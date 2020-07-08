@@ -8,7 +8,9 @@ from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.config import CONFIG
-from mindsdb_native.libs.controllers.transaction import Transaction
+from mindsdb_native.libs.controllers.transaction import (
+    LearnTransaction, PredictTransaction
+)
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates
 from mindsdb_native.libs.helpers.locking import MDBLock
@@ -240,7 +242,7 @@ class Predictor:
                 if old_hmd['from_data'] is not None:     
                     heavy_transaction_metadata['from_data'] = old_hmd['from_data']
                     
-            Transaction(session=self,
+            LearnTransaction(session=self,
                         light_transaction_metadata=light_transaction_metadata,
                         heavy_transaction_metadata=heavy_transaction_metadata,
                         logger=self.log)
@@ -331,7 +333,7 @@ class Predictor:
                 breakpoint=self.breakpoint
             )
 
-            transaction = Transaction(session=self,
+            transaction = PredictTransaction(session=self,
                                     light_transaction_metadata=light_transaction_metadata,
                                     heavy_transaction_metadata=heavy_transaction_metadata)
             return transaction.output_data
