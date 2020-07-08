@@ -10,7 +10,7 @@ from mindsdb_native import F
 def test_mssql_ds():
     HOST = 'localhost'
     USER = 'sa'
-    PASSWORD = '123ABCdef'
+    PASSWORD = '123ABCdef@!'
     DATABASE = 'db'
     PORT = 1433
 
