@@ -11,7 +11,7 @@ def test_mssql_ds():
     HOST = 'localhost'
     USER = 'sa'
     PASSWORD = '123ABCdef@!'
-    DATABASE = 'db'
+    DATABASE = 'master'
     PORT = 1433
 
     con = pymssql.connect(server=HOST, user=USER, port=PORT,
