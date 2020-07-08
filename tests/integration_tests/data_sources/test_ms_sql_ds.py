@@ -1,8 +1,8 @@
 import pytest
-import pymssql
+import pyodbc
 import logging
 from mindsdb_native import Predictor
-from mindsdb_native.libs.data_sources.ms_sql_ds import MSSQLDS
+from mindsdb_native.libs.data_sources.ms_sql_ds import MSSQLDS, mssql_connect
 from mindsdb_native import F
 
 
@@ -14,8 +14,7 @@ def test_mssql_ds():
     DATABASE = 'master'
     PORT = 1433
 
-    con = pymssql.connect(server=HOST, user=USER, port=PORT,
-                          password=PASSWORD, database=DATABASE)  
+    con = mssql_connect(host=HOST, port=PORT, user=USER, password=PASSWORD, database=DATABASE)
 
     cur = con.cursor()
 
