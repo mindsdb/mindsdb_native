@@ -154,6 +154,7 @@ class Transaction:
     def run(self):
         pass
 
+
 class LearnTransaction(Transaction):
     def _run(self):
         try:
@@ -163,7 +164,7 @@ class LearnTransaction(Transaction):
             self._call_phase_module(module_name='DataExtractor')
             self.save_metadata()
 
-            self._call_phase_module(module_name='DataCleaner', stage=0)
+            self._call_phase_module(module_name='DataCleaner')
             self.save_metadata()
 
             self._call_phase_module(module_name='TypeDeductor',
@@ -175,7 +176,7 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
-            self._call_phase_module(module_name='DataCleaner', stage=0)
+            self._call_phase_module(module_name='DataCleaner')
             self.save_metadata()
 
             self._call_phase_module(module_name='DataSplitter')
@@ -210,7 +211,7 @@ class LearnTransaction(Transaction):
 class AnalyseTransaction(Transaction):
     def run(self):
         self._call_phase_module(module_name='DataExtractor')
-        self._call_phase_module(module_name='DataCleaner', stage=0)
+        self._call_phase_module(module_name='DataCleaner')
         self._call_phase_module(module_name='TypeDeductor', input_data=self.input_data)
         self._call_phase_module(module_name='DataAnalyzer', input_data=self.input_data)
         self.lmd['current_phase'] = MODEL_STATUS_DONE
@@ -333,5 +334,5 @@ class PredictTransaction(Transaction):
 
 class BadTransaction(Transaction):
     def run(self):
-        logger.error(self.errorMsg)
+        self.log.error(self.errorMsg)
         self.error = True
