@@ -1,4 +1,3 @@
-from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class TransactionData:

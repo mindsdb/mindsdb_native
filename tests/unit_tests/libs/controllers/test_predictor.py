@@ -152,12 +152,67 @@ class TestPredictor:
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
+            'numeric_int2': list(range(n_points)),
         }, index=list(range(n_points)))
         input_dataframe['numeric_int'].iloc[::2] = None
 
         model_data = F.analyse_dataset(from_data=input_dataframe)
 
         assert model_data['data_analysis_v2']['numeric_int']['empty']['empty_percentage'] == 50
+
+    def test_predictor_deduplicate_data(self):
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+        }, index=list(range(n_points)))
+        input_dataframe['y'] = input_dataframe['numeric_int'] + 1
+
+        # Add duplicate row
+        input_dataframe = input_dataframe.append(input_dataframe.iloc[99], ignore_index=True)
+
+        mdb = Predictor(name='test_drop_duplicates')
+        mdb.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False
+        )
+
+        model_data = F.get_model_data('test_drop_duplicates')
+
+        # Ensure duplicate row was not used for training
+
+        assert model_data['data_preparation']['total_row_count'] == n_points
+        assert model_data['data_preparation']['used_row_count'] <= n_points
+
+
+        assert sum([model_data['data_preparation']['train_row_count'],
+                   model_data['data_preparation']['validation_row_count'],
+                   model_data['data_preparation']['test_row_count']]) == n_points
+
+
+        # Disable deduplication and ensure the duplicate row is used
+        mdb = Predictor(name='test_drop_duplicates')
+        mdb.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False,
+            advanced_args={
+                'deduplicate_data': False
+            }
+        )
+
+        model_data = F.get_model_data('test_drop_duplicates')
+
+        # Ensure duplicate row was not used for training
+
+        assert model_data['data_preparation']['total_row_count'] == n_points+1
+        assert model_data['data_preparation']['used_row_count'] <= n_points+1
+
+        assert sum([model_data['data_preparation']['train_row_count'],
+                    model_data['data_preparation']['validation_row_count'],
+                    model_data['data_preparation']['test_row_count']]) == n_points+1
 
     @pytest.mark.slow
     def test_explain_prediction(self):
@@ -178,7 +233,7 @@ class TestPredictor:
             use_gpu=False
         )
 
-        result = mdb.predict(when={"numeric_x": 10, 'categorical_x': 1})
+        result = mdb.predict(when_data={"numeric_x": 10, 'categorical_x': 1})
         explanation_new = result[0].explanation['numeric_y']
         assert isinstance(explanation_new['predicted_value'], int)
         assert isinstance(explanation_new['confidence_interval'],list)
@@ -424,7 +479,7 @@ class TestPredictor:
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             use_gpu=use_gpu)
         assert_prediction_interface(predictions)
-        predictions = mdb.predict(when={'sqft': 300}, use_gpu=use_gpu)
+        predictions = mdb.predict(when_data={'sqft': 300}, use_gpu=use_gpu)
         assert_prediction_interface(predictions)
 
         amd = F.get_model_data('home_rentals_price')

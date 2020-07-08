@@ -209,31 +209,28 @@ class TypeDeductor(BaseModule):
 
         # If curr_data_type is still None, then it's text
         if curr_data_type is None:
-            if self.transaction.lmd['handle_text_as_categorical']:
+            lang_dist = get_language_dist(data)
+
+            # Normalize lang probabilities
+            for lang in lang_dist:
+                lang_dist[lang] /= len(data)
+
+            # If most cells are unknown language then it's categorical
+            if lang_dist['Unknown'] > 0.5:
                 curr_data_type = DATA_TYPES.CATEGORICAL
             else:
-                lang_dist = get_language_dist(data)
+                curr_data_type = DATA_TYPES.TEXT
 
-                # Normalize lang probabilities
-                for lang in lang_dist:
-                    lang_dist[lang] /= len(data)
+                nr_words, word_dist, _, = analyze_sentences(data)
 
-                # If most cells are unknown language then it's categorical
-                if lang_dist['Unknown'] > 0.5:
-                    curr_data_type = DATA_TYPES.CATEGORICAL
+                if len(word_dist) > 500 and nr_words / len(data) > 5:
+                    curr_data_subtype = DATA_SUBTYPES.RICH
                 else:
-                    curr_data_type = DATA_TYPES.TEXT
+                    curr_data_subtype = DATA_SUBTYPES.SHORT
 
-                    nr_words, word_dist, _, = analyze_sentences(data)
-
-                    if len(word_dist) > 500 and nr_words / len(data) > 5:
-                        curr_data_subtype = DATA_SUBTYPES.RICH
-                    else:
-                        curr_data_subtype = DATA_SUBTYPES.SHORT
-
-                    type_dist = {curr_data_type: len(data)}
-                    subtype_dist = {curr_data_subtype: len(data)}
-                    return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
+                type_dist = {curr_data_type: len(data)}
+                subtype_dist = {curr_data_subtype: len(data)}
+                return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
         if curr_data_type == DATA_TYPES.CATEGORICAL:
             if nr_distinct_vals > 2:
