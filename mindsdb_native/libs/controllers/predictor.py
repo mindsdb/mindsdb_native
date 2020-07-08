@@ -292,14 +292,11 @@ class Predictor:
             if advanced_args is None:
                 advanced_args = {}
 
-<<<<<<< HEAD
-=======
             if run_confidence_variation_analysis is True and isinstance(when_data, list) and len(when_data) > 1:
                 error_msg = 'run_confidence_variation_analysis=True is a valid option only when predicting a single data point'
                 self.log.error(error_msg)
                 raise ValueError(error_msg)
 
->>>>>>> 74254d267fb9e6698f7eebd6f164abfa2994d84d
             transaction_type = TRANSACTION_PREDICT
             when_ds = None
             when = None
