@@ -6,6 +6,7 @@ from mindsdb_native import Predictor
 from mindsdb_native.libs.data_sources.mongodb_ds import MongoDS
 from mindsdb_native import F
 
+
 @pytest.mark.integration
 def test_mongodb_ds():
 
@@ -35,12 +36,13 @@ def test_mongodb_ds():
             'col_3': (i % 2) == 0
         })
 
-    mongodb_ds = MongoDS(host=HOST,
+    mongodb_ds = MongoDS(collection=COLLECTION_NAME,
+                         query={},
+                         host=HOST,
                          port=PORT,
                          user=USER,
                          password=PASSWORD,
-                         database=DATABASE,
-                         collection=COLLECTION_NAME)
+                         database=DATABASE)
 
     assert (len(mongodb_ds._df) == 200)
 
