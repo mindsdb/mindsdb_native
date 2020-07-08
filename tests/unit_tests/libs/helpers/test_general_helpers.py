@@ -68,3 +68,27 @@ class TestEvaluateAccuracy:
         accuracy = evaluate_accuracy(predictions, data_frame, col_stats, output_columns)
 
         assert round(accuracy, 2) == round((0.75 + 0.5)/2, 2)
+
+    def test_evaluate_weird_data_types(self):
+        for dtype in [
+            DATA_TYPES.DATE,
+            DATA_TYPES.TEXT,
+            DATA_TYPES.SEQUENTIAL,
+            DATA_TYPES.FILE_PATH,
+        ]:
+            predictions = {
+                'y': ["1", "2", "3", "4"]
+            }
+
+            col_stats = {
+                'y': {'typing': {'data_type': dtype}}
+            }
+
+            output_columns = ['y']
+
+            data_frame = pd.DataFrame({'y': ["1", "2", "3", "5"]})
+
+            accuracy = evaluate_accuracy(predictions, data_frame, col_stats,
+                                         output_columns)
+
+            assert round(accuracy, 2) == 0.75
