@@ -209,7 +209,7 @@ class TestPredictor:
             use_gpu=False
         )
 
-        result = mdb.predict(when={"numeric_x": 10, 'categorical_x': 1})
+        result = mdb.predict(when_data={"numeric_x": 10, 'categorical_x': 1})
         explanation_new = result[0].explanation['numeric_y']
         assert isinstance(explanation_new['predicted_value'], int)
         assert isinstance(explanation_new['confidence_interval'],list)
@@ -455,7 +455,7 @@ class TestPredictor:
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             use_gpu=use_gpu)
         assert_prediction_interface(predictions)
-        predictions = mdb.predict(when={'sqft': 300}, use_gpu=use_gpu)
+        predictions = mdb.predict(when_data={'sqft': 300}, use_gpu=use_gpu)
         assert_prediction_interface(predictions)
 
         amd = F.get_model_data('home_rentals_price')
