@@ -35,6 +35,8 @@ class DataCleaner(BaseModule):
         df.drop(columns=self.transaction.lmd['columns_to_ignore'], inplace=True)
 
         self._remove_missing_targets(df)
-        self._remove_duplicate_rows(df)
+
+        if self.transaction.lmd.get('deduplicate_data'):
+            self._remove_duplicate_rows(df)
 
         self.transaction.input_data.data_frame = df

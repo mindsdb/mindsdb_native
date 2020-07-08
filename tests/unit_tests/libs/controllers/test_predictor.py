@@ -160,7 +160,7 @@ class TestPredictor:
 
         assert model_data['data_analysis_v2']['numeric_int']['empty']['empty_percentage'] == 50
 
-    def test_predictor_drop_duplicates(self):
+    def test_predictor_deduplicate_data(self):
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
@@ -189,6 +189,30 @@ class TestPredictor:
         assert sum([model_data['data_preparation']['train_row_count'],
                    model_data['data_preparation']['validation_row_count'],
                    model_data['data_preparation']['test_row_count']]) == n_points
+
+
+        # Disable deduplication and ensure the duplicate row is used
+        mdb = Predictor(name='test_drop_duplicates')
+        mdb.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False,
+            advanced_args={
+                'deduplicate_data': False
+            }
+        )
+
+        model_data = F.get_model_data('test_drop_duplicates')
+
+        # Ensure duplicate row was not used for training
+
+        assert model_data['data_preparation']['total_row_count'] == n_points+1
+        assert model_data['data_preparation']['used_row_count'] <= n_points+1
+
+        assert sum([model_data['data_preparation']['train_row_count'],
+                    model_data['data_preparation']['validation_row_count'],
+                    model_data['data_preparation']['test_row_count']]) == n_points+1
 
     @pytest.mark.slow
     def test_explain_prediction(self):
