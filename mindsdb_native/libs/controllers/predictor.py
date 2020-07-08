@@ -237,9 +237,9 @@ class Predictor:
                 for k in ['data_preparation', 'rebuild_model', 'data_source', 'type', 'columns_to_ignore', 'sample_margin_of_error', 'sample_confidence_level', 'stop_training_in_x_seconds']:
                     if old_lmd[k] is not None: light_transaction_metadata[k] = old_lmd[k]
 
-                if old_hmd['from_data'] is not None:     
+                if old_hmd['from_data'] is not None:
                     heavy_transaction_metadata['from_data'] = old_hmd['from_data']
-                    
+
             Transaction(session=self,
                         light_transaction_metadata=light_transaction_metadata,
                         heavy_transaction_metadata=heavy_transaction_metadata,
@@ -293,15 +293,10 @@ class Predictor:
             if advanced_args is None:
                 advanced_args = {}
 
-            if run_confidence_variation_analysis is True and when_data is not None:
-                error_msg = 'run_confidence_variation_analysis=True is a valid option only when predicting a single data point via `when`'
-                self.log.error(error_msg)
-                raise ValueError(error_msg)
-
             transaction_type = TRANSACTION_PREDICT
             when_ds = None
             when = None
-            
+
             if isinstance(when_data, dict):
                 when = [when_data]
             elif isinstance(when_data, list):
