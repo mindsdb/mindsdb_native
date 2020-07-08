@@ -34,4 +34,10 @@ services:
       ACCEPT_EULA: "Y"
     ports:
       - 1433:1433
-      
+  mongodb:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "root"
+      MONGO_INITDB_ROOT_PASSWORD: "123"
+    ports:
+      - 27017:27017
