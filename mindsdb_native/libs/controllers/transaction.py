@@ -211,7 +211,7 @@ class LearnTransaction(Transaction):
 class AnalyseTransaction(Transaction):
     def run(self):
         self._call_phase_module(module_name='DataExtractor')
-        self._call_phase_module(module_name='DataCleaner', stage=0)
+        self._call_phase_module(module_name='DataCleaner')
         self._call_phase_module(module_name='TypeDeductor', input_data=self.input_data)
         self._call_phase_module(module_name='DataAnalyzer', input_data=self.input_data)
         self.lmd['current_phase'] = MODEL_STATUS_DONE
