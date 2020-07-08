@@ -441,6 +441,10 @@ def get_model_data(model_name=None, lmd=None):
                         except Exception:
                             print(f'No column importances found for {icol} !')
 
+            for key in ['train_data_accuracy', 'test_data_accuracy', 'valid_data_accuracy']:
+                if key in lmd:
+                    mao[key] = lmd[key]
+
             amd['model_analysis'].append(mao)
         else:
             if 'column_importances' in lmd and lmd['column_importances'] is not None:

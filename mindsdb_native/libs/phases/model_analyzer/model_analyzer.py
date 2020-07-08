@@ -46,9 +46,9 @@ class ModelAnalyzer(BaseModule):
         self.transaction.hmd['probabilistic_validators'] = {}
 
 
-        self.transaction.lmd['train_accuracy'] = {}
-        self.transaction.lmd['test_accuracy'] = {}
-        self.transaction.lmd['valid_accuracy'] = {}
+        self.transaction.lmd['train_data_accuracy'] = {}
+        self.transaction.lmd['test_data_accuracy'] = {}
+        self.transaction.lmd['valid_data_accuracy'] = {}
 
         for col in output_columns:
 
@@ -57,7 +57,7 @@ class ModelAnalyzer(BaseModule):
                 'predict_on_train_data',
                 ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
             )
-            self.transaction.lmd['train_accuracy'][col] = evaluate_accuracy(
+            self.transaction.lmd['train_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
                 self.transaction.input_data.train_df,
                 self.transaction.lmd['stats_v2'],
@@ -69,7 +69,7 @@ class ModelAnalyzer(BaseModule):
                 'test',
                 ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
             )
-            self.transaction.lmd['test_accuracy'][col] = evaluate_accuracy(
+            self.transaction.lmd['test_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
                 self.transaction.input_data.test_df,
                 self.transaction.lmd['stats_v2'],
@@ -81,7 +81,7 @@ class ModelAnalyzer(BaseModule):
                 'validate',
                 ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
             )
-            self.transaction.lmd['valid_accuracy'][col] = evaluate_accuracy(
+            self.transaction.lmd['valid_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
                 self.transaction.input_data.validation_df,
                 self.transaction.lmd['stats_v2'],
