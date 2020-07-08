@@ -513,7 +513,7 @@ class TestPredictor:
         for k in ['train', 'test', 'valid']:
             assert isinstance(model_analysis[0][k + '_data_accuracy'], dict)
             assert len(model_analysis[0][k + '_data_accuracy']) == 1
-            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.9
+            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.8
 
         for column, importance in zip(input_importance["x"],
                                       input_importance["y"]):
