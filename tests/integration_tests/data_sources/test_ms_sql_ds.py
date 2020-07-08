@@ -14,7 +14,8 @@ def test_mssql_ds():
     DATABASE = 'master'
     PORT = 1433
 
-    con = mssql_connect(host=HOST, port=PORT, user=USER, password=PASSWORD, database=DATABASE)
+    con = mssql_connect(host=HOST, port=PORT, user=USER,
+                        password=PASSWORD, database=DATABASE)
 
     cur = con.cursor()
 

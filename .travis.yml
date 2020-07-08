@@ -57,6 +57,7 @@ install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_wait 15 pip3 install --user --no-cache-dir -e .; sleep 10s; fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_wait 15 pip3 install --user --no-cache-dir -r requirements_test.txt; fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_wait 15 pip3 install --user --no-cache-dir -r optional_requirements_extra_data_sources.txt; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 sudo apt-get install unixodbc-dev; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pip3 install --no-cache-dir -e .; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pip3 install --no-cache-dir -r requirements_test.txt; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_wait 15 pip3 install --no-cache-dir -r optional_requirements_extra_data_sources.txt; fi
