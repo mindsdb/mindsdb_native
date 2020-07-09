@@ -136,8 +136,11 @@ class LudwigBackend():
             df = self.transaction.input_data.validation_df
         elif mode == 'test':
             df = self.transaction.input_data.test_df
+        elif mode == 'predict_on_train_data':
+            df = self.transaction.input_data.train_df
         else:
             raise Exception(f'Unknown mode specified: "{mode}"')
+
         model_definition = {'input_features': [], 'output_features': []}
         data = {}
 
