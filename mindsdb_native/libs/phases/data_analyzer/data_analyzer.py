@@ -8,9 +8,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import MiniBatchKMeans
 import imagehash
 from PIL import Image
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.ensemble import IsolationForest
 
 from mindsdb_native.libs.helpers.general_helpers import get_value_bucket
-from sklearn.neighbors import LocalOutlierFactor
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.text_helpers import (
@@ -20,6 +21,15 @@ from mindsdb_native.libs.helpers.text_helpers import (
     get_language_dist
 )
 
+def isolation_forest_outliers(col_subtype, col_data):
+    model = IsolationForest(n_estimators=10)	
+    outlier_scores = model.fit_predict(np.array(col_data).reshape(-1, 1))	
+    outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i]==-1]	
+
+    if col_subtype == DATA_SUBTYPES.INT:	
+        outliers = [int(x) for x in outliers]	
+
+    return outliers
 
 def lof_outliers(col_subtype, col_data):
     lof = LocalOutlierFactor(contamination='auto')	
@@ -213,8 +223,9 @@ def compute_outlier_buckets(outlier_values,
         predominantly_outlier = False
         if bucket_values_num:
            predominantly_outlier = (bucket_outliers_num / bucket_values_num) > 0.5
+           ten_pct_outliers = (bucket_outliers_num / bucket_values_num) > 0.2
 
-        if predominantly_outlier or percentile_outlier:
+        if (predominantly_outlier and ten_pct_outliers) or percentile_outlier:
             outlier_buckets.append(bucket)
     return outlier_buckets
 
@@ -291,7 +302,7 @@ class DataAnalyzer(BaseModule):
                     stats_v2[col_name]['bias']['warning'] = warning_str + " This doesn't necessarily mean there's an issue with your data, it just indicates a higher than usual probability there might be some issue."
 
                 if data_type == DATA_TYPES.NUMERIC:
-                        outliers = lof_outliers(data_subtype, col_data)
+                        outliers = isolation_forest_outliers(data_subtype, col_data)
                         stats_v2[col_name]['outliers'] = {	
                             'outlier_values': outliers,
                             'outlier_buckets': compute_outlier_buckets(outlier_values=outliers,	
