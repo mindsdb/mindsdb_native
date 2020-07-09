@@ -19,28 +19,6 @@ import pandas as pd
 
 
 class Transaction:
-    def __new__(cls,
-                session,
-                light_transaction_metadata,
-                heavy_transaction_metadata,
-                logger=log):
-
-        TYPE_TO_CLASS = {
-            TRANSACTION_BAD_QUERY: BadTransaction,
-            TRANSACTION_LEARN: LearnTransaction,
-            TRANSACTION_ANALYSE: AnalyseTransaction,
-            TRANSACTION_PREDICT: PredictTransaction
-        }
-
-        tx_type = light_transaction_metadata['type']
-
-        if tx_type in TYPE_TO_CLASS:
-            tx_class = TYPE_TO_CLASS[tx_type]
-        else:
-            tx_class = Transaction
-        
-        return object.__new__(tx_class)
-
     def __init__(self,
                  session,
                  light_transaction_metadata,
@@ -80,7 +58,6 @@ class Transaction:
         except Exception:
             pass
 
-
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'] + '_light_model_metadata.pickle')
         try:
             with open(fn, 'rb') as fp:
@@ -112,7 +89,6 @@ class Transaction:
         null_out_fields = ['from_data']
         for k in null_out_fields:
             save_hmd[k] = None
-
 
         for k in self.hmd:
             if k not in null_out_fields:
