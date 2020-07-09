@@ -11,20 +11,25 @@ def test_clickhouse_ds():
     PORT = 8123
 
     clickhouse_url = f'http://{HOST}:{PORT}'
-    requests.post(clickhouse_url,
-                  data='CREATE DATABASE IF NOT EXISTS test')
-    requests.post(clickhouse_url, data='DROP TABLE IF EXISTS test.mock')
-    requests.post(clickhouse_url, data="""CREATE TABLE test.mock(
-            col1 String
-            ,col2 Int64
-            ,col3 Array(UInt8)
-        ) ENGINE=Memory""")
-    requests.post(clickhouse_url,
-                  data="""INSERT INTO test.mock VALUES ('a',1,[1,2,3])""")
-    requests.post(clickhouse_url,
-                  data="""INSERT INTO test.mock VALUES ('b',2,[2,3,1])""")
-    requests.post(clickhouse_url,
-                  data="""INSERT INTO test.mock VALUES ('c',3,[3,1,2])""")
+    queries = [
+        'CREATE DATABASE IF NOT EXISTS test',
+        'DROP TABLE IF EXISTS test.mock',
+        '''
+            CREATE TABLE test.mock(
+                col1 String
+                ,col2 Int64
+                ,col3 Array(UInt8)
+            ) ENGINE = MergeTree()
+                ORDER BY col2
+                PARTITION BY col1
+        ''',
+        "INSERT INTO test.mock VALUES ('a',1,[1,2,3])",
+        "INSERT INTO test.mock VALUES ('b',2,[2,3,1])",
+        "INSERT INTO test.mock VALUES ('c',3,[3,1,2])"
+    ]
+    for q in queries:
+        r = requests.post(clickhouse_url, data=q)
+        assert r.status_code == 200
 
     clickhouse_ds = ClickhouseDS('SELECT * FROM test.mock ORDER BY col2 DESC LIMIT 2', host=HOST, port=PORT)
 
