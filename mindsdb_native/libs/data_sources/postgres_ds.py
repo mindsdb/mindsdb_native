@@ -16,8 +16,14 @@ class PostgresDS(DataSource):
         con = pg8000.connect(database=database, user=user, password=password,
                              host=host, port=port)
         df = pd.read_sql(query, con=con)
-        df.columns = [x.decode('utf-8') for x in df.columns]
         con.close()
+
+        df.columns = [x.decode('utf-8') for x in df.columns]
+        for col_name in df.columns:
+            try:
+                df[col_name] = df[col_name].apply(lambda x: x.decode("utf-8"))
+            except:
+                pass
 
         col_map = {}
         for col in df.columns:

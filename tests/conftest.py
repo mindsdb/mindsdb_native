@@ -1,4 +1,6 @@
 import logging
+import shutil
+
 import pytest
 
 from mindsdb_native.libs.controllers.transaction import Transaction
@@ -11,8 +13,11 @@ pytest_plugins = ("plugin",)
 
 
 @pytest.fixture(autouse=True)
-def config(monkeypatch):
+def config(tmp_path):
     CONFIG.CHECK_FOR_UPDATES = False
+    CONFIG.MINDSDB_STORAGE_PATH = str(tmp_path)
+    yield CONFIG
+    shutil.rmtree(CONFIG.MINDSDB_STORAGE_PATH)
 
 
 @pytest.fixture()
@@ -35,3 +40,4 @@ def transaction(logger):
                               heavy_transaction_metadata=hmd,
                               logger=logger)
     return transaction
+

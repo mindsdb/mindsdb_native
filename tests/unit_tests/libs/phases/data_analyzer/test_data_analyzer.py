@@ -1,21 +1,25 @@
 import json
 
 import pytest
+from unittest import mock
 from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.phases.data_analyzer.data_analyzer import DataAnalyzer
-from unit_tests.utils import test_column_types
+from unit_tests.utils import (
+    test_column_types,
+    generate_short_sentences,
+    generate_rich_sentences
+)
 
 
 class TestDataAnalyzer:
     @pytest.fixture(scope='function')
     def lmd(self, transaction):
         lmd = transaction.lmd
-        lmd['handle_text_as_categorical'] = False
-        lmd['column_stats'] = {}
         lmd['stats_v2'] = {}
         lmd['empty_columns'] = []
         lmd['data_types'] = {}
@@ -23,8 +27,16 @@ class TestDataAnalyzer:
         lmd['data_preparation'] = {}
         lmd['force_categorical_encoding'] = []
         lmd['columns_to_ignore'] = []
-        lmd['sample_margin_of_error'] = 0.005
-        lmd['sample_confidence_level'] = 1 - lmd['sample_margin_of_error']
+
+        lmd['sample_settings'] = dict(
+            sample_for_analysis=False,
+            sample_for_training=False,
+            sample_margin_of_error=0.005,
+            sample_confidence_level=1 - 0.005,
+            sample_percentage=None,
+            sample_function='sample_data'
+        )
+
         return lmd
 
     def get_stats_v2(self, col_names):
@@ -43,11 +55,6 @@ class TestDataAnalyzer:
             result[k]['typing']['data_subtype_dist'] = {v['typing']['data_subtype']: 100}
         return result
 
-    def get_stats(self, stats_v2):
-        result = {}
-        for col, val in stats_v2.items():
-            result[col] = val['typing']
-        return result
 
     def test_data_analysis(self, transaction, lmd):
         """Tests that data analyzer doesn't crash on common types"""
@@ -65,18 +72,18 @@ class TestDataAnalyzer:
             'categorical_binary': [0, 1] * (n_points//2),
             'categorical_int': [x for x in (list(range(n_category_values)) * (n_points // n_category_values))],
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
-            'sequential_text': [f'lorem ipsum long text {i}' for i in range(n_points)],
+            'short_text': generate_short_sentences(n_points),
+            'rich_text': generate_rich_sentences(n_points)
+
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
-        stats = self.get_stats(stats_v2)
+
         lmd['stats_v2'] = stats_v2
-        lmd['column_stats'] = stats
         hmd = transaction.hmd
 
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
-        input_data.sample_df = input_dataframe.iloc[n_points // 2:]
         data_analyzer.run(input_data)
 
         stats_v2 = lmd['stats_v2']
@@ -92,7 +99,14 @@ class TestDataAnalyzer:
         assert stats_v2['categorical_str']['unique']['unique_percentage'] == 4.0
 
         # Assert that the histogram on text field is made using words
-        assert isinstance(stats_v2['sequential_text']['histogram']['x'][0], str)
+        assert isinstance(stats_v2['short_text']['histogram']['x'][0], str)
+        assert isinstance(stats_v2['rich_text']['histogram']['x'][0], str)
+
+        for col in ['numeric_float', 'numeric_int']:
+            assert isinstance(stats_v2[col]['outliers']['outlier_values'], list)
+            assert isinstance(stats_v2[col]['outliers']['outlier_buckets'], list)
+            assert isinstance(stats_v2[col]['outliers']['description'], str)
+            assert set(stats_v2[col]['outliers']['outlier_buckets']) <= set(stats_v2[col]['percentage_buckets'])
 
         assert hmd == {}
 
@@ -108,16 +122,43 @@ class TestDataAnalyzer:
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
-        stats = self.get_stats(stats_v2)
+
         lmd['stats_v2'] = stats_v2
-        lmd['column_stats'] = stats
 
         input_dataframe['numeric_int'].iloc[::2] = None
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
-        input_data.sample_df = input_dataframe.iloc[n_points // 2:]
         data_analyzer.run(input_data)
 
         stats_v2 = lmd['stats_v2']
 
         assert stats_v2['numeric_int']['empty']['empty_percentage'] == 50
+
+    def test_sample(self, transaction, lmd):
+        lmd['sample_settings']['sample_for_analysis'] = True
+        transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
+
+        data_analyzer = DataAnalyzer(session=transaction.session,
+                                     transaction=transaction)
+
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+        }, index=list(range(n_points)))
+
+        stats_v2 = self.get_stats_v2(input_dataframe.columns)
+        lmd['stats_v2'] = stats_v2
+
+        input_data = TransactionData()
+        input_data.data_frame = input_dataframe
+
+        data_analyzer.run(input_data)
+        assert transaction.hmd['sample_function'].called
+
+        assert sum(lmd['stats_v2']['numeric_int']['histogram']['y']) <= n_points
+
+        lmd['sample_settings']['sample_for_analysis'] = False
+        transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
+
+        data_analyzer.run(input_data)
+        assert not transaction.hmd['sample_function'].called

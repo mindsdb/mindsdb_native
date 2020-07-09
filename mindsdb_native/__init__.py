@@ -7,7 +7,6 @@ if sys.version_info < (3,6):
 import lightwood
 # HORRIBLE HACK TO AVOID SEGFAULT
 # @TODO: FIND A WAY TO ACTUALLY SOLVE THIS ASAP !!!
-
 from mindsdb_native.libs.controllers import functional
 F = functional
 

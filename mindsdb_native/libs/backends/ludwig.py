@@ -136,8 +136,11 @@ class LudwigBackend():
             df = self.transaction.input_data.validation_df
         elif mode == 'test':
             df = self.transaction.input_data.test_df
+        elif mode == 'predict_on_train_data':
+            df = self.transaction.input_data.train_df
         else:
             raise Exception(f'Unknown mode specified: "{mode}"')
+
         model_definition = {'input_features': [], 'output_features': []}
         data = {}
 
@@ -156,8 +159,8 @@ class LudwigBackend():
 
             data[tf_col] = []
 
-            col_stats = self.transaction.lmd['column_stats'][col]
-            data_subtype = col_stats['data_subtype']
+            col_stats = self.transaction.lmd['stats_v2'][col]
+            data_subtype = col_stats['typing']['data_subtype']
 
             ludwig_dtype = None
             encoder = None
@@ -171,7 +174,7 @@ class LudwigBackend():
                 cell_type = 'rnn'
                 ludwig_dtype = 'order_by_col'
 
-            if data_subtype in DATA_SUBTYPES.ARRAY:
+            if data_subtype == DATA_SUBTYPES.ARRAY:
                 encoder = 'rnn'
                 cell_type = 'rnn'
                 ludwig_dtype = 'sequence'
@@ -179,22 +182,22 @@ class LudwigBackend():
             elif data_subtype in (DATA_SUBTYPES.INT, DATA_SUBTYPES.FLOAT):
                 ludwig_dtype = 'numerical'
 
-            elif data_subtype in (DATA_SUBTYPES.BINARY):
+            elif data_subtype == DATA_SUBTYPES.BINARY:
                 ludwig_dtype = 'category'
 
-            elif data_subtype in (DATA_SUBTYPES.DATE):
+            elif data_subtype == DATA_SUBTYPES.DATE:
                 if col not in self.transaction.lmd['predict_columns']:
                     ludwig_dtype = 'date'
                 else:
                     ludwig_dtype = 'category'
 
-            elif data_subtype in (DATA_SUBTYPES.TIMESTAMP):
+            elif data_subtype == DATA_SUBTYPES.TIMESTAMP:
                 ludwig_dtype = 'numerical'
 
             elif data_subtype in (DATA_SUBTYPES.SINGLE, DATA_SUBTYPES.MULTIPLE):
                 ludwig_dtype = 'category'
 
-            elif data_subtype in (DATA_SUBTYPES.IMAGE):
+            elif data_subtype == DATA_SUBTYPES.IMAGE:
                 has_heavy_data = True
                 ludwig_dtype = 'image'
                 encoder = 'stacked_cnn'
@@ -202,7 +205,7 @@ class LudwigBackend():
                 height = 256
                 width = 256
 
-            elif data_subtype in (DATA_SUBTYPES.TEXT):
+            elif data_subtype == DATA_TYPES.TEXT:
                 ludwig_dtype = 'text'
 
             else:
@@ -226,7 +229,7 @@ class LudwigBackend():
                 elif ludwig_dtype == 'sequence':
                     arr_str = row[col]
                     if arr_str is not None:
-                        arr = list(map(float,arr_str.rstrip(']').lstrip('[').split(self.transaction.lmd['column_stats'][col]['separator'])))
+                        arr = list(map(float,arr_str.rstrip(']').lstrip('[').split(self.transaction.lmd['stats_v2'][col]['separator'])))
                     else:
                         arr = ''
                     data[tf_col].append(arr)

@@ -18,6 +18,9 @@ if not os.path.isdir(PACKAGES_DIR):
 CMP_OPERATORS = ['>=', '<=', '==', '<', '>', '!=']
 
 
+EMAIL_PARSER = email.parser.HeaderParser()
+
+
 def _cmp(val_a, val_b, op):
     table = {
         '>=': lambda a, b: a >= b,
@@ -73,7 +76,7 @@ def _iter_pypi(package_name, cache=dict()):
             continue
 
 
-def _get_license_and_requirements(url, cache=dict()):
+def _get_licenses_and_requirements(url, cache=dict()):
     dist_name = url.split('/')[-1]
     dist_path = os.path.join(PACKAGES_DIR, dist_name)
 
@@ -83,62 +86,67 @@ def _get_license_and_requirements(url, cache=dict()):
         with open(dist_path, 'wb') as f:
             f.write(res.content)
 
+    requirements = set()
+    licenses = set()
+
+    def read_pkg_info(data):
+        pkg_info = EMAIL_PARSER.parsestr(data)
+        for k, v in pkg_info.items():
+            if k.lower() == 'license':
+                licenses.add(v)
+
+    def read_metadata_json(data):
+        metadata = json.loads(data)
+        for k, v in metadata.items():
+            if k.lower() == 'license':
+                licenses.add(v)
+
+    def read_requirements(data):
+        lines = data.split('\n')
+        for line in map(lambda l: l.strip(), lines):
+            if len(line) > 0 and line[0].isalpha():
+                requirements.add(line)
+
     if dist_name.endswith('.tar.gz'):
         with tarfile.open(dist_path, 'r:gz') as tar:
             for member in tar.getmembers():
-                if member.name.endswith('PKG-INFO'):
-                    parser = email.parser.HeaderParser()
+                name = member.name.lower()
+            
+                if 'pkg-info' in name:
                     pkg_info = tar.extractfile(member).read().decode()
-                    license_name = parser.parsestr(pkg_info)['License']
-                    break
-            else:
-                license_name = 'failed to find'
-                #raise Exception('failed to find PKG-INFO in {}'.format(dist_name))
+                    read_pkg_info(pkg_info)
 
-            requirements = []
-            for member in tar.getmembers():
-                if member.name.endswith('requires.txt') or member.name.endswith('requirements.txt'):
-                    lines = tar.extractfile(member).read().decode().split('\n')
-                    requirements = []
-                    for l in lines:
-                        # this is temporary
-                        if l.startswith('['):
-                            break
-                        else:
-                            requirements.append(l)
-                    break
-            else:
-                pass
-                #print('Warning: failed to find requires.txt/requirements.txt in {}'.format(dist_name))
+                elif 'requires' in name or 'requirements' in name:
+                    data = tar.extractfile(member).read().decode()
+                    read_requirements(data)
 
     elif dist_name.endswith('.zip') or dist_name.endswith('.whl'):
         with zipfile.ZipFile(dist_path) as zip_:
             for member in zip_.namelist():
-                if member.endswith('metadata.json'):
-                    metadata_str = zip_.read(member).decode()
-                    metadata = json.loads(metadata_str)
-                    if 'license' in metadata:
-                        license_name = metadata['license']
-                    elif 'License' in metadata:
-                        license_name = metadata['License']
-                    else:
-                        license_name = 'Unknown (failed to find in metadata)'
-                    break
-            else:
-                license_name = 'Unknown (failed to find metadata)'
-                #print('Warning: failed to find metadata.json in {}'.format(dist_name))
-            
-            requirements = []
+                name = member.split('/')[0].lower()
+
+                if 'metadata.json' in name:
+                    metadata_json = zip_.read(member).decode()
+                    read_metadata_json(metadata_json)
+
+                elif 'metadata' in name:
+                    metadata = zip_.read(member).decode()
+                    read_pkg_info(metadata)
+
+                elif 'requires' in name or 'requirements' in name:
+                    data = zip_.read(member).decode()
+                    read_requirements(data)
+
     else:
         raise Exception('exptected tar/zip/whl')
-    
-    return (license_name, requirements)
+
+    return list(licenses), list(requirements)
 
 
-def dep_graph(package_name, D, whitelist=None, branch_cache=dict(), visited_chain=list(),):
-    print('[{}]'.format(' -> '.join(visited_chain)))
+def dep_graph(package_name, D, whitelist=None, branch_cache=dict(), visited_chain=list()):
     name, *versions = _split_package_name(package_name)
 
+    # print('[{}]'.format(' -> '.join([*visited_chain, name])))
     try:
         # group by version
         releases = defaultdict(list)
@@ -182,15 +190,22 @@ def dep_graph(package_name, D, whitelist=None, branch_cache=dict(), visited_chai
 
         key = str((name, release_v))
 
+        print(' ' * (len(visited_chain) * 2), end='')
+        print('{}=={}'.format(name, release_v), end='')
+
         if whitelist is not None and name.lower() in whitelist:
-            D[key] = 'WhiteListed'
+            print(' [whitelisted]')
+            D[key] = 'whitelisted'
         elif name in visited_chain:
-            D[key] = 'CircularDependency'
+            print(' [circular dependency]')
+            D[key] = 'circular dependency'
         else:
             if key in branch_cache:
+                print(' [cached branch]')
                 D[key] = branch_cache[key]
             else:
-                license_name, requirements = _get_license_and_requirements(link)
+                print()
+                license_name, requirements = _get_licenses_and_requirements(link)
                 D[key] = {'license': license_name, 'requirements': dict()}
                 branch_cache[key] = D[key]
                 for req in requirements:
@@ -209,7 +224,7 @@ if __name__ == '__main__':
 
     D = dict()
     try:
-        dep_graph(sys.argv[1], D, whitelist=['nose', 'pygments', 'coverage', 'moch', 'pbr', 'pip', 'sphinx', 'virtualenv', 'tox', 'setuptools'])
+        dep_graph(sys.argv[1], D)
     except Exception:
         with open('out.json', 'w') as f:
             f.write(json.dumps(D))

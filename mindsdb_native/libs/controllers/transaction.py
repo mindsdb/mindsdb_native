@@ -1,7 +1,10 @@
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import *
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
-from mindsdb_native.libs.data_types.transaction_output_data import PredictTransactionOutputData, TrainTransactionOutputData
+from mindsdb_native.libs.data_types.transaction_output_data import (
+    PredictTransactionOutputData,
+    TrainTransactionOutputData
+)
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.config import CONFIG
 
@@ -16,8 +19,8 @@ import pandas as pd
 
 
 class Transaction:
-
-    def __init__(self, session,
+    def __init__(self,
+                 session,
                  light_transaction_metadata,
                  heavy_transaction_metadata,
                  logger=log):
@@ -25,11 +28,8 @@ class Transaction:
         A transaction is the interface to start some MindsDB operation within a session
 
         :param session:
-        :type session: utils.controllers.session_controller.SessionController
-        :param transaction_type:
-        :param transaction_metadata:
-        :type transaction_metadata: dict
-        :type heavy_transaction_metadata: dict
+        :param transaction_metadata: dict
+        :param heavy_transaction_metadata: dict
         """
 
         self.session = session
@@ -57,7 +57,6 @@ class Transaction:
             sys.setrecursionlimit(0x100000)
         except Exception:
             pass
-
 
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'] + '_light_model_metadata.pickle')
         try:
@@ -87,10 +86,9 @@ class Transaction:
 
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_heavy_model_metadata.pickle')
         save_hmd = {}
-        null_out_fields = ['test_from_data', 'from_data']
+        null_out_fields = ['from_data']
         for k in null_out_fields:
             save_hmd[k] = None
-
 
         for k in self.hmd:
             if k not in null_out_fields:
@@ -110,10 +108,13 @@ class Transaction:
         """
         Loads the module and runs it
         """
+        if self.lmd['breakpoint'] == module_name:
+            sys.exit(0)
 
         self.lmd['is_active'] = True
+        self.lmd['phase'] = module_name
         module_path = convert_cammelcase_to_snake_string(module_name)
-        module_full_path = 'mindsdb_native.libs.phases.{module_path}.{module_path}'.format(module_path=module_path)
+        module_full_path = f'mindsdb_native.libs.phases.{module_path}.{module_path}'
         try:
             main_module = importlib.import_module(module_full_path)
             module = getattr(main_module, module_name)
@@ -123,19 +124,15 @@ class Transaction:
             self.log.error(error)
             raise
         finally:
+            self.lmd['phase'] = module_name
             self.lmd['is_active'] = False
 
-    def _execute_analyze(self):
-        self._call_phase_module(module_name='DataExtractor')
-        self._call_phase_module(module_name='DataCleaner', stage=0)
-        self._call_phase_module(module_name='TypeDeductor', input_data=self.input_data)
-        self._call_phase_module(module_name='DataAnalyzer', input_data=self.input_data)
-        self.lmd['current_phase'] = MODEL_STATUS_DONE
+    def run(self):
+        pass
 
-    def _execute_learn(self):
-        """
-        :return:
-        """
+
+class LearnTransaction(Transaction):
+    def _run(self):
         try:
             self.lmd['current_phase'] = MODEL_STATUS_PREPARING
             self.save_metadata()
@@ -143,7 +140,7 @@ class Transaction:
             self._call_phase_module(module_name='DataExtractor')
             self.save_metadata()
 
-            self._call_phase_module(module_name='DataCleaner', stage=0)
+            self._call_phase_module(module_name='DataCleaner')
             self.save_metadata()
 
             self._call_phase_module(module_name='TypeDeductor',
@@ -155,7 +152,7 @@ class Transaction:
                                     input_data=self.input_data)
             self.save_metadata()
 
-            self._call_phase_module(module_name='DataCleaner', stage=0)
+            self._call_phase_module(module_name='DataCleaner')
             self.save_metadata()
 
             self._call_phase_module(module_name='DataSplitter')
@@ -180,7 +177,24 @@ class Transaction:
             self.log.error(str(e))
             raise e
 
-    def _execute_predict(self):
+    def run(self):
+        if CONFIG.EXEC_LEARN_IN_THREAD == False:
+            self._run()
+        else:
+            _thread.start_new_thread(self._run(), ())
+
+
+class AnalyseTransaction(Transaction):
+    def run(self):
+        self._call_phase_module(module_name='DataExtractor')
+        self._call_phase_module(module_name='DataCleaner')
+        self._call_phase_module(module_name='TypeDeductor', input_data=self.input_data)
+        self._call_phase_module(module_name='DataAnalyzer', input_data=self.input_data)
+        self.lmd['current_phase'] = MODEL_STATUS_DONE
+
+
+class PredictTransaction(Transaction):
+    def run(self):
         old_lmd = {}
         for k in self.lmd: old_lmd[k] = self.lmd[k]
 
@@ -290,26 +304,11 @@ class Transaction:
                     input_confidence[predicted_col][nulled_col_name] = round(confidence_variation,3)
                     extra_insights[predicted_col]['if_missing'].append({nulled_col_name: nulled_out_predicted_value})
 
-            self.output_data.input_confidence = input_confidence
-            self.output_data.extra_insights = extra_insights
+            self.output_data._input_confidence = input_confidence
+            self.output_data._extra_insights = extra_insights
 
+
+class BadTransaction(Transaction):
     def run(self):
-        if self.lmd['type'] == TRANSACTION_BAD_QUERY:
-            self.log.error(self.errorMsg)
-            self.error = True
-            return
-
-        if self.lmd['type'] == TRANSACTION_LEARN:
-            if CONFIG.EXEC_LEARN_IN_THREAD == False:
-                self._execute_learn()
-            else:
-                _thread.start_new_thread(self._execute_learn, ())
-            return
-
-        if self.lmd['type'] == TRANSACTION_ANALYSE:
-            self._execute_analyze()
-
-        elif self.lmd['type'] == TRANSACTION_PREDICT:
-            self._execute_predict()
-        elif self.lmd['type'] == TRANSACTION_NORMAL_SELECT:
-            self._execute_normal_select()
+        self.log.error(self.errorMsg)
+        self.error = True

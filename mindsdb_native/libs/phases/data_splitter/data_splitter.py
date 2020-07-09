@@ -10,9 +10,6 @@ class DataSplitter(BaseModule):
         if group_by is None or len(group_by) == 0:
             group_by = []
             # @TODO: Group by seems not to work on certain datasets and the values get split complete unevenly between train/test/validation
-            #for col in self.transaction.lmd['predict_columns']:
-            #    if self.transaction.lmd['column_stats'][col]['data_type'] == DATA_TYPES.CATEGORICAL:
-            #        group_by.append(col)
             if len(group_by) > 0:
                 try:
                     self.transaction.input_data.data_frame = self.transaction.input_data.data_frame.sort_values(group_by)
@@ -79,25 +76,17 @@ class DataSplitter(BaseModule):
                     test_indexes[key] = all_indexes[key][test_window[0]:test_window[1]]
                     validation_indexes[key] = all_indexes[key][validation_window[0]:validation_window[1]]
 
-            self.transaction.input_data.train_df = self.transaction.input_data.data_frame.iloc[train_indexes[KEY_NO_GROUP_BY]].copy()
-            self.transaction.input_data.test_df = self.transaction.input_data.data_frame.iloc[test_indexes[KEY_NO_GROUP_BY]].copy()
-            self.transaction.input_data.validation_df = self.transaction.input_data.data_frame.iloc[validation_indexes[KEY_NO_GROUP_BY]].copy()
 
-            try:
-                self.transaction.input_data.data_frame = None
-                del self.transaction.input_data.data_frame
-                # Importing here on the off chance w'ere running on an interp where the gc can't be accessed directly
-                import gc
-                gc.collect()
-            except:
-                self.log.warning('Failed to cleanup memory after data splitting !')
+            self.transaction.input_data.train_df = self.transaction.input_data.data_frame.loc[train_indexes[KEY_NO_GROUP_BY]].copy()
+            self.transaction.input_data.test_df = self.transaction.input_data.data_frame.loc[test_indexes[KEY_NO_GROUP_BY]].copy()
+            self.transaction.input_data.validation_df = self.transaction.input_data.data_frame.loc[validation_indexes[KEY_NO_GROUP_BY]].copy()
+
+            self.transaction.input_data.data_frame = None
 
             self.transaction.lmd['data_preparation']['test_row_count'] = len(self.transaction.input_data.test_df)
             self.transaction.lmd['data_preparation']['train_row_count'] = len(self.transaction.input_data.train_df)
             self.transaction.lmd['data_preparation']['validation_row_count'] = len(self.transaction.input_data.validation_df)
 
-        # log some stats
-        if self.transaction.lmd['type'] == TRANSACTION_LEARN:
             data = {
                 'subsets': [
                     [len(self.transaction.input_data.train_df), 'Train'],
@@ -109,3 +98,4 @@ class DataSplitter(BaseModule):
 
             self.log.info('We have split the input data into:')
             self.log.infoChart(data, type='pie')
+

@@ -7,6 +7,8 @@ from mindsdb_native.config import *
 import pandas as pd
 import lightwood
 
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
+
 
 class LightwoodBackend():
 
@@ -37,10 +39,10 @@ class LightwoodBackend():
                     row[col] = 0.0
                 try:
                     row[col] = float(row[col])
-                except:
+                except Exception:
                     try:
                         row[col] = float(row[col].timestamp())
-                    except:
+                    except Exception:
                         error_msg = f'Backend Lightwood does not support ordering by the column: {col} !, Faulty value: {row[col]}'
                         self.transaction.log.error(error_msg)
                         raise ValueError(error_msg)
@@ -85,37 +87,37 @@ class LightwoodBackend():
         config['input_features'] = []
         config['output_features'] = []
 
-        for col_name in self.transaction.input_data.columns:
+        for col_name in self.transaction.input_data.columns or col_name not in self.transaction.lmd['stats_v2']:
             if col_name in self.transaction.lmd['columns_to_ignore']:
                 continue
 
-            col_stats = self.transaction.lmd['column_stats'][col_name]
-            data_subtype = col_stats['data_subtype']
-            data_type = col_stats['data_type']
+            col_stats = self.transaction.lmd['stats_v2'][col_name]
+            data_subtype = col_stats['typing']['data_subtype']
+            data_type = col_stats['typing']['data_type']
 
             lightwood_data_type = None
 
             other_keys = {'encoder_attrs': {}}
-            if data_type in (DATA_TYPES.NUMERIC):
+            if data_type == DATA_TYPES.NUMERIC:
                 lightwood_data_type = 'numeric'
 
-            elif data_type in (DATA_TYPES.CATEGORICAL):
+            elif data_type == DATA_TYPES.CATEGORICAL:
                 lightwood_data_type = 'categorical'
 
             elif data_subtype in (DATA_SUBTYPES.TIMESTAMP, DATA_SUBTYPES.DATE):
                 lightwood_data_type = 'datetime'
 
-            elif data_subtype in (DATA_SUBTYPES.IMAGE):
+            elif data_subtype == DATA_SUBTYPES.IMAGE:
                 lightwood_data_type = 'image'
                 other_keys['encoder_attrs']['aim'] = 'balance'
 
-            elif data_subtype in (DATA_SUBTYPES.AUDIO):
+            elif data_subtype == DATA_SUBTYPES.AUDIO:
                 lightwood_data_type = 'audio'
 
-            elif data_subtype in (DATA_SUBTYPES.TEXT):
+            elif data_type == DATA_TYPES.TEXT:
                 lightwood_data_type = 'text'
 
-            elif data_subtype in (DATA_SUBTYPES.ARRAY):
+            elif data_subtype == DATA_SUBTYPES.ARRAY:
                 lightwood_data_type = 'time_series'
 
             else:
@@ -139,9 +141,6 @@ class LightwoodBackend():
                 config['input_features'].append(col_config)
             else:
                 config['output_features'].append(col_config)
-
-        if self.transaction.lmd['optimize_model']:
-            config['optimizer'] = lightwood.model_building.BasicAxOptimizer
 
         config['data_source'] = {}
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
@@ -172,32 +171,51 @@ class LightwoodBackend():
             test_df = self._create_timeseries_df(self.transaction.input_data.test_df)
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
-            train_df = self.transaction.input_data.train_df
-            test_df = self.transaction.input_data.test_df
+            if self.transaction.lmd['sample_settings']['sample_for_training']:
+                sample_margin_of_error = self.transaction.lmd['sample_settings']['sample_margin_of_error']
+                sample_confidence_level = self.transaction.lmd['sample_settings']['sample_confidence_level']
+                sample_percentage = self.transaction.lmd['sample_settings']['sample_percentage']
+                sample_function = self.transaction.hmd['sample_function']
+
+                train_df = sample_function(self.transaction.input_data.train_df,
+                                       sample_margin_of_error,
+                                       sample_confidence_level,
+                                       sample_percentage)
+
+                test_df = sample_function(self.transaction.input_data.test_df,
+                                       sample_margin_of_error,
+                                       sample_confidence_level,
+                                       sample_percentage)
+
+                sample_size = len(train_df)
+                population_size = len(self.transaction.input_data.train_df)
+
+                self.transaction.log.warning(f'Training on a sample of {round(sample_size * 100 / population_size, 1)}% your data, results can be unexpected.')
+            else:
+                train_df = self.transaction.input_data.train_df
+                test_df = self.transaction.input_data.test_df
 
         lightwood_config = self._create_lightwood_config()
 
-        if self.transaction.lmd['skip_model_training'] == True:
-            self.predictor = lightwood.Predictor(load_from_path=os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_lightwood_data'))
+
+        self.predictor = lightwood.Predictor(lightwood_config)
+
+        # Evaluate less often for larger datasets and vice-versa
+        eval_every_x_epochs = int(round(1 * pow(10,6) * (1/len(train_df))))
+
+        # Within some limits
+        if eval_every_x_epochs > 200:
+            eval_every_x_epochs = 200
+        if eval_every_x_epochs < 3:
+            eval_every_x_epochs = 3
+
+        logging.getLogger().setLevel(logging.DEBUG)
+        if self.transaction.lmd['stop_training_in_x_seconds'] is None:
+            self.predictor.learn(from_data=train_df, test_data=test_df, callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
         else:
-            self.predictor = lightwood.Predictor(lightwood_config)
+            self.predictor.learn(from_data=train_df, test_data=test_df, stop_training_after_seconds=self.transaction.lmd['stop_training_in_x_seconds'], callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
 
-            # Evaluate less often for larger datasets and vice-versa
-            eval_every_x_epochs = int(round(1 * pow(10,6) * (1/len(train_df))))
-
-            # Within some limits
-            if eval_every_x_epochs > 200:
-                eval_every_x_epochs = 200
-            if eval_every_x_epochs < 3:
-                eval_every_x_epochs = 3
-
-            logging.getLogger().setLevel(logging.DEBUG)
-            if self.transaction.lmd['stop_training_in_x_seconds'] is None:
-                self.predictor.learn(from_data=train_df, test_data=test_df, callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
-            else:
-                self.predictor.learn(from_data=train_df, test_data=test_df, stop_training_after_seconds=self.transaction.lmd['stop_training_in_x_seconds'], callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
-
-            self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
+        self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
 
         self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_lightwood_data')
         self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
@@ -210,10 +228,14 @@ class LightwoodBackend():
 
         if mode == 'predict':
             df = self.transaction.input_data.data_frame
-        if mode == 'validate':
+        elif mode == 'validate':
             df = self.transaction.input_data.validation_df
         elif mode == 'test':
             df = self.transaction.input_data.test_df
+        elif mode == 'predict_on_train_data':
+            df = self.transaction.input_data.train_df
+        else:
+            raise Exception(f'Unknown mode specified: "{mode}"')
 
         if self.transaction.lmd['model_order_by'] is not None and len(self.transaction.lmd['model_order_by']) > 0:
             df = self._create_timeseries_df(df)
@@ -241,7 +263,7 @@ class LightwoodBackend():
                     conf_arr = [x if x > 0 else 0 for x in predictions[k][confidence_name]]
                     conf_arr = [x if x < 1 else 1 for x in conf_arr]
                     confidence_arr.append(conf_arr)
-                    
+
             if len(confidence_arr) > 0:
                 confidences = []
                 for n in range(len(confidence_arr[0])):

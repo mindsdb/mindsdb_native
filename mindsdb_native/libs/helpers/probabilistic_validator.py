@@ -70,12 +70,12 @@ class ProbabilisticValidator:
 
                 real_value = row[self.col_name]
                 try:
-                    predicted_value = predicted_value if self.col_stats['data_type'] != DATA_TYPES.NUMERIC else float(predicted_value)
+                    predicted_value = predicted_value if self.col_stats['typing']['data_type'] != DATA_TYPES.NUMERIC else float(predicted_value)
                 except Exception:
                     predicted_value = None
 
                 try:
-                    real_value = real_value if self.col_stats['data_type'] != DATA_TYPES.NUMERIC else float(str(real_value).replace(',','.'))
+                    real_value = real_value if self.col_stats['typing']['data_type'] != DATA_TYPES.NUMERIC else float(str(real_value).replace(',','.'))
                 except Exception:
                     real_value = None
 
@@ -90,7 +90,7 @@ class ProbabilisticValidator:
 
                     X.append([])
 
-                if self.col_stats['data_type'] == DATA_TYPES.NUMERIC:
+                if self.col_stats['typing']['data_type'] == DATA_TYPES.NUMERIC:
                     Y.append(predicted_range[0] < real_value < predicted_range[1])
                 else:
                     Y.append(real_value_b == predicted_value_b)
@@ -98,7 +98,7 @@ class ProbabilisticValidator:
                 if n == 0:
                     self.real_values_bucketized.append(real_value_b)
                     self.normal_predictions_bucketized.append(predicted_value_b)
-                    if self.col_stats['data_type'] == DATA_TYPES.NUMERIC:
+                    if self.col_stats['typing']['data_type'] == DATA_TYPES.NUMERIC:
                         self.numerical_samples_arr.append((real_value,predicted_range))
 
                 feature_existance = real_present_inputs_arr[m]

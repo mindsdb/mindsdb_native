@@ -2,9 +2,72 @@ import os
 import pickle
 import shutil
 import zipfile
-
-from mindsdb_native.libs.constants.mindsdb import *
+import traceback
 from mindsdb_native.config import CONFIG
+
+from mindsdb_native.__about__ import __version__
+from mindsdb_native.libs.data_types.mindsdb_logger import log
+from mindsdb_native.libs.controllers.transaction import AnalyseTransaction
+from mindsdb_native.libs.controllers.predictor import _get_memory_optimizations, _prepare_sample_settings
+from mindsdb_native.libs.helpers.multi_data_source import getDS
+
+from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
+                                                   MODEL_STATUS_ERROR,
+                                                   TRANSACTION_ANALYSE)
+
+from mindsdb_native.libs.helpers.locking import MDBLock
+
+
+def analyse_dataset(from_data, sample_settings=None):
+    """
+    Analyse the particular dataset being given
+    """
+
+    from_ds = getDS(from_data)
+    transaction_type = TRANSACTION_ANALYSE
+
+    sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(
+        from_ds.df)
+    sample_settings, sample_function = _prepare_sample_settings(sample_settings,
+                                                sample_for_analysis,
+                                                sample_for_training)
+
+    heavy_transaction_metadata = dict(
+        name=None,
+        from_data=from_ds,
+        sample_function=sample_function
+    )
+
+    light_transaction_metadata = dict(
+        version = str(__version__),
+        name = None,
+        model_columns_map = from_ds._col_map,
+        type = transaction_type,
+        sample_settings = sample_settings,
+        model_is_time_series = False,
+        model_group_by = [],
+        model_order_by = [],
+        columns_to_ignore = [],
+        data_preparation = {},
+        predict_columns = [],
+        empty_columns = [],
+        handle_foreign_keys = True,
+        force_categorical_encoding = [],
+        data_types = {},
+        data_subtypes = {},
+        breakpoint = None
+    )
+
+    tx = AnalyseTransaction(
+        session=None,
+        light_transaction_metadata=light_transaction_metadata,
+        heavy_transaction_metadata=heavy_transaction_metadata,
+        logger=log
+    )
+
+    md = get_model_data(lmd=tx.lmd)
+    return md
+
 
 def export_storage(mindsdb_storage_dir='mindsdb_storage'):
     """
@@ -24,27 +87,28 @@ def export_predictor(model_name):
     :param model: a Predictor
     :param model_name: this is the name of the model you wish to export (defaults to the name of the passed Predictor)
     """
-    storage_file = model_name + '.zip'
-    with zipfile.ZipFile(storage_file, 'w') as zip_fp:
-        for file_name in [model_name + '_heavy_model_metadata.pickle',
-                          model_name + '_light_model_metadata.pickle',
-                          model_name + '_lightwood_data']:
-            full_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name)
-            zip_fp.write(full_path, os.path.basename(full_path))
+    with MDBLock('shared', 'predict_' + model_name):
+        storage_file = model_name + '.zip'
+        with zipfile.ZipFile(storage_file, 'w') as zip_fp:
+            for file_name in [model_name + '_heavy_model_metadata.pickle',
+                            model_name + '_light_model_metadata.pickle',
+                            model_name + '_lightwood_data']:
+                full_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name)
+                zip_fp.write(full_path, os.path.basename(full_path))
 
-        # If the backend is ludwig, save the ludwig files
-        try:
-            ludwig_model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                             model_name + '_ludwig_data')
-            for root, dirs, files in os.walk(ludwig_model_path):
-                for file in files:
-                    full_path = os.path.join(root, file)
-                    zip_fp.write(full_path,
-                                 full_path[len(CONFIG.MINDSDB_STORAGE_PATH):])
-        except Exception:
-            pass
+            # If the backend is ludwig, save the ludwig files
+            try:
+                ludwig_model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                                                model_name + '_ludwig_data')
+                for root, dirs, files in os.walk(ludwig_model_path):
+                    for file in files:
+                        full_path = os.path.join(root, file)
+                        zip_fp.write(full_path,
+                                    full_path[len(CONFIG.MINDSDB_STORAGE_PATH):])
+            except Exception:
+                pass
 
-    print(f'Exported model to {storage_file}')
+        print(f'Exported model to {storage_file}')
 
 
 def rename_model(old_model_name, new_model_name):
@@ -55,67 +119,70 @@ def rename_model(old_model_name, new_model_name):
     :param new_model_name: this is the new name of the model
     :return: bool (True/False) True if predictor was renamed successfully
     """
+    lock1 = MDBLock('exclusive', 'delete_' + new_model_name)
+    lock2 = MDBLock('exclusive', 'delete_' + old_model_name)
+    with lock1, lock2:
 
-    if old_model_name == new_model_name:
+        if old_model_name == new_model_name:
+            return True
+
+        moved_a_backend = False
+        for extension in ['_lightwood_data', '_ludwig_data']:
+            shutil.move(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                                    old_model_name + extension),
+                        os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                                    new_model_name + extension))
+            moved_a_backend = True
+
+        if not moved_a_backend:
+            return False
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            old_model_name + '_light_model_metadata.pickle'),
+                'rb') as fp:
+            lmd = pickle.load(fp)
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            old_model_name + '_heavy_model_metadata.pickle'),
+                'rb') as fp:
+            hmd = pickle.load(fp)
+
+        lmd['name'] = new_model_name
+        hmd['name'] = new_model_name
+
+        renamed_one_backend = False
+        try:
+            lmd['ludwig_data']['ludwig_save_path'] = lmd['ludwig_data'][
+                'ludwig_save_path'].replace(old_model_name, new_model_name)
+            renamed_one_backend = True
+        except Exception:
+            pass
+
+        try:
+            lmd['lightwood_data']['save_path'] = lmd['lightwood_data'][
+                'save_path'].replace(old_model_name, new_model_name)
+            renamed_one_backend = True
+        except Exception:
+            pass
+
+        if not renamed_one_backend:
+            return False
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            new_model_name + '_light_model_metadata.pickle'),
+                'wb') as fp:
+            pickle.dump(lmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            new_model_name + '_heavy_model_metadata.pickle'),
+                'wb') as fp:
+            pickle.dump(hmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+        os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            old_model_name + '_light_model_metadata.pickle'))
+        os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            old_model_name + '_heavy_model_metadata.pickle'))
         return True
-
-    moved_a_backend = False
-    for extension in ['_lightwood_data', '_ludwig_data']:
-        shutil.move(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                 old_model_name + extension),
-                    os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                 new_model_name + extension))
-        moved_a_backend = True
-
-    if not moved_a_backend:
-        return False
-
-    with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           old_model_name + '_light_model_metadata.pickle'),
-              'rb') as fp:
-        lmd = pickle.load(fp)
-
-    with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           old_model_name + '_heavy_model_metadata.pickle'),
-              'rb') as fp:
-        hmd = pickle.load(fp)
-
-    lmd['name'] = new_model_name
-    hmd['name'] = new_model_name
-
-    renamed_one_backend = False
-    try:
-        lmd['ludwig_data']['ludwig_save_path'] = lmd['ludwig_data'][
-            'ludwig_save_path'].replace(old_model_name, new_model_name)
-        renamed_one_backend = True
-    except Exception:
-        pass
-
-    try:
-        lmd['lightwood_data']['save_path'] = lmd['lightwood_data'][
-            'save_path'].replace(old_model_name, new_model_name)
-        renamed_one_backend = True
-    except Exception:
-        pass
-
-    if not renamed_one_backend:
-        return False
-
-    with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           new_model_name + '_light_model_metadata.pickle'),
-              'wb') as fp:
-        pickle.dump(lmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
-
-    with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           new_model_name + '_heavy_model_metadata.pickle'),
-              'wb') as fp:
-        pickle.dump(hmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
-
-    os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           old_model_name + '_light_model_metadata.pickle'))
-    os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                           old_model_name + '_heavy_model_metadata.pickle'))
-    return True
 
 
 def delete_model(model_name):
@@ -125,23 +192,38 @@ def delete_model(model_name):
     :param model_name: name of the model
     :return: bool (True/False) True if model was deleted
     """
+    with MDBLock('exclusive', 'delete_' + model_name):
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
+            lmd = pickle.load(fp)
 
-    with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
-        lmd = pickle.load(fp)
+            try:
+                os.remove(lmd['lightwood_data']['save_path'])
+            except Exception:
+                pass
 
-        try:
-            os.remove(lmd['lightwood_data']['save_path'])
-        except Exception:
-            pass
+            try:
+                shutil.rmtree(lmd['ludwig_data']['ludwig_save_path'])
+            except Exception:
+                pass
 
-        try:
-            shutil.rmtree(lmd['ludwig_data']['ludwig_save_path'])
-        except Exception:
-            pass
+        for file_name in [model_name + '_heavy_model_metadata.pickle',
+                        model_name + '_light_model_metadata.pickle']:
+            os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name))
 
-    for file_name in [model_name + '_heavy_model_metadata.pickle',
-                      model_name + '_light_model_metadata.pickle']:
-        os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name))
+
+def _import_model_by_name(model_name):
+    with MDBLock('exclusive', 'detele_' + model_name):
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
+            lmd = pickle.load(fp)
+
+        if 'ludwig_data' in lmd and 'ludwig_save_path' in lmd['ludwig_data']:
+            lmd['ludwig_data']['ludwig_save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['ludwig_data']['ludwig_save_path'])))
+
+        if 'lightwood_data' in lmd and 'save_path' in lmd['lightwood_data']:
+            lmd['lightwood_data']['save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['lightwood_data']['save_path'])))
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'wb') as fp:
+            pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def import_model(model_archive_path):
@@ -161,25 +243,16 @@ def import_model(model_archive_path):
             model_names.append(model_name)
 
     for model_name in model_names:
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
-            lmd = pickle.load(fp)
+        _import_model_by_name(model_name)
 
-        if 'ludwig_data' in lmd and 'ludwig_save_path' in lmd['ludwig_data']:
-            lmd['ludwig_data']['ludwig_save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['ludwig_data']['ludwig_save_path'])))
-
-        if 'lightwood_data' in lmd and 'save_path' in lmd['lightwood_data']:
-            lmd['lightwood_data']['save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['lightwood_data']['save_path'])))
-
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'wb') as fp:
-            pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
     print('Model files loaded')
 
 
 def _adapt_column(col_stats, col):
     icm = {
         'column_name': col,
-        'data_type': col_stats['data_type'],
-        'data_subtype': col_stats['data_subtype'],
+        'data_type': col_stats['typing']['data_type'],
+        'data_subtype': col_stats['typing']['data_subtype'],
     }
 
     icm['data_type_distribution'] = {
@@ -187,18 +260,18 @@ def _adapt_column(col_stats, col):
         ,'x': []
         ,'y': []
     }
-    for k in col_stats['data_type_dist']:
+    for k in col_stats['typing']['data_type_dist']:
         icm['data_type_distribution']['x'].append(k)
-        icm['data_type_distribution']['y'].append(col_stats['data_type_dist'][k])
+        icm['data_type_distribution']['y'].append(col_stats['typing']['data_type_dist'][k])
 
     icm['data_subtype_distribution'] = {
         'type': "categorical"
         ,'x': []
         ,'y': []
     }
-    for k in col_stats['data_subtype_dist']:
+    for k in col_stats['typing']['data_subtype_dist']:
         icm['data_subtype_distribution']['x'].append(k)
-        icm['data_subtype_distribution']['y'].append(col_stats['data_subtype_dist'][k])
+        icm['data_subtype_distribution']['y'].append(col_stats['typing']['data_subtype_dist'][k])
 
     icm['data_distribution'] = {}
     icm['data_distribution']['data_histogram'] = {
@@ -206,98 +279,30 @@ def _adapt_column(col_stats, col):
         'x': [],
         'y': []
     }
-    icm['data_distribution']['clusters'] =  [
+    icm['data_distribution']['clusters'] = [
          {
              "group": [],
              "members": []
          }
      ]
 
-
     for i in range(len(col_stats['histogram']['x'])):
         icm['data_distribution']['data_histogram']['x'].append(col_stats['histogram']['x'][i])
         icm['data_distribution']['data_histogram']['y'].append(col_stats['histogram']['y'][i])
-
-    scores = ['consistency_score', 'redundancy_score', 'variability_score']
-    for score in scores:
-        metrics = []
-        if score == 'consistency_score':
-            simple_description = "A low value indicates the data is not very consistent, it's either missing a lot of valus or the type (e.g. number, text, category, date) of values varries quite a lot."
-            metrics.append({
-                  "type": "score",
-                  "name": "Type Distribution",
-                  "score": col_stats['data_type_distribution_score'],
-                  "description": "A low value indicates that we can't consistently determine a single data type (e.g. number, text, category, date) for most values in this column",
-                  "warning": col_stats['data_type_distribution_score_warning']
-            })
-            metrics.append({
-                  "type": "score",
-                  "score": col_stats['empty_cells_score'],
-                  "name": "Empty Cells",
-                  "description": "A low value indicates that a lot of the values in this column are empty or null. A value of 10 means no cell is missing data, a value of 0 means no cell has any data.",
-                  "warning": col_stats['empty_cells_score_warning']
-            })
-            if 'duplicates_score' in col_stats:
-                metrics.append({
-                      "type": "score",
-                      "name": "Value Duplication",
-                      "score": col_stats['duplicates_score'],
-                      "description": "A low value indicates that a lot of the values in this columns are duplicates, as in, the same value shows up more than once in the column. This is not necessarily bad and could be normal for certain data types.",
-                      "warning": col_stats['duplicates_score_warning']
-                })
-
-        if score == 'variability_score':
-            simple_description = "A low value indicates a high possibility of some noise affecting your data collection process. This could mean that the values for this column are not collected or processed correctly."
-            if 'lof_based_outlier_score' in col_stats and 'z_test_based_outlier_score' in col_stats:
-                metrics.append({
-                      "type": "score",
-                      "name": "Z Outlier Score",
-                      "score": col_stats['lof_based_outlier_score'],
-                      "description": "A low value indicates a large number of outliers in your dataset. This is based on distance from the center of 20 clusters as constructed via KNN.",
-                      "warning": col_stats['lof_based_outlier_score_warning']
-                })
-                metrics.append({
-                      "type": "score",
-                      "name": "Z Outlier Score",
-                      "score": col_stats['z_test_based_outlier_score'],
-                      "description": "A low value indicates a large number of data points are more than 3 standard deviations away from the mean value of this column. This means that this column likely has a large amount of outliers",
-                      "warning": col_stats['z_test_based_outlier_score_warning']
-                })
-            metrics.append({
-                  "type": "score",
-                  "name":"Value Distribution",
-                  "score": col_stats['value_distribution_score'],
-                  "description": "A low value indicates the possibility of a large number of outliers, the clusters in which your data is distributed aren't evenly sized.",
-                  "warning": col_stats['value_distribution_score_warning']
-            })
-
-        if score == 'redundancy_score':
-            # CLF based score to be included here once we find a faster way of computing it...
-            similarity_score_based_most_correlated_column = col_stats['most_similar_column_name']
-
-            simple_description = f"A low value indicates that the data in this column is highly redundant (useless) for making any sort of prediction. You should make sure that values heavily related to this column are not already expressed in the \"{similarity_score_based_most_correlated_column}\" column (e.g. if this column is a timestamp, make sure you don't have another column representing the exact same time in ISO datetime format)"
-
-            metrics.append({
-                  "type": "score",
-                  "name": "Matthews Correlation Score",
-                  "score": col_stats['similarity_score'],
-                  "description": f"A low value indicates a large number of values in this column are similar to values in the \"{similarity_score_based_most_correlated_column}\" column",
-                  "warning": col_stats['similarity_score_warning']
-            })
-
-        icm[score.replace('_score','')] = {
-            "score": col_stats[score],
-            "metrics": metrics,
-            "description": simple_description,
-            "warning": col_stats[f'{score}_warning']
-        }
-
     return icm
 
-def get_model_data(model_name, lmd=None):
-    if lmd is None:
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
-            lmd = pickle.load(fp)
+
+def get_model_data(model_name=None, lmd=None):
+    if model_name is None and lmd is None:
+        raise ValueError('provide either model name or lmd')
+
+    if lmd is not None:
+        pass
+    elif model_name is not None:
+        with MDBLock('shared', 'get_data_' + model_name):
+            with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
+                lmd = pickle.load(fp)
+
     # ADAPTOR CODE
     amd = {}
 
@@ -338,7 +343,7 @@ def get_model_data(model_name, lmd=None):
             continue
 
         try:
-            icm = _adapt_column(lmd['column_stats'][col],col)
+            icm = _adapt_column(lmd['stats_v2'][col],col)
         except Exception as e:
             print(e)
             icm = {'column_name': col}
@@ -436,6 +441,10 @@ def get_model_data(model_name, lmd=None):
                         except Exception:
                             print(f'No column importances found for {icol} !')
 
+            for key in ['train_data_accuracy', 'test_data_accuracy', 'valid_data_accuracy']:
+                if key in lmd:
+                    mao[key] = lmd[key]
+
             amd['model_analysis'].append(mao)
         else:
             if 'column_importances' in lmd and lmd['column_importances'] is not None:
@@ -443,7 +452,6 @@ def get_model_data(model_name, lmd=None):
             amd['data_analysis']['input_columns_metadata'].append(icm)
 
     return amd
-
 
 
 def get_models():
@@ -463,8 +471,7 @@ def get_models():
 
                 models.append(model)
             except Exception as e:
-                print(e)
-                print(traceback.format_exc())
                 print(f"Can't adapt metadata for model: '{model_name}' when calling `get_models()`")
+                raise
 
     return models
