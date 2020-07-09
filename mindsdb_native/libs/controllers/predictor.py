@@ -293,7 +293,6 @@ class Predictor:
         with MDBLock('shared', 'learn_' + self.name):
             if advanced_args is None:
                 advanced_args = {}
-
             if run_confidence_variation_analysis is True and isinstance(when_data, list) and len(when_data) > 1:
                 error_msg = 'run_confidence_variation_analysis=True is a valid option only when predicting a single data point'
                 self.log.error(error_msg)

@@ -102,6 +102,12 @@ class TestDataAnalyzer:
         assert isinstance(stats_v2['short_text']['histogram']['x'][0], str)
         assert isinstance(stats_v2['rich_text']['histogram']['x'][0], str)
 
+        for col in ['numeric_float', 'numeric_int']:
+            assert isinstance(stats_v2[col]['outliers']['outlier_values'], list)
+            assert isinstance(stats_v2[col]['outliers']['outlier_buckets'], list)
+            assert isinstance(stats_v2[col]['outliers']['description'], str)
+            assert set(stats_v2[col]['outliers']['outlier_buckets']) <= set(stats_v2[col]['percentage_buckets'])
+
         assert hmd == {}
 
         assert isinstance(json.dumps(transaction.lmd), str)
