@@ -106,7 +106,7 @@ class TestDataAnalyzer:
             assert isinstance(stats_v2[col]['outliers']['outlier_values'], list)
             assert isinstance(stats_v2[col]['outliers']['outlier_buckets'], list)
             assert isinstance(stats_v2[col]['outliers']['description'], str)
-            assert set(stats_v2[col]['outliers']['outlier_buckets']) in set(stats_v2[col]['percentage_buckets'])
+            assert set(stats_v2[col]['outliers']['outlier_buckets']) <= set(stats_v2[col]['percentage_buckets'])
 
         assert hmd == {}
 
