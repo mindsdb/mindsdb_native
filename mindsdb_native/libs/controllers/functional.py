@@ -7,7 +7,7 @@ from mindsdb_native.config import CONFIG
 
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import log
-from mindsdb_native.libs.controllers.transaction import Transaction
+from mindsdb_native.libs.controllers.transaction import AnalyseTransaction
 from mindsdb_native.libs.controllers.predictor import _get_memory_optimizations, _prepare_sample_settings
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 
@@ -58,7 +58,7 @@ def analyse_dataset(from_data, sample_settings=None):
         breakpoint = None
     )
 
-    tx = Transaction(
+    tx = AnalyseTransaction(
         session=None,
         light_transaction_metadata=light_transaction_metadata,
         heavy_transaction_metadata=heavy_transaction_metadata,
@@ -440,6 +440,10 @@ def get_model_data(model_name=None, lmd=None):
                             mao['overall_input_importance']['y'].append(round(lmd['column_importances'][icol],1))
                         except Exception:
                             print(f'No column importances found for {icol} !')
+
+            for key in ['train_data_accuracy', 'test_data_accuracy', 'valid_data_accuracy']:
+                if key in lmd:
+                    mao[key] = lmd[key]
 
             amd['model_analysis'].append(mao)
         else:
