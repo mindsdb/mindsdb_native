@@ -22,12 +22,12 @@ from mindsdb_native.libs.helpers.text_helpers import (
 )
 
 def isolation_forest_outliers(col_subtype, col_data):
-    model = IsolationForest(n_estimators=10)
+    model = IsolationForest(n_estimators=50)
     np_data = np.array(col_data).reshape(-1, 1)
     model.fit(np_data)
     outlier_scores = model.decision_function(np_data)
     outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < np.quantile(outlier_scores, 0.1)]
-    
+
     if col_subtype == DATA_SUBTYPES.INT:
         outliers = [int(x) for x in outliers]
 
