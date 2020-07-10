@@ -22,7 +22,7 @@ from mindsdb_native.libs.helpers.text_helpers import (
 )
 
 def isolation_forest_outliers(col_subtype, col_data):
-    model = IsolationForest(n_estimators=50)
+    model = IsolationForest(n_estimators=max(len(col_data)/100,50))
     np_data = np.array(col_data).reshape(-1, 1)
     model.fit(np_data)
     outlier_scores = model.decision_function(np_data)
