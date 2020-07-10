@@ -22,23 +22,25 @@ from mindsdb_native.libs.helpers.text_helpers import (
 )
 
 def isolation_forest_outliers(col_subtype, col_data):
-    model = IsolationForest(n_estimators=10)	
-    outlier_scores = model.fit_predict(np.array(col_data).reshape(-1, 1))	
-    outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i]==-1]	
-
-    if col_subtype == DATA_SUBTYPES.INT:	
-        outliers = [int(x) for x in outliers]	
+    model = IsolationForest(n_estimators=10)
+    np_data = np.array(col_data).reshape(-1, 1)
+    model.fit(np_data)
+    outlier_scores = model.decision_function(np_data)
+    outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < np.quantile(outlier_scores, 0.1)]
+    
+    if col_subtype == DATA_SUBTYPES.INT:
+        outliers = [int(x) for x in outliers]
 
     return outliers
 
 def lof_outliers(col_subtype, col_data):
-    lof = LocalOutlierFactor(contamination='auto')	
-    outlier_scores = lof.fit_predict(np.array(col_data).reshape(-1, 1)	)	
+    lof = LocalOutlierFactor(contamination='auto')
+    outlier_scores = lof.fit_predict(np.array(col_data).reshape(-1, 1)	)
 
-    outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < -0.8]	
+    outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < -0.8]
 
-    if col_subtype == DATA_SUBTYPES.INT:	
-        outliers = [int(x) for x in outliers]	
+    if col_subtype == DATA_SUBTYPES.INT:
+        outliers = [int(x) for x in outliers]
 
     return outliers
 
@@ -223,9 +225,9 @@ def compute_outlier_buckets(outlier_values,
         predominantly_outlier = False
         if bucket_values_num:
            predominantly_outlier = (bucket_outliers_num / bucket_values_num) > 0.5
-           ten_pct_outliers = (bucket_outliers_num / bucket_values_num) > 0.2
+           significant_pct_outliers = (bucket_outliers_num / bucket_values_num) > 0.2
 
-        if (predominantly_outlier and ten_pct_outliers) or percentile_outlier:
+        if (predominantly_outlier and significant_pct_outliers) or percentile_outlier:
             outlier_buckets.append(bucket)
     return outlier_buckets
 
@@ -303,14 +305,14 @@ class DataAnalyzer(BaseModule):
 
                 if data_type == DATA_TYPES.NUMERIC:
                         outliers = isolation_forest_outliers(data_subtype, col_data)
-                        stats_v2[col_name]['outliers'] = {	
+                        stats_v2[col_name]['outliers'] = {
                             'outlier_values': outliers,
-                            'outlier_buckets': compute_outlier_buckets(outlier_values=outliers,	
-                                                                    hist_x=histogram['x'],	
-                                                                    hist_y=histogram['y'],	
-                                                                    percentage_buckets=percentage_buckets,	
-                                                                    col_stats=stats_v2[col_name]),	
-                            'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""	
+                            'outlier_buckets': compute_outlier_buckets(outlier_values=outliers,
+                                                                    hist_x=histogram['x'],
+                                                                    hist_y=histogram['y'],
+                                                                    percentage_buckets=percentage_buckets,
+                                                                    col_stats=stats_v2[col_name]),
+                            'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""
                         }
 
             if data_type == DATA_TYPES.TEXT:
