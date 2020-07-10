@@ -1,3 +1,6 @@
+import json
+from unittest import mock
+
 import pytest
 import os
 import numpy as np
@@ -19,13 +22,44 @@ from unit_tests.utils import (test_column_types,
                                     generate_value_cols,
                                     generate_timeseries_labels,
                                     generate_log_labels,
-                                    columns_to_file)
+                                    columns_to_file, PickableMock)
+
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class TestPredictor:
-    def test_analyze_dataset(self):
+    def test_sample_for_training(self):
         predictor = Predictor(name='test')
 
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+            'categorical_binary': [0, 1] * (n_points // 2),
+        }, index=list(range(n_points)))
+        input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int*input_dataframe.categorical_binary
+
+        mock_function = PickableMock(spec=sample_data,
+                                       wraps=sample_data)
+        setattr(mock_function, '__name__', 'mock_sample_data')
+        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
+            mock_function):
+
+            predictor.learn(from_data=input_dataframe,
+                            to_predict='y',
+                            backend='lightwood',
+                            sample_settings={'sample_for_training': True,
+                                             'sample_for_analysis': True},
+                            stop_training_in_x_seconds=1,
+                            use_gpu=False)
+
+            assert mock_function.called
+
+            # 1 call when sampling for analysis
+            # 1 call when sampling training data for lightwood
+            # 1 call when sampling testing data for lightwood
+            assert mock_function.call_count == 3
+
+    def test_analyze_dataset(self):
         n_points = 100
         n_category_values = 4
         input_dataframe = pd.DataFrame({
@@ -59,9 +93,51 @@ class TestPredictor:
             assert 'nr_warnings' in col_data
             assert not col_data['is_foreign_key']
 
-    def test_analyze_dataset_empty_column(self):
-        predictor = Predictor(name='test')
+        assert isinstance(json.dumps(model_data), str)
 
+    def test_sample_for_analysis(self):
+        n_points = 100
+        n_category_values = 4
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+            'numeric_float': np.linspace(0, n_points, n_points),
+            'date_timestamp': [
+                (datetime.now() - timedelta(minutes=int(i))).isoformat() for i in
+                range(n_points)],
+            'date_date': [
+                (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in
+                range(n_points)],
+            'categorical_str': [f'a{x}' for x in (
+                list(range(n_category_values)) * (
+                n_points // n_category_values))],
+            'categorical_int': [x for x in (list(range(n_category_values)) * (
+                n_points // n_category_values))],
+            'categorical_binary': [0, 1] * (n_points // 2),
+            'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)]
+        }, index=list(range(n_points)))
+
+        mock_function = PickableMock(spec=sample_data,
+                                     wraps=sample_data)
+        setattr(mock_function, '__name__', 'mock_sample_data')
+        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
+                        mock_function):
+            model_data = F.analyse_dataset(from_data=input_dataframe,
+                                           sample_settings={'sample_for_analysis': True})
+            assert mock_function.called
+
+        for col, col_data in model_data['data_analysis_v2'].items():
+            expected_type = test_column_types[col][0]
+            expected_subtype = test_column_types[col][1]
+            assert col_data['typing']['data_type'] == expected_type
+            assert col_data['typing']['data_subtype'] == expected_subtype
+
+            assert col_data['empty']
+            assert col_data['histogram']
+            assert 'percentage_buckets' in col_data
+            assert 'nr_warnings' in col_data
+            assert not col_data['is_foreign_key']
+
+    def test_analyze_dataset_empty_column(self):
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
@@ -73,11 +149,10 @@ class TestPredictor:
         assert model_data['data_analysis_v2']['empty_column']['empty']['is_empty'] is True
 
     def test_analyze_dataset_empty_values(self):
-        predictor = Predictor(name='test')
-
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
+            'numeric_int2': list(range(n_points)),
         }, index=list(range(n_points)))
         input_dataframe['numeric_int'].iloc[::2] = None
 
@@ -85,9 +160,63 @@ class TestPredictor:
 
         assert model_data['data_analysis_v2']['numeric_int']['empty']['empty_percentage'] == 50
 
+    def test_predictor_deduplicate_data(self):
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'numeric_int': list(range(n_points)),
+        }, index=list(range(n_points)))
+        input_dataframe['y'] = input_dataframe['numeric_int'] + 1
+
+        # Add duplicate row
+        input_dataframe = input_dataframe.append(input_dataframe.iloc[99], ignore_index=True)
+
+        mdb = Predictor(name='test_drop_duplicates')
+        mdb.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False
+        )
+
+        model_data = F.get_model_data('test_drop_duplicates')
+
+        # Ensure duplicate row was not used for training
+
+        assert model_data['data_preparation']['total_row_count'] == n_points
+        assert model_data['data_preparation']['used_row_count'] <= n_points
+
+
+        assert sum([model_data['data_preparation']['train_row_count'],
+                   model_data['data_preparation']['validation_row_count'],
+                   model_data['data_preparation']['test_row_count']]) == n_points
+
+
+        # Disable deduplication and ensure the duplicate row is used
+        mdb = Predictor(name='test_drop_duplicates')
+        mdb.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False,
+            advanced_args={
+                'deduplicate_data': False
+            }
+        )
+
+        model_data = F.get_model_data('test_drop_duplicates')
+
+        # Ensure duplicate row was not used for training
+
+        assert model_data['data_preparation']['total_row_count'] == n_points+1
+        assert model_data['data_preparation']['used_row_count'] <= n_points+1
+
+        assert sum([model_data['data_preparation']['train_row_count'],
+                    model_data['data_preparation']['validation_row_count'],
+                    model_data['data_preparation']['test_row_count']]) == n_points+1
+
     @pytest.mark.slow
     def test_explain_prediction(self):
-        mdb = Predictor(name='test_home_rentals')
+        mdb = Predictor(name='test_explain_prediction')
 
         n_points = 100
         input_dataframe = pd.DataFrame({
@@ -100,16 +229,19 @@ class TestPredictor:
         mdb.learn(
             from_data=input_dataframe,
             to_predict='numeric_y',
-            stop_training_in_x_seconds=1
+            stop_training_in_x_seconds=1,
+            use_gpu=False
         )
 
-        result = mdb.predict(when={"numeric_x": 10, 'categorical_x': 1})
+        result = mdb.predict(when_data={"numeric_x": 10, 'categorical_x': 1})
         explanation_new = result[0].explanation['numeric_y']
-        assert explanation_new['predicted_value'] is not None
-        assert explanation_new['confidence_interval']
-        assert explanation_new['confidence'] >= 0.8
-        assert explanation_new['important_missing_information'] == []
-        assert explanation_new['prediction_quality'] == 'very confident'
+        assert isinstance(explanation_new['predicted_value'], int)
+        assert isinstance(explanation_new['confidence_interval'],list)
+        assert isinstance(explanation_new['confidence_interval'][0],int)
+        assert isinstance(explanation_new['important_missing_information'], list)
+        assert isinstance(explanation_new['prediction_quality'], str)
+
+        assert len(str(result[0])) > 20
 
 
     @pytest.mark.skip(reason="Causes error in probabilistic validator")
@@ -334,39 +466,24 @@ class TestPredictor:
                   stop_training_in_x_seconds=1,
                   use_gpu=use_gpu)
 
-        def assert_prediction_interface(prediction):
-            assert hasattr(prediction, 'data')
-            assert hasattr(prediction, 'extra_insights')
-            assert hasattr(prediction, 'transaction')
-            assert hasattr(prediction[0], 'explanation')
-            assert hasattr(prediction[0], 'data')
-            assert prediction[0].predict_columns[0] == 'rental_price'
-
-            for item in prediction:
-                # Assert __str__ works
-                print(item)
-
-            print(prediction[0].as_dict())
-            print(prediction[0].as_list())
-            print(prediction[0]['rental_price_confidence'])
-            print(type(prediction[0]['rental_price_confidence']))
-
-            print(prediction[0].explanation)
-            print(prediction[0].raw_predictions())
+        def assert_prediction_interface(predictions):
+            for prediction in predictions:
+                assert hasattr(prediction, 'explanation')
 
         test_results = mdb.test(
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             accuracy_score_functions=r2_score, predict_args={'use_gpu': use_gpu})
         assert test_results['rental_price_accuracy'] >= 0.8
 
-        prediction = mdb.predict(
+        predictions = mdb.predict(
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             use_gpu=use_gpu)
-        assert_prediction_interface(prediction)
-        prediction = mdb.predict(when={'sqft': 300}, use_gpu=use_gpu)
-        assert_prediction_interface(prediction)
+        assert_prediction_interface(predictions)
+        predictions = mdb.predict(when_data={'sqft': 300}, use_gpu=use_gpu)
+        assert_prediction_interface(predictions)
 
         amd = F.get_model_data('home_rentals_price')
+        assert isinstance(json.dumps(amd), str)
 
         for k in ['status', 'name', 'version', 'data_source', 'current_phase',
                   'updated_at', 'created_at',
@@ -392,6 +509,11 @@ class TestPredictor:
         input_importance = model_analysis[0]["overall_input_importance"]
         assert (len(input_importance) > 0)
         assert isinstance(input_importance, dict)
+
+        for k in ['train', 'test', 'valid']:
+            assert isinstance(model_analysis[0][k + '_data_accuracy'], dict)
+            assert len(model_analysis[0][k + '_data_accuracy']) == 1
+            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.8
 
         for column, importance in zip(input_importance["x"],
                                       input_importance["y"]):

@@ -39,10 +39,10 @@ class LightwoodBackend():
                     row[col] = 0.0
                 try:
                     row[col] = float(row[col])
-                except:
+                except Exception:
                     try:
                         row[col] = float(row[col].timestamp())
-                    except:
+                    except Exception:
                         error_msg = f'Backend Lightwood does not support ordering by the column: {col} !, Faulty value: {row[col]}'
                         self.transaction.log.error(error_msg)
                         raise ValueError(error_msg)
@@ -143,9 +143,6 @@ class LightwoodBackend():
             else:
                 config['output_features'].append(col_config)
 
-        if self.transaction.lmd['optimize_model']:
-            config['optimizer'] = lightwood.model_building.BasicAxOptimizer
-
         config['data_source'] = {}
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
 
@@ -201,27 +198,25 @@ class LightwoodBackend():
 
         lightwood_config = self._create_lightwood_config()
 
-        if self.transaction.lmd['skip_model_training'] == True:
-            self.predictor = lightwood.Predictor(load_from_path=os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_lightwood_data'))
+
+        self.predictor = lightwood.Predictor(lightwood_config)
+
+        # Evaluate less often for larger datasets and vice-versa
+        eval_every_x_epochs = int(round(1 * pow(10,6) * (1/len(train_df))))
+
+        # Within some limits
+        if eval_every_x_epochs > 200:
+            eval_every_x_epochs = 200
+        if eval_every_x_epochs < 3:
+            eval_every_x_epochs = 3
+
+        logging.getLogger().setLevel(logging.DEBUG)
+        if self.transaction.lmd['stop_training_in_x_seconds'] is None:
+            self.predictor.learn(from_data=train_df, test_data=test_df, callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
         else:
-            self.predictor = lightwood.Predictor(lightwood_config)
+            self.predictor.learn(from_data=train_df, test_data=test_df, stop_training_after_seconds=self.transaction.lmd['stop_training_in_x_seconds'], callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
 
-            # Evaluate less often for larger datasets and vice-versa
-            eval_every_x_epochs = int(round(1 * pow(10,6) * (1/len(train_df))))
-
-            # Within some limits
-            if eval_every_x_epochs > 200:
-                eval_every_x_epochs = 200
-            if eval_every_x_epochs < 3:
-                eval_every_x_epochs = 3
-
-            logging.getLogger().setLevel(logging.DEBUG)
-            if self.transaction.lmd['stop_training_in_x_seconds'] is None:
-                self.predictor.learn(from_data=train_df, test_data=test_df, callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
-            else:
-                self.predictor.learn(from_data=train_df, test_data=test_df, stop_training_after_seconds=self.transaction.lmd['stop_training_in_x_seconds'], callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
-
-            self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
+        self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
 
         self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_lightwood_data')
         self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
@@ -234,10 +229,14 @@ class LightwoodBackend():
 
         if mode == 'predict':
             df = self.transaction.input_data.data_frame
-        if mode == 'validate':
+        elif mode == 'validate':
             df = self.transaction.input_data.validation_df
         elif mode == 'test':
             df = self.transaction.input_data.test_df
+        elif mode == 'predict_on_train_data':
+            df = self.transaction.input_data.train_df
+        else:
+            raise Exception(f'Unknown mode specified: "{mode}"')
 
         if self.transaction.lmd['model_order_by'] is not None and len(self.transaction.lmd['model_order_by']) > 0:
             df = self._create_timeseries_df(df)

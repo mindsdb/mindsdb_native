@@ -45,6 +45,49 @@ class ModelAnalyzer(BaseModule):
         self.transaction.lmd['accuracy_samples'] = {}
         self.transaction.hmd['probabilistic_validators'] = {}
 
+
+        self.transaction.lmd['train_data_accuracy'] = {}
+        self.transaction.lmd['test_data_accuracy'] = {}
+        self.transaction.lmd['valid_data_accuracy'] = {}
+
+        for col in output_columns:
+
+            # Training data accuracy
+            predictions = self.transaction.model_backend.predict(
+                'predict_on_train_data',
+                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
+            )
+            self.transaction.lmd['train_data_accuracy'][col] = evaluate_accuracy(
+                predictions,
+                self.transaction.input_data.train_df,
+                self.transaction.lmd['stats_v2'],
+                [col]
+            )
+
+            # Testing data accuracy
+            predictions = self.transaction.model_backend.predict(
+                'test',
+                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
+            )
+            self.transaction.lmd['test_data_accuracy'][col] = evaluate_accuracy(
+                predictions,
+                self.transaction.input_data.test_df,
+                self.transaction.lmd['stats_v2'],
+                [col]
+            )
+
+            # Validation data accuracy
+            predictions = self.transaction.model_backend.predict(
+                'validate',
+                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
+            )
+            self.transaction.lmd['valid_data_accuracy'][col] = evaluate_accuracy(
+                predictions,
+                self.transaction.input_data.validation_df,
+                self.transaction.lmd['stats_v2'],
+                [col]
+            )
+
         for col in output_columns:
             pval = ProbabilisticValidator(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
             predictions_arr = [normal_predictions] + [empty_input_predictions[col] for col in ignorable_input_columns]
@@ -59,4 +102,3 @@ class ModelAnalyzer(BaseModule):
             self.transaction.hmd['probabilistic_validators'][col] = pickle_obj(pval)
 
         self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr)/len(overall_accuracy_arr)
-

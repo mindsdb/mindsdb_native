@@ -37,7 +37,6 @@ class TestTypeDeductor:
             sample_function='sample_data'
         )
 
-        lmd['handle_text_as_categorical'] = False
         return lmd
 
     def test_type_deduction(self, transaction, lmd):

@@ -13,11 +13,11 @@ import numpy as np
 
 
 class DataExtractor(BaseModule):
-    def _get_data_frame_from_when_conditions(self):
+    def _data_from_when(self):
         """
         :return:
         """
-        when_conditions = self.transaction.hmd['model_when_conditions']
+        when_conditions = self.transaction.hmd['when']
 
         when_conditions_list = []
         # here we want to make a list of the type  ( ValueForField1, ValueForField2,..., ValueForFieldN ), ...
@@ -34,6 +34,14 @@ class DataExtractor(BaseModule):
 
         return result
 
+    def _data_from_when_data(self):
+        df = self.transaction.hmd['when_data']
+        df = df.where((pd.notnull(df)), None)
+
+        for col in self.transaction.lmd['columns']:
+            if col not in df.columns:
+                df[col] = [None] * len(df)
+        return df
 
     def _apply_sort_conditions_to_df(self, df):
         """
@@ -72,28 +80,12 @@ class DataExtractor(BaseModule):
             df = self.transaction.hmd['from_data']
             df = df.where((pd.notnull(df)), None)
 
-        # if this is a predict statement, create use model_when_conditions to shape the dataframe
         if  self.transaction.lmd['type'] == TRANSACTION_PREDICT:
             if self.transaction.hmd['when_data'] is not None:
-                df = self.transaction.hmd['when_data']
-                df = df.where((pd.notnull(df)), None)
-
-                for col in self.transaction.lmd['columns']:
-                    if col not in df.columns:
-                        df[col] = [None] * len(df)
-
-            elif self.transaction.hmd['model_when_conditions'] is not None:
-
+                df = self._data_from_when_data()
+            else:
                 # if no data frame yet, make one
-                df = self._get_data_frame_from_when_conditions()
-
-
-        # if by now there is no DF, throw an error
-        if df is None:
-            error = 'Could not create a data frame for transaction'
-            self.log.error(error)
-            raise ValueError(error)
-            return None
+                df = self._data_from_when()
 
         df = self._apply_sort_conditions_to_df(df)
 
@@ -102,7 +94,8 @@ class DataExtractor(BaseModule):
         df = df.applymap(lambda cell: tuple(cell) if isinstance(cell, list) else cell)
 
         groups = df.columns.to_series().groupby(df.dtypes).groups
-
+        
+        # @TODO: Maybe move to data cleaner ? Seems kind of out of place here
         if np.dtype('datetime64[ns]') in groups:
             for colname in groups[np.dtype('datetime64[ns]')]:
                 df[colname] = df[colname].astype(str)

@@ -10,9 +10,60 @@
 """
 
 from mindsdb_native.libs.constants.mindsdb import *
+from collections import Counter, defaultdict
+import string
 import json
 import hashlib
 import numpy
+import flair
+import langdetect
+langdetect.DetectorFactory.seed = 0
+
+
+def get_language_dist(data):
+    lang_dist = defaultdict(lambda: 0)
+    lang_dist['Unknown'] = 0
+    lang_probs_cache = dict()
+    for text in data:
+        if text not in lang_probs_cache:
+            try:
+                lang_probs = langdetect.detect_langs(text)
+            except langdetect.lang_detect_exception.LangDetectException:
+                lang_probs = []
+            lang_probs_cache[text] = lang_probs
+
+        lang_probs = lang_probs_cache[text]
+        if len(lang_probs) > 0 and lang_probs[0].prob > 0.90:
+            lang_dist[lang_probs[0].lang] += 1
+        else:
+            lang_dist['Unknown'] += 1
+
+    return dict(lang_dist)
+
+
+def analyze_sentences(data):
+    """
+    :param data: list of str
+
+    :returns: 
+    tuple(
+        int: nr words total,
+        dict: word_dist,
+        dict: nr_words_dist
+    )
+    """
+    nr_words = 0
+    word_dist = defaultdict(lambda: 0)
+    nr_words_dist = Counter()
+    for text in data:
+        sent = flair.data.Sentence(str(text))
+        nr_words_dist[len(sent)] += 1
+        nr_words += len(sent)
+        for tok in sent:
+            word = tok.text.strip(string.punctuation + '"\'«»')
+            word_dist[word] += 1
+
+    return nr_words, dict(word_dist), dict(nr_words_dist)
 
 
 def word_tokenize(string):

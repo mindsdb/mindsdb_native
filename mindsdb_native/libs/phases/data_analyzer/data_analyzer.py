@@ -1,3 +1,4 @@
+import string
 from collections import Counter, defaultdict
 
 import numpy as np
@@ -9,10 +10,27 @@ import imagehash
 from PIL import Image
 
 from mindsdb_native.libs.helpers.general_helpers import get_value_bucket
+from sklearn.neighbors import LocalOutlierFactor
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
-from mindsdb_native.libs.helpers.text_helpers import splitRecursive, clean_float
+from mindsdb_native.libs.helpers.text_helpers import (
+    splitRecursive,
+    clean_float,
+    analyze_sentences,
+    get_language_dist
+)
 
+
+def lof_outliers(col_subtype, col_data):
+    lof = LocalOutlierFactor(contamination='auto')	
+    outlier_scores = lof.fit_predict(np.array(col_data).reshape(-1, 1)	)	
+
+    outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < -0.8]	
+
+    if col_subtype == DATA_SUBTYPES.INT:	
+        outliers = [int(x) for x in outliers]	
+
+    return outliers
 
 def clean_int_and_date_data(col_data, log):
     cleaned_data = []
@@ -209,7 +227,6 @@ class DataAnalyzer(BaseModule):
 
     def run(self, input_data):
         stats_v2 = self.transaction.lmd['stats_v2']
-        col_data_dict = {}
 
         sample_settings = self.transaction.lmd['sample_settings']
         if sample_settings['sample_for_analysis']:
@@ -244,7 +261,6 @@ class DataAnalyzer(BaseModule):
             col_data = sample_df[col_name].dropna()
             if data_type == DATA_TYPES.NUMERIC or data_subtype == DATA_SUBTYPES.TIMESTAMP:
                 col_data = clean_int_and_date_data(col_data, self.log)
-            col_data_dict[col_name] = col_data
 
             stats_v2[col_name]['empty'] = get_column_empty_values_report(input_data.data_frame[col_name])
 
@@ -273,6 +289,27 @@ class DataAnalyzer(BaseModule):
                     else:
                         warning_str = "You may want to check if you see something suspicious on the right-hand-side graph."
                     stats_v2[col_name]['bias']['warning'] = warning_str + " This doesn't necessarily mean there's an issue with your data, it just indicates a higher than usual probability there might be some issue."
+
+                if data_type == DATA_TYPES.NUMERIC:
+                        outliers = lof_outliers(data_subtype, col_data)
+                        stats_v2[col_name]['outliers'] = {	
+                            'outlier_values': outliers,
+                            'outlier_buckets': compute_outlier_buckets(outlier_values=outliers,	
+                                                                    hist_x=histogram['x'],	
+                                                                    hist_y=histogram['y'],	
+                                                                    percentage_buckets=percentage_buckets,	
+                                                                    col_stats=stats_v2[col_name]),	
+                            'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""	
+                        }
+
+            if data_type == DATA_TYPES.TEXT:
+                lang_dist = get_language_dist(col_data)
+                nr_words, word_dist, nr_words_dist = analyze_sentences(col_data)
+
+                stats_v2[col_name]['avg_words_per_sentence'] = nr_words / len(col_data)
+                stats_v2[col_name]['word_dist'] = dict(word_dist)
+                stats_v2[col_name]['nr_words_dist'] = dict(nr_words_dist)
+                stats_v2[col_name]['lang_dist'] = lang_dist
 
             stats_v2[col_name]['nr_warnings'] = 0
             for x in stats_v2[col_name].values():

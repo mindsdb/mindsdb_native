@@ -20,7 +20,6 @@ class TestDataAnalyzer:
     @pytest.fixture(scope='function')
     def lmd(self, transaction):
         lmd = transaction.lmd
-        lmd['handle_text_as_categorical'] = False
         lmd['stats_v2'] = {}
         lmd['empty_columns'] = []
         lmd['data_types'] = {}
@@ -103,6 +102,12 @@ class TestDataAnalyzer:
         assert isinstance(stats_v2['short_text']['histogram']['x'][0], str)
         assert isinstance(stats_v2['rich_text']['histogram']['x'][0], str)
 
+        for col in ['numeric_float', 'numeric_int']:
+            assert isinstance(stats_v2[col]['outliers']['outlier_values'], list)
+            assert isinstance(stats_v2[col]['outliers']['outlier_buckets'], list)
+            assert isinstance(stats_v2[col]['outliers']['description'], str)
+            assert set(stats_v2[col]['outliers']['outlier_buckets']) <= set(stats_v2[col]['percentage_buckets'])
+
         assert hmd == {}
 
         assert isinstance(json.dumps(transaction.lmd), str)
@@ -128,7 +133,6 @@ class TestDataAnalyzer:
         stats_v2 = lmd['stats_v2']
 
         assert stats_v2['numeric_int']['empty']['empty_percentage'] == 50
-
 
     def test_sample(self, transaction, lmd):
         lmd['sample_settings']['sample_for_analysis'] = True
