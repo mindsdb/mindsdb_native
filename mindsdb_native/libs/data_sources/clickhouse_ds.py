@@ -38,6 +38,3 @@ class ClickhouseDS(DataSource):
             col_map[col] = col
 
         return df, col_map
-
-
-
