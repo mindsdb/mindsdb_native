@@ -242,10 +242,12 @@ class Predictor:
                 if old_hmd['from_data'] is not None:
                     heavy_transaction_metadata['from_data'] = old_hmd['from_data']
 
-            LearnTransaction(session=self,
+            transaction = LearnTransaction(session=self,
                         light_transaction_metadata=light_transaction_metadata,
                         heavy_transaction_metadata=heavy_transaction_metadata,
                         logger=self.log)
+
+            return transaction.input_data.validation_df
             
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
@@ -277,7 +279,7 @@ class Predictor:
                     predicted = [x.explanation[col] for x in predictions]
                 else:
                     predicted = [x.explanation[col][score_using] for x in predictions]
-                    
+
                 real = [x[f'__observed_{col}'] for x in predictions]
                 accuracy_dict[f'{col}_accuracy'] = acc_f(real, predicted)
 
