@@ -246,6 +246,7 @@ class Predictor:
                         light_transaction_metadata=light_transaction_metadata,
                         heavy_transaction_metadata=heavy_transaction_metadata,
                         logger=self.log)
+            
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
         """
@@ -272,7 +273,13 @@ class Predictor:
                 else:
                     acc_f = accuracy_score_functions
 
-                accuracy_dict[f'{col}_accuracy'] = acc_f([x[f'__observed_{col}'] for x in predictions], [x.explanation[col][score_using] for x in predictions])
+                if score_using is None:
+                    predicted = [x.explanation[col] for x in predictions]
+                else:
+                    predicted = [x.explanation[col][score_using] for x in predictions]
+                    
+                real = [x[f'__observed_{col}'] for x in predictions]
+                accuracy_dict[f'{col}_accuracy'] = acc_f(real, predicted)
 
             return accuracy_dict
 
