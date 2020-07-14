@@ -15,9 +15,6 @@ class DataSource:
         self._cleanup()
 
     def _setup(self, df, **kwargs):
-        """
-        Can be overriden by subclasses
-        """
         col_map = {}
 
         for col in df.columns:
@@ -26,9 +23,6 @@ class DataSource:
         return df, col_map
 
     def _cleanup(self):
-        """
-        Can be overriden by subclasses
-        """
         pass
 
     @property
