@@ -13,10 +13,10 @@ class MariaDS(DataSource):
             query = f'SELECT * FROM {table}'
 
         con = mysql.connector.connect(host=host,
-                                  port=port,
-                                  user=user,
-                                  password=password,
-                                  database=database)
+                                      port=port,
+                                      user=user,
+                                      password=password,
+                                      database=database)
         df = pd.read_sql(query, con=con)
         con.close()
 
