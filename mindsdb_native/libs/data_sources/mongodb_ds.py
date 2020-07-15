@@ -8,6 +8,9 @@ class MongoDS(DataSource):
     def _setup(self, collection, query=None, host='localhost', port=27017, user='admin',
                password='123', database='database'):
         
+        self._collection_name = collection
+        self._database_name = database
+
         if not isinstance(collection, str):
             raise TypeError('collection must be a str')
         
@@ -32,3 +35,10 @@ class MongoDS(DataSource):
             col_map[col] = col
 
         return df, col_map
+
+    def name(self):
+        return '{}: {}/{}'.format(
+            self.__class__.__name__,
+            self._database_name,
+            self._collection_name
+        )
