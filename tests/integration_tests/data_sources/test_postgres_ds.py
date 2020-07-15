@@ -30,9 +30,12 @@ def test_postgres_ds():
     con.commit()
     con.close()
 
-    mysql_ds = PostgresDS(table='test_mindsdb', host=HOST, user=USER,
+    postgres_ds = PostgresDS(table='test_mindsdb', host=HOST, user=USER,
                           password=PASSWORD, database=DBNAME, port=PORT)
-    assert (len(mysql_ds._df) == 200)
+                        
+    assert postgres_ds.name() == 'PostgresDS: postgres/test_mindsdb'
+
+    assert (len(postgres_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
-    F.analyse_dataset(from_data=mysql_ds)
+    F.analyse_dataset(from_data=postgres_ds)
