@@ -66,6 +66,7 @@ class Predictor:
         self.uuid = str(uuid.uuid1())
         self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid)
         self.breakpoint = None
+        self.transaction = None
 
         if CONFIG.CHECK_FOR_UPDATES:
             check_for_updates()
@@ -242,12 +243,10 @@ class Predictor:
                 if old_hmd['from_data'] is not None:
                     heavy_transaction_metadata['from_data'] = old_hmd['from_data']
 
-            transaction = LearnTransaction(session=self,
+            self.transaction = transaction = LearnTransaction(session=self,
                         light_transaction_metadata=light_transaction_metadata,
                         heavy_transaction_metadata=heavy_transaction_metadata,
                         logger=self.log)
-
-            return transaction.input_data.validation_df
             
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
@@ -341,7 +340,7 @@ class Predictor:
                 breakpoint=self.breakpoint
             )
 
-            transaction = PredictTransaction(session=self,
+            self.transaction = PredictTransaction(session=self,
                                     light_transaction_metadata=light_transaction_metadata,
                                     heavy_transaction_metadata=heavy_transaction_metadata)
-            return transaction.output_data
+            return self.transaction.output_data
