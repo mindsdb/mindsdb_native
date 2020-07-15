@@ -5,9 +5,9 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 
 class MongoDS(DataSource):
-    def _setup(self, collection, query=None, host='localhost', port=27017, user='admin',
-               password='123', database='database'):
-        
+    def _setup(self, collection, query=None, database='database',
+               host='localhost', port=27017, user='admin', password='123'):
+
         if not isinstance(collection, str):
             raise TypeError('collection must be a str')
         

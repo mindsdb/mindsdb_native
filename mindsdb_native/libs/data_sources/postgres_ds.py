@@ -8,8 +8,8 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 class PostgresDS(DataSource):
 
-    def _setup(self, query=None, host='localhost', user='postgres', password='',
-               database='postgres', port=5432, table=None):
+    def _setup(self, table, query=None, database='postgres', host='localhost',
+               port=5432, user='postgres', password=''):
 
         if query is None:
             query = f'SELECT * FROM {table}'

@@ -6,8 +6,8 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 class MariaDS(DataSource):
 
-    def _setup(self, query=None, host='localhost', user='root', password='',
-               database='mysql', port=3306, table=None):
+    def _setup(self, table, query=None, database='mysql', host='localhost',
+               port=3306, user='root', password=''):
 
         if query is None:
             query = f'SELECT * FROM {table}'

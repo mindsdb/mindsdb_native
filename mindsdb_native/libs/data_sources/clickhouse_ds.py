@@ -7,7 +7,9 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 class ClickhouseDS(DataSource):
 
-    def _setup(self, query, host='localhost', user='default', password=None, port=8123, protocol='http'):
+    def _setup(self, query, host='localhost', user='default', password=None,
+               port=8123, protocol='http'):
+
         if protocol not in ('https', 'http'):
             raise ValueError('Unexpected protocol {}'.fomat(protocol))
 
