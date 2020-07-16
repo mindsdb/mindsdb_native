@@ -172,7 +172,7 @@ class Predictor:
             the server doesn't handle non-file data sources at the moment, so this shouldn't prove an issue,
             once we want to support datasources such as s3 and databases for the server we need to add name as a concept (or, preferably, before that)
             """
-            data_source_name = from_data if isinstance(from_data, str) else 'Unkown'
+            data_source_name = from_ds.name()
 
             heavy_transaction_metadata = dict(
                 name=self.name,

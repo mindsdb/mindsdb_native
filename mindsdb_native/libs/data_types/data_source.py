@@ -14,6 +14,9 @@ class DataSource:
         self._set_df(df, col_map)
         self._cleanup()
 
+    def name(self):
+        return 'Unknown'
+
     def _setup(self, df, **kwargs):
         col_map = {}
 

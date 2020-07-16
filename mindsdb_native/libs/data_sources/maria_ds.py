@@ -9,6 +9,9 @@ class MariaDS(DataSource):
     def _setup(self, table, query=None, database='mysql', host='localhost',
                port=3306, user='root', password=''):
 
+        self._database_name = database
+        self._table_name = table
+
         if query is None:
             query = f'SELECT * FROM {table}'
 
@@ -25,3 +28,10 @@ class MariaDS(DataSource):
             col_map[col] = col
 
         return df, col_map
+
+    def name(self):
+        return '{}: {}/{}'.format(
+            self.__class__.__name__,
+            self._database_name,
+            self._table_name
+        )

@@ -68,6 +68,9 @@ def test_maria_ds():
 
     maria_ds = MariaDS(table='test_mindsdb', host=HOST, user=USER,
                        password=PASSWORD, database=DATABASE, port=PORT)
+
+    assert maria_ds.name() == 'MariaDS: mysql/test_mindsdb'
+
     assert (len(maria_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)

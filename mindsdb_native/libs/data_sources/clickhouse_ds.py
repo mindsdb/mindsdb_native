@@ -14,7 +14,7 @@ class ClickhouseDS(DataSource):
             raise ValueError('Unexpected protocol {}'.fomat(protocol))
 
         if ' format ' in query.lower():
-            err_msg = 'Please refrain from adding a "FROAMT" statement to the query'
+            err_msg = 'Please refrain from adding a "FORMAT" statement to the query'
             log.error(err_msg)
             raise Exception(err_msg)
         
@@ -40,3 +40,6 @@ class ClickhouseDS(DataSource):
             col_map[col] = col
 
         return df, col_map
+
+    def name(self):
+        return '{}'.format(self.__class__.__name__)

@@ -32,3 +32,10 @@ class MongoDS(DataSource):
             col_map[col] = col
 
         return df, col_map
+
+    def name(self):
+        return '{}: {}/{}'.format(
+            self.__class__.__name__,
+            self._database_name,
+            self._collection_name
+        )
