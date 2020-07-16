@@ -243,7 +243,7 @@ class Predictor:
                 if old_hmd['from_data'] is not None:
                     heavy_transaction_metadata['from_data'] = old_hmd['from_data']
 
-            self.transaction = transaction = LearnTransaction(session=self,
+            self.transaction = LearnTransaction(session=self,
                         light_transaction_metadata=light_transaction_metadata,
                         heavy_transaction_metadata=heavy_transaction_metadata,
                         logger=self.log)
