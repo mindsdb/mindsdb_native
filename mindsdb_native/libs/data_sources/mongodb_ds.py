@@ -11,6 +11,9 @@ class MongoDS(DataSource):
         if not isinstance(collection, str):
             raise TypeError('collection must be a str')
         
+        self._database_name = database
+        self._collection_name = collection
+
         if query is None:
             query = {}
         else:
