@@ -4,8 +4,8 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 
 class MSSQLDS(DataSource):
-    def _setup(self, query=None, host='localhost', user='sa', password='',
-               database='master', port=1433, table=None):
+    def _setup(self, table, query=None, database='master', host='localhost',
+               port=1433, user='sa', password=''):
 
         self._database_name = database
         self._table_name = table
