@@ -15,6 +15,7 @@ test_column_types = {
     'categorical_int': (DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.MULTIPLE),
     'categorical_binary': (DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.SINGLE),
     'sequential_array': (DATA_TYPES.SEQUENTIAL, DATA_SUBTYPES.ARRAY),
+    'multiple_categories_array': (DATA_TYPES.SEQUENTIAL, DATA_SUBTYPES.ARRAY),
     'short_text': (DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT),
     'rich_text': (DATA_TYPES.TEXT, DATA_SUBTYPES.RICH)
 }
