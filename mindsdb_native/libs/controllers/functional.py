@@ -3,20 +3,46 @@ import pickle
 import shutil
 import zipfile
 import traceback
-from mindsdb_native.config import CONFIG
+import uuid
 
+from mindsdb_native.config import CONFIG
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import AnalyseTransaction
-from mindsdb_native.libs.controllers.predictor import _get_memory_optimizations, _prepare_sample_settings
+from mindsdb_native.libs.controllers.predictor import _get_memory_optimizations, _prepare_sample_settings, Predictor
 from mindsdb_native.libs.helpers.multi_data_source import getDS
-
 from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    MODEL_STATUS_ERROR,
                                                    TRANSACTION_ANALYSE)
-
 from mindsdb_native.libs.helpers.locking import MDBLock
 
+def validate(to_predict, from_data, accuracy_score_functions, learn_args=None, test_args=None):
+            if learn_args is None: learn_args = {}
+            if test_args is None: test_args = {}
+            
+            name = str(uuid.uuid4()).replace('-','')
+            predictor = Predictor(name)
+            
+            predictor.learn(to_predict, from_data, **learn_args)
+            validation_data = predictor.transaction.input_data.validation_df
+
+            accuracy = predictor.test(when_data=validation_data, accuracy_score_functions=accuracy_score_functions, **test_args)
+
+            delete_model(name) 
+
+            return accuracy
+
+def cross_validate(to_predict, from_data, accuracy_score_functions, k=5, learn_args=None, test_args=None):
+    '''
+        Probably required a change to generate a split into `k` folds, then manually setting those folds as train/test/predict.
+
+        Would be problematic for timeseries data though.
+
+        Alternatively we can just add train/test/valid split as advanced args and forgo the data splitter if they are specified (maybe have them be indexes so that the rest of the phases up to the splitter and run normally) + Do the splitting inside this function.
+
+        Same problem with timeseries argument support though. 
+    '''
+    raise NotImplementedError('Cross validation is not implemented yet')
 
 def analyse_dataset(from_data, sample_settings=None):
     """
