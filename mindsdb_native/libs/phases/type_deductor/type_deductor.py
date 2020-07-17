@@ -3,6 +3,8 @@ import imghdr
 import sndhdr
 from copy import deepcopy
 from collections import Counter, defaultdict
+
+import six
 from dateutil.parser import parse as parse_datetime
 from mindsdb_native.libs.helpers.text_helpers import (
     analyze_sentences,
@@ -90,6 +92,14 @@ class TypeDeductor(BaseModule):
 
         def type_check_sequence(element):
             type_guess, subtype_guess = None, None
+
+            if not isinstance(element, six.string_types):
+                # If its a tuple, list, np.array or other iterable thing, convert it to string
+                try:
+                    element = ','.join(element)
+                except Exception:
+                    pass
+
             for char in [',', '\t', '|', ' ']:
                 all_nr = True
                 if '[' in element:
@@ -121,7 +131,7 @@ class TypeDeductor(BaseModule):
                          type_check_date,
                          type_check_sequence,
                          type_check_file]
-        for element in map(str, data):
+        for element in data:
             for type_checker in type_checkers:
                 data_type_guess, subtype_guess = type_checker(element)
                 if data_type_guess:
@@ -206,6 +216,9 @@ class TypeDeductor(BaseModule):
                         additional_info['other_potential_types'].append(curr_data_type)
                         additional_info['other_potential_subtypes'].append(curr_data_subtype)
                     curr_data_type = DATA_TYPES.CATEGORICAL
+
+        # Arrays and iterables
+
 
         # If curr_data_type is still None, then it's text
         if curr_data_type is None:

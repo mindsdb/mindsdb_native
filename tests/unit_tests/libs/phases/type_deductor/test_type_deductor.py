@@ -1,4 +1,9 @@
 import json
+<<<<<<< HEAD
+=======
+from itertools import cycle
+import random
+>>>>>>> 6fd15ac... Add support for lists and arrays to be passed to mindsdb_native
 from unittest import mock
 from uuid import uuid4
 import pytest
@@ -13,7 +18,8 @@ from mindsdb_native.libs.phases.type_deductor.type_deductor import TypeDeductor
 from unit_tests.utils import (
     test_column_types,
     generate_short_sentences,
-    generate_rich_sentences
+    generate_rich_sentences,
+    VOCAB
 )
 
 
@@ -50,15 +56,21 @@ class TestTypeDeductor:
 
         # Apparently for n_category_values = 10 it doesnt work
         n_category_values = 4
+        categories_cycle = cycle(range(n_category_values))
+        n_multilabel_category_values = 20
+        multiple_categories_cycle = cycle(range(n_multilabel_category_values))
+        multiple_categories_str_cycle = cycle([random.choice(VOCAB) for i in range(n_multilabel_category_values)])
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
             'numeric_float': np.linspace(0, n_points, n_points),
             'date_timestamp': [(datetime.now() - timedelta(minutes=int(i))).isoformat() for i in range(n_points)],
             'date_date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
-            'categorical_str': [f'a{x}' for x in (list(range(n_category_values)) * (n_points//n_category_values))],
-            'categorical_int': [x for x in (list(range(n_category_values)) * (n_points//n_category_values))],
+            'categorical_str': [f'category_{next(categories_cycle)}' for i in range(n_points)],
+            'categorical_int': [next(categories_cycle) for i in range(n_points)],
             'categorical_binary': [0, 1] * (n_points//2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
+            'multiple_categories_array_str': [",".join([f'"{next(multiple_categories_cycle)}"' for j in range(3)]) for i in range(n_points)],
+            'multiple_categories_array_list': [tuple([next(multiple_categories_str_cycle) for j in range(3)]) for i in range(n_points)],
             'short_text': generate_short_sentences(n_points),
             'rich_text': generate_rich_sentences(n_points)
         }, index=list(range(n_points)))

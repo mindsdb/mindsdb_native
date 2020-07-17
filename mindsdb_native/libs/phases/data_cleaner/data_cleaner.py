@@ -1,3 +1,5 @@
+import six
+import numpy as np
 from mindsdb_native.libs.phases.base_module import BaseModule
 
 
@@ -26,6 +28,23 @@ class DataCleaner(BaseModule):
         if no_dropped > 0:
             self.log.warning(f'Dropped {no_dropped} duplicate rows.')
 
+    def _convert_iterables_to_tuples(self, df):
+        for column in df.dropna().select_dtypes(include='object').columns:
+            test_example = df[column].iloc[0]
+            is_iterable = False
+            if not isinstance(test_example, six.string_types):
+                try:
+                    iter(test_example)
+                    # It's an iterable: array, tuple, list or something else
+                    is_iterable = True
+                except Exception:
+                    # It's not an iterable, ignore
+                    pass
+
+            if is_iterable:
+                # Convert all to tuples
+                df[column] = df[column].apply(lambda iterable: tuple(iterable) if iterable is not None else iterable)
+
     def run(self):
         df = self.transaction.input_data.data_frame
 
@@ -38,5 +57,7 @@ class DataCleaner(BaseModule):
 
         if self.transaction.lmd.get('deduplicate_data'):
             self._remove_duplicate_rows(df)
+
+        self._convert_iterables_to_tuples(df)
 
         self.transaction.input_data.data_frame = df
