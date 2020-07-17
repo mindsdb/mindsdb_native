@@ -23,9 +23,9 @@ def _get_memory_optimizations(df):
 
     mem_usage_ratio = df_memory/total_memory
 
-    sample_for_analysis = True if mem_usage_ratio >= 0.3 else False
+    sample_for_analysis = True if mem_usage_ratio >= 0.1 or len(df) > pow(10,4) else False
     sample_for_training = True if mem_usage_ratio >= 0.5 else False
-    disable_lightwood_transform_cache = True if mem_usage_ratio >= 0.3 else False
+    disable_lightwood_transform_cache = True if mem_usage_ratio >= 0.2 else False
 
     return sample_for_analysis, sample_for_training, disable_lightwood_transform_cache
 
@@ -251,7 +251,7 @@ class Predictor:
                         light_transaction_metadata=light_transaction_metadata,
                         heavy_transaction_metadata=heavy_transaction_metadata,
                         logger=self.log)
-            
+
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
         """
