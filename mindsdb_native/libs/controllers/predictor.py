@@ -23,9 +23,9 @@ def _get_memory_optimizations(df):
 
     mem_usage_ratio = df_memory/total_memory
 
-    sample_for_analysis = True if mem_usage_ratio >= 0.05 else False
-    sample_for_training = True if mem_usage_ratio >= 0.15 else False
-    disable_lightwood_transform_cache = True if mem_usage_ratio >= 0.15 else False
+    sample_for_analysis = True if mem_usage_ratio >= 0.1 or len(df) > pow(10,4) else False
+    sample_for_training = True if mem_usage_ratio >= 0.5 else False
+    disable_lightwood_transform_cache = True if mem_usage_ratio >= 0.2 else False
 
     return sample_for_analysis, sample_for_training, disable_lightwood_transform_cache
 
@@ -50,6 +50,7 @@ def _prepare_sample_settings(user_provided_settings,
 
     # We need the settings to be JSON serializable, so the actual function will be stored in heavy metadata
     sample_settings['sample_function'] = sample_settings['sample_function'].__name__
+
     return sample_settings, sample_function
 
 
@@ -161,6 +162,9 @@ class Predictor:
                                                         sample_for_analysis,
                                                         sample_for_training)
 
+            self.log.warning(f'Sample for analysis: {sample_for_analysis}')
+            self.log.warning(f'Sample for training: {sample_for_training}')
+
             if len(predict_columns) == 0:
                 error = 'You need to specify a column to predict'
                 self.log.error(error)
@@ -247,7 +251,7 @@ class Predictor:
                         light_transaction_metadata=light_transaction_metadata,
                         heavy_transaction_metadata=heavy_transaction_metadata,
                         logger=self.log)
-            
+
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
         """

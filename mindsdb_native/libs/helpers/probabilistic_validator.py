@@ -180,7 +180,7 @@ class ProbabilisticValidator:
             ,'accuracies': list(bucket_accuracy.values())
         }
 
-        labels= list(set(self.real_values_bucketized))
+        labels= list(set([*self.real_values_bucketized, *self.normal_predictions_bucketized]))
         matrix = confusion_matrix(self.real_values_bucketized, self.normal_predictions_bucketized, labels=labels)
         matrix = [[int(y) if str(y) != 'nan' else 0 for y in x] for x in matrix]
 
