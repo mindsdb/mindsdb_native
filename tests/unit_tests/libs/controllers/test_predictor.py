@@ -139,19 +139,21 @@ class TestPredictor:
 
     def test_ignore_columns(self):
         input_dataframe = pd.DataFrame({
-            'do_use': [1, 2, 3],
-            'ignore_this': [0, 1, 100]
+            'do_use': list(range(100)),
+            'y': list(range(100)),
+            'ignore_this': list(range(100, 0, -1))
         })
 
         predictor = Predictor(name='test')
-        transaction = predictor.learn(from_data=input_dataframe,
-                                      to_predict='do_use',
-                                      ignore_columns=['ignore_this']
+        predictor.learn(from_data=input_dataframe,
+                                      to_predict='y',
+                                      ignore_columns=['ignore_this'],
+                                      stop_training_in_x_seconds=1,
                                       )
+        transaction = predictor.transaction
 
-        assert 'do_use' in transaction.input_data.data_frame.columns
-        assert 'ignore_this' not in transaction.input_data.data_frame.columns
-
+        assert 'do_use' in transaction.input_data.train_df.columns
+        assert 'ignore_this' not in transaction.input_data.train_df.columns
 
     def test_analyze_dataset_empty_column(self):
         n_points = 100
