@@ -1,4 +1,4 @@
-import re
+import os
 from io import BytesIO, StringIO
 import csv
 import codecs
@@ -146,13 +146,17 @@ class FileDS(DataSource):
             # No file type identified
             return data, None, dialect
 
-    def _setup(self,file, clean_rows = True, custom_parser = None):
+    def name(self):
+        return '{}: {}'.format(self.__class__.__name__, self._file_name)
+
+    def _setup(self, file, clean_rows=True, custom_parser=None):
         """
         Setup from file
         :param file: fielpath or url
-        :param clean_rows:  if you want to clean rows for strange null values
+        :param clean_rows: if you want to clean rows for strange null values
         :param custom_parser: if you want to parse the file with some custom parser
         """
+        self._file_name = os.path.basename(file)
 
         # get file data io, format and dialect
         data, fmt, dialect = self._getDataIo(file)

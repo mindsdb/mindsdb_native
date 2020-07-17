@@ -14,6 +14,9 @@ class S3DS(DataSource):
     def _setup(self, bucket_name, file_path, access_key=None,
                secret_key=None,use_default_credentails=False):
 
+        self._bucket_name = bucket_name
+        self._file_name = os.path.basename(file_path)
+
         if access_key is not None and secret_key is not None:
             s3 = boto3.client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key)
         elif use_default_credentails:
@@ -31,3 +34,11 @@ class S3DS(DataSource):
 
     def _cleanup(self):
         os.remove(self.tmp_file_name)
+
+
+    def name(self):
+        return '{}: {}/{}'.format(
+            self.__class__.__name__,
+            self._bucket_name,
+            self._file_name
+        )

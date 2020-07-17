@@ -66,6 +66,7 @@ class Predictor:
         self.uuid = str(uuid.uuid1())
         self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid)
         self.breakpoint = None
+        self.transaction = None
 
         if CONFIG.CHECK_FOR_UPDATES:
             check_for_updates()
@@ -172,7 +173,7 @@ class Predictor:
             the server doesn't handle non-file data sources at the moment, so this shouldn't prove an issue,
             once we want to support datasources such as s3 and databases for the server we need to add name as a concept (or, preferably, before that)
             """
-            data_source_name = from_data if isinstance(from_data, str) else 'Unkown'
+            data_source_name = from_ds.name()
 
             heavy_transaction_metadata = dict(
                 name=self.name,
@@ -242,7 +243,7 @@ class Predictor:
                 if old_hmd['from_data'] is not None:
                     heavy_transaction_metadata['from_data'] = old_hmd['from_data']
 
-            LearnTransaction(session=self,
+            self.transaction = LearnTransaction(session=self,
                         light_transaction_metadata=light_transaction_metadata,
                         heavy_transaction_metadata=heavy_transaction_metadata,
                         logger=self.log)
@@ -277,7 +278,7 @@ class Predictor:
                     predicted = [x.explanation[col] for x in predictions]
                 else:
                     predicted = [x.explanation[col][score_using] for x in predictions]
-                    
+
                 real = [x[f'__observed_{col}'] for x in predictions]
                 accuracy_dict[f'{col}_accuracy'] = acc_f(real, predicted)
 
@@ -339,7 +340,7 @@ class Predictor:
                 breakpoint=self.breakpoint
             )
 
-            transaction = PredictTransaction(session=self,
+            self.transaction = PredictTransaction(session=self,
                                     light_transaction_metadata=light_transaction_metadata,
                                     heavy_transaction_metadata=heavy_transaction_metadata)
-            return transaction.output_data
+            return self.transaction.output_data
