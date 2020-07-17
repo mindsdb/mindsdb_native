@@ -137,6 +137,22 @@ class TestPredictor:
             assert 'nr_warnings' in col_data
             assert not col_data['is_foreign_key']
 
+    def test_ignore_columns(self):
+        input_dataframe = pd.DataFrame({
+            'do_use': [1, 2, 3],
+            'ignore_this': [0, 1, 100]
+        })
+
+        predictor = Predictor(name='test')
+        transaction = predictor.learn(from_data=input_dataframe,
+                                      to_predict='do_use',
+                                      ignore_columns=['ignore_this']
+                                      )
+
+        assert 'do_use' in transaction.input_data.data_frame.columns
+        assert 'ignore_this' not in transaction.input_data.data_frame.columns
+
+
     def test_analyze_dataset_empty_column(self):
         n_points = 100
         input_dataframe = pd.DataFrame({
