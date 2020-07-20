@@ -61,7 +61,6 @@ class TestTypeDeductor:
             'categorical_int': [next(categories_cycle) for i in range(n_points)],
             'categorical_binary': [0, 1] * (n_points//2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
-            'multiple_categories_array': [",".join([str(next(categories_cycle)), str(next(categories_cycle))]) for i in range(n_points)],
             'short_text': generate_short_sentences(n_points),
             'rich_text': generate_rich_sentences(n_points)
         }, index=list(range(n_points)))
