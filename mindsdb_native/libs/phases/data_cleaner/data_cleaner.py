@@ -1,5 +1,3 @@
-import six
-import numpy as np
 from mindsdb_native.libs.phases.base_module import BaseModule
 
 

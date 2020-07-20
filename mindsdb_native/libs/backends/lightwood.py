@@ -1,13 +1,10 @@
-import os
-import logging
+from lightwood.constants.lightwood import ColumnDataTypes
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
 
 import pandas as pd
 import lightwood
-
-from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class LightwoodBackend():
@@ -82,13 +79,11 @@ class LightwoodBackend():
     def _create_lightwood_config(self):
         config = {}
 
-        #config['name'] = 'lightwood_predictor_' + self.transaction.lmd['name']
-
         config['input_features'] = []
         config['output_features'] = []
 
-        for col_name in self.transaction.input_data.columns or col_name not in self.transaction.lmd['stats_v2']:
-            if col_name in self.transaction.lmd['columns_to_ignore']:
+        for col_name in self.transaction.input_data.columns:
+            if col_name in self.transaction.lmd['columns_to_ignore'] or col_name not in self.transaction.lmd['stats_v2']:
                 continue
 
             col_stats = self.transaction.lmd['stats_v2'][col_name]
@@ -97,33 +92,36 @@ class LightwoodBackend():
 
             other_keys = {'encoder_attrs': {}}
             if data_type == DATA_TYPES.NUMERIC:
-                lightwood_data_type = 'numeric'
+                lightwood_data_type = ColumnDataTypes.NUMERIC
 
             elif data_type == DATA_TYPES.CATEGORICAL:
-                lightwood_data_type = 'categorical'
+                if data_subtype == DATA_SUBTYPES.TAGS:
+                    lightwood_data_type = ColumnDataTypes.MULTIPLE_CATEGORICAL
+                else:
+                    lightwood_data_type = ColumnDataTypes.CATEGORICAL
 
             elif data_subtype in (DATA_SUBTYPES.TIMESTAMP, DATA_SUBTYPES.DATE):
-                lightwood_data_type = 'datetime'
+                lightwood_data_type = ColumnDataTypes.DATETIME
 
             elif data_subtype == DATA_SUBTYPES.IMAGE:
-                lightwood_data_type = 'image'
+                lightwood_data_type = ColumnDataTypes.IMAGE
                 other_keys['encoder_attrs']['aim'] = 'balance'
 
             elif data_subtype == DATA_SUBTYPES.AUDIO:
-                lightwood_data_type = 'audio'
+                lightwood_data_type = ColumnDataTypes.AUDIO
 
             elif data_type == DATA_TYPES.TEXT:
-                lightwood_data_type = 'text'
+                lightwood_data_type = ColumnDataTypes.TEXT
 
             elif data_subtype == DATA_SUBTYPES.ARRAY:
-                lightwood_data_type = 'time_series'
+                lightwood_data_type = ColumnDataTypes.TIME_SERIES
 
             else:
                 self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
                 raise Exception('Failed to build data definition for Lightwood model backend')
 
             if col_name in [x[0] for x in self.transaction.lmd['model_order_by']]:
-                lightwood_data_type = 'time_series'
+                lightwood_data_type = ColumnDataTypes.TIME_SERIES
 
             col_config = {
                 'name': col_name,
@@ -132,6 +130,7 @@ class LightwoodBackend():
 
             if data_subtype == DATA_SUBTYPES.SHORT:
                 col_config['encoder_class'] = lightwood.encoders.text.short.ShortTextEncoder
+
 
             if col_name in self.transaction.lmd['weight_map']:
                 col_config['weights'] = self.transaction.lmd['weight_map'][col_name]
