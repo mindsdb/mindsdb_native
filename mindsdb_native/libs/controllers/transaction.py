@@ -152,6 +152,9 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
+            self._call_phase_module(module_name='DataCleaner')
+            self.save_metadata()
+
             self._call_phase_module(module_name='DataSplitter')
             self.save_metadata()
 
