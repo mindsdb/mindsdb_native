@@ -66,6 +66,7 @@ class TypeDeductor(BaseModule):
         additional_info = {}
 
         def type_check_numeric(element):
+            element = str(element)
             type_guess, subtype_guess = None, None
             subtype = get_number_subtype(element)
             if subtype is not None:
@@ -74,6 +75,7 @@ class TypeDeductor(BaseModule):
             return type_guess, subtype_guess
 
         def type_check_date(element):
+            element = str(element)
             type_guess, subtype_guess = None, None
             try:
                 dt = parse_datetime(element)
@@ -96,30 +98,34 @@ class TypeDeductor(BaseModule):
             if not isinstance(element, six.string_types):
                 # If its a tuple, list, np.array or other iterable thing, convert it to string
                 try:
+                    # Check that its an iterable
+                    iter(element)
                     element = ','.join(element)
                 except Exception:
                     pass
 
-            for char in [',', '\t', '|', ' ']:
+            for sep_char in [',', '\t', '|', ' ']:
                 all_nr = True
                 if '[' in element:
-                    ele_arr = element.rstrip(']').lstrip('[').split(char)
+                    ele_arr = element.rstrip(']').lstrip('[').split(sep_char)
                 else:
-                    ele_arr = element.rstrip(')').lstrip('(').split(char)
+                    ele_arr = element.rstrip(')').lstrip('(').split(sep_char)
 
                 for ele in ele_arr:
                     if not get_number_subtype(ele):
                         all_nr = False
                         break
 
-                if all_nr:
-                    additional_info['separator'] = char
-                    type_guess = DATA_TYPES.SEQUENTIAL
-                    subtype_guess = DATA_SUBTYPES.ARRAY
+                if len(ele_arr) > 1:
+                    if all_nr:
+                        additional_info['separator'] = sep_char
+                        type_guess = DATA_TYPES.SEQUENTIAL
+                        subtype_guess = DATA_SUBTYPES.ARRAY
 
             return type_guess, subtype_guess
 
         def type_check_file(element):
+            element = str(element)
             type_guess, subtype_guess = None, None
             subtype = get_file_subtype_if_exists(element)
             if subtype:
@@ -217,9 +223,6 @@ class TypeDeductor(BaseModule):
                         additional_info['other_potential_subtypes'].append(curr_data_subtype)
                     curr_data_type = DATA_TYPES.CATEGORICAL
 
-        # Arrays and iterables
-
-
         # If curr_data_type is still None, then it's text
         if curr_data_type is None:
             lang_dist = get_language_dist(data)
@@ -229,7 +232,7 @@ class TypeDeductor(BaseModule):
                 lang_dist[lang] /= len(data)
 
             # If most cells are unknown language then it's categorical
-            if lang_dist['Unknown'] > 0.5:
+            if lang_dist['Unknown'] > 0.6:
                 curr_data_type = DATA_TYPES.CATEGORICAL
             else:
                 curr_data_type = DATA_TYPES.TEXT
@@ -238,6 +241,9 @@ class TypeDeductor(BaseModule):
 
                 if len(word_dist) > 500 and nr_words / len(data) > 5:
                     curr_data_subtype = DATA_SUBTYPES.RICH
+                elif len(word_dist) <= 25:
+                    curr_data_type = DATA_TYPES.CATEGORICAL
+                    curr_data_subtype = DATA_SUBTYPES.TAGS
                 else:
                     curr_data_subtype = DATA_SUBTYPES.SHORT
 
@@ -245,7 +251,7 @@ class TypeDeductor(BaseModule):
                 subtype_dist = {curr_data_subtype: len(data)}
                 return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
-        if curr_data_type == DATA_TYPES.CATEGORICAL:
+        if curr_data_type == DATA_TYPES.CATEGORICAL and curr_data_subtype != DATA_SUBTYPES.TAGS:
             if nr_distinct_vals > 2:
                 curr_data_subtype = DATA_SUBTYPES.MULTIPLE
             else:

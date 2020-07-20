@@ -16,7 +16,9 @@ import json
 import hashlib
 import numpy
 import flair
+import nltk
 import langdetect
+from lightwood.helpers.text import tokenize_text
 langdetect.DetectorFactory.seed = 0
 
 
@@ -25,6 +27,8 @@ def get_language_dist(data):
     lang_dist['Unknown'] = 0
     lang_probs_cache = dict()
     for text in data:
+        text = str(text)
+        text = ''.join([c for c in text if not c in string.punctuation])
         if text not in lang_probs_cache:
             try:
                 lang_probs = langdetect.detect_langs(text)
@@ -53,15 +57,14 @@ def analyze_sentences(data):
     )
     """
     nr_words = 0
-    word_dist = defaultdict(lambda: 0)
+    word_dist = Counter()
     nr_words_dist = Counter()
     for text in data:
-        sent = flair.data.Sentence(str(text))
-        nr_words_dist[len(sent)] += 1
-        nr_words += len(sent)
-        for tok in sent:
-            word = tok.text.strip(string.punctuation + '"\'«»')
-            word_dist[word] += 1
+        tokens = tokenize_text(text)
+        nr_words_dist[len(tokens)] += 1
+        nr_words += len(tokens)
+        for tok in tokens:
+            word_dist[tok] += 1
 
     return nr_words, dict(word_dist), dict(nr_words_dist)
 

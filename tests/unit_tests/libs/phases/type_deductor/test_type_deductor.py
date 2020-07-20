@@ -54,8 +54,7 @@ class TestTypeDeductor:
         # Apparently for n_category_values = 10 it doesnt work
         n_category_values = 4
         categories_cycle = cycle(range(n_category_values))
-        n_multilabel_category_values = 20
-        multiple_categories_cycle = cycle(range(n_multilabel_category_values))
+        n_multilabel_category_values = 25
         multiple_categories_str_cycle = cycle([random.choice(VOCAB) for i in range(n_multilabel_category_values)])
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
@@ -66,8 +65,7 @@ class TestTypeDeductor:
             'categorical_int': [next(categories_cycle) for i in range(n_points)],
             'categorical_binary': [0, 1] * (n_points//2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
-            'multiple_categories_array_str': [",".join([f'"{next(multiple_categories_cycle)}"' for j in range(3)]) for i in range(n_points)],
-            'multiple_categories_array_list': [tuple([next(multiple_categories_str_cycle) for j in range(3)]) for i in range(n_points)],
+            'multiple_categories_array_str': [",".join([f'{next(multiple_categories_str_cycle)}' for j in range(random.randint(1,3))]) for i in range(n_points)],
             'short_text': generate_short_sentences(n_points),
             'rich_text': generate_rich_sentences(n_points)
         }, index=list(range(n_points)))
