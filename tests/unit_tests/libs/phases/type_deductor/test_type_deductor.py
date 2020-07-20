@@ -1,9 +1,6 @@
 import json
-<<<<<<< HEAD
-=======
 from itertools import cycle
 import random
->>>>>>> 6fd15ac... Add support for lists and arrays to be passed to mindsdb_native
 from unittest import mock
 from uuid import uuid4
 import pytest
