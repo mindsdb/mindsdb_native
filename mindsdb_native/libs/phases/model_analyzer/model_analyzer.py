@@ -24,17 +24,18 @@ class ModelAnalyzer(BaseModule):
         normal_accuracy = evaluate_accuracy(normal_predictions, self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
 
         empty_input_predictions = {}
-        empty_inpurt_accuracy = {}
+        empty_input_accuracy = {}
 
-        ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH and x not in [y[0] for y in self.transaction.lmd['model_order_by']]]
+        ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH
+                                    and x not in [y[0] for y in self.transaction.lmd['model_order_by']]]
         for col in ignorable_input_columns:
             empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
-            empty_inpurt_accuracy[col] = evaluate_accuracy(empty_input_predictions[col], self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
+            empty_input_accuracy[col] = evaluate_accuracy(empty_input_predictions[col], self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
 
         # Get some information about the importance of each column
         self.transaction.lmd['column_importances'] = {}
         for col in ignorable_input_columns:
-            column_importance = (1 - empty_inpurt_accuracy[col]/normal_accuracy)
+            column_importance = (1 - empty_input_accuracy[col]/normal_accuracy)
             column_importance = np.ceil(10*column_importance)
             self.transaction.lmd['column_importances'][col] = float(10 if column_importance > 10 else column_importance)
 

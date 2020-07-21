@@ -244,7 +244,7 @@ class LightwoodBackend():
             self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
 
         # not the most efficient but least prone to bug and should be fast enough
-        if len(ignore_columns)  > 0:
+        if len(ignore_columns) > 0:
             run_df = df.copy(deep=True)
             for col_name in ignore_columns:
                 run_df[col_name] = [None] * len(run_df[col_name])

@@ -7,6 +7,7 @@ import pandas as pd
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.text_helpers import clean_float
+from lightwood.helpers.text import tokenize_text
 
 
 def _handle_nan(x):
@@ -48,6 +49,13 @@ def _standardize_datetime(date_str):
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
+def _tags_to_tuples(tags_str):
+    try:
+        return tuple(tokenize_text(tags_str))
+    except Exception:
+        return tuple()
+
+
 def _lightwood_datetime_processing(dt):
     dt = pd.to_datetime(dt, errors='coerce')
     try:
@@ -61,6 +69,7 @@ def _clean_float_or_none(val):
         return clean_float(val)
     except Exception:
         return None
+
 
 
 class DataTransformer(BaseModule):
@@ -101,7 +110,10 @@ class DataTransformer(BaseModule):
                     self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type)
 
             if data_type == DATA_TYPES.CATEGORICAL:
-                self._apply_to_all_data(input_data, column, str, transaction_type)
+                if data_subtype == DATA_SUBTYPES.TAGS:
+                    self._apply_to_all_data(input_data, column, _tags_to_tuples, transaction_type)
+                else:
+                    self._apply_to_all_data(input_data, column, str, transaction_type)
 
             if data_type == DATA_TYPES.TEXT:
                 self._apply_to_all_data(input_data, column, str, transaction_type)
