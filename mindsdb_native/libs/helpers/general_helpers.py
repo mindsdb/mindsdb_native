@@ -50,7 +50,7 @@ def check_for_updates():
             token = f'{token}.NO_WRITE'
 
     try:
-        ret = requests.get('https://public.api.mindsdb.com/updates/check/{token}'.format(token=token), headers={'referer': 'http://check.mindsdb.com/?token={token}'.format(token=token)})
+        ret = requests.get('https://public.api.mindsdb.com/updates/mindsdb_native/{token}'.format(token=token), headers={'referer': 'http://check.mindsdb.com/?token={token}'.format(token=token)})
         ret = ret.json()
     except Exception as e:
         try:
