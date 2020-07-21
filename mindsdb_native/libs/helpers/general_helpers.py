@@ -6,7 +6,7 @@ from pathlib import Path
 import uuid
 from contextlib import contextmanager
 
-from sklearn.metrics import balanced_accuracy_score, accuracy_score
+from sklearn.metrics import balanced_accuracy_score, accuracy_score, f1_score
 import os
 import sys
 
@@ -136,7 +136,7 @@ def get_value_bucket(value, buckets, col_stats, hmd=None):
     return bucket
 
 
-def evaluate_regression_accuracy(column, predictions, true_values):
+def evaluate_regression_accuracy(column, predictions, true_values, backend):
     pred_confidence_intervals = predictions[f'{column}_confidence_range']
 
     within_interval = 0
@@ -146,27 +146,38 @@ def evaluate_regression_accuracy(column, predictions, true_values):
     return within_interval/len(true_values)
 
 
-def evaluate_classification_accuracy(column, predictions, true_values):
+def evaluate_classification_accuracy(column, predictions, true_values, backend):
     pred_values = predictions[column]
     return balanced_accuracy_score(true_values, pred_values)
 
 
-def evaluate_generic_accuracy(column, predictions, true_values):
+def evaluate_multilabel_accuracy(column, predictions, true_values, backend):
+    encoder = backend.predictor._mixer.encoders[column]
+    pred_values = encoder.encode(predictions[column])
+    true_values = encoder.encode(true_values)
+    return f1_score(true_values, pred_values, average='weighted')
+
+
+def evaluate_generic_accuracy(column, predictions, true_values, backend):
     pred_values = predictions[column]
     return accuracy_score(true_values, pred_values)
 
 
-def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, hmd=None):
+def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backend=None, hmd=None):
     column_scores = []
     for column in output_columns:
         col_type = col_stats[column]['typing']['data_type']
+        col_subtype = col_stats[column]['typing']['data_subtype']
         if col_type == DATA_TYPES.NUMERIC:
             evaluator = evaluate_regression_accuracy
         elif col_type == DATA_TYPES.CATEGORICAL:
-            evaluator = evaluate_classification_accuracy
+            if col_subtype == DATA_SUBTYPES.TAGS:
+                evaluator = evaluate_multilabel_accuracy
+            else:
+                evaluator = evaluate_classification_accuracy
         else:
             evaluator = evaluate_generic_accuracy
-        column_score = evaluator(column, predictions, data_frame[column])
+        column_score = evaluator(column, predictions, data_frame[column], backend)
         column_scores.append(column_score)
 
     score = sum(column_scores)/len(column_scores) if column_scores else 0.

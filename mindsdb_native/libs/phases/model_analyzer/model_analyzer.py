@@ -21,7 +21,11 @@ class ModelAnalyzer(BaseModule):
 
         # Make predictions on the validation dataset normally and with various columns missing
         normal_predictions = self.transaction.model_backend.predict('validate')
-        normal_accuracy = evaluate_accuracy(normal_predictions, self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
+        normal_accuracy = evaluate_accuracy(normal_predictions,
+                                            self.transaction.input_data.validation_df,
+                                            self.transaction.lmd['stats_v2'],
+                                            output_columns,
+                                            backend=self.transaction.model_backend)
 
         empty_input_predictions = {}
         empty_input_accuracy = {}
@@ -30,7 +34,11 @@ class ModelAnalyzer(BaseModule):
                                     and x not in [y[0] for y in self.transaction.lmd['model_order_by']]]
         for col in ignorable_input_columns:
             empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
-            empty_input_accuracy[col] = evaluate_accuracy(empty_input_predictions[col], self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
+            empty_input_accuracy[col] = evaluate_accuracy(empty_input_predictions[col],
+                                                          self.transaction.input_data.validation_df,
+                                                          self.transaction.lmd['stats_v2'],
+                                                          output_columns,
+                                                          backend=self.transaction.model_backend)
 
         # Get some information about the importance of each column
         self.transaction.lmd['column_importances'] = {}
@@ -62,7 +70,8 @@ class ModelAnalyzer(BaseModule):
                 predictions,
                 self.transaction.input_data.train_df,
                 self.transaction.lmd['stats_v2'],
-                [col]
+                [col],
+                backend=self.transaction.model_backend
             )
 
             # Testing data accuracy
@@ -74,7 +83,8 @@ class ModelAnalyzer(BaseModule):
                 predictions,
                 self.transaction.input_data.test_df,
                 self.transaction.lmd['stats_v2'],
-                [col]
+                [col],
+                backend=self.transaction.model_backend
             )
 
             # Validation data accuracy
@@ -86,7 +96,8 @@ class ModelAnalyzer(BaseModule):
                 predictions,
                 self.transaction.input_data.validation_df,
                 self.transaction.lmd['stats_v2'],
-                [col]
+                [col],
+                backend=self.transaction.model_backend
             )
 
         for col in output_columns:

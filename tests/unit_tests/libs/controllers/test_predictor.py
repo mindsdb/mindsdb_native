@@ -603,8 +603,8 @@ class TestPredictor:
         for i in range(len(predictions)):
             predicted_tags.append(predictions[i]['tags'])
 
-        test_tags_encoded = predictor.backend.predictor._mixer.encoders['tags'].encode(test_tags)
-        pred_labels_encoded = predictor.backend.predictor._mixer.encoders['tags'].encode(predicted_tags)
+        test_tags_encoded = predictor.transaction.model_backend.predictor._mixer.encoders['tags'].encode(test_tags)
+        pred_labels_encoded = predictor.transaction.model_backend.predictor._mixer.encoders['tags'].encode(predicted_tags)
         score = f1_score(test_tags_encoded, pred_labels_encoded, average='weighted')
-        print('Test f1 score', score)
-        self.assertGreaterEqual(score, 0.3)
+
+        assert score >= 0.8
