@@ -656,7 +656,7 @@ class TestPredictor:
         assert model_data['data_analysis_v2']['tags']['typing']['data_subtype'] == DATA_SUBTYPES.TAGS
 
         predictions = predictor.predict(when_data=df_test)
-        test_tags = df_test.tags
+        test_tags = df_test.tags.apply(lambda x: x.split(','))
 
         predicted_tags = []
         for i in range(len(predictions)):
