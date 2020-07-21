@@ -1,4 +1,5 @@
 import json
+from itertools import cycle
 from unittest import mock
 from uuid import uuid4
 import pytest
@@ -50,13 +51,14 @@ class TestTypeDeductor:
 
         # Apparently for n_category_values = 10 it doesnt work
         n_category_values = 4
+        categories_cycle = cycle(range(n_category_values))
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
             'numeric_float': np.linspace(0, n_points, n_points),
             'date_timestamp': [(datetime.now() - timedelta(minutes=int(i))).isoformat() for i in range(n_points)],
             'date_date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
-            'categorical_str': [f'a{x}' for x in (list(range(n_category_values)) * (n_points//n_category_values))],
-            'categorical_int': [x for x in (list(range(n_category_values)) * (n_points//n_category_values))],
+            'categorical_str': [f'category_{next(categories_cycle)}' for i in range(n_points)],
+            'categorical_int': [next(categories_cycle) for i in range(n_points)],
             'categorical_binary': [0, 1] * (n_points//2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
             'short_text': generate_short_sentences(n_points),

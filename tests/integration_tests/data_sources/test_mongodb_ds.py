@@ -1,14 +1,13 @@
 import pytest
 import logging
-from pymongo import MongoClient
-
 from mindsdb_native import Predictor
-from mindsdb_native.libs.data_sources.mongodb_ds import MongoDS
 from mindsdb_native import F
 
 
 @pytest.mark.integration
 def test_mongodb_ds():
+    from pymongo import MongoClient
+    from mindsdb_native.libs.data_sources.mongodb_ds import MongoDS
 
     HOST = 'localhost'
     USER = 'root'
