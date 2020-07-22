@@ -156,6 +156,7 @@ class LearnTransaction(Transaction):
             self.save_metadata()
 
             self._call_phase_module(module_name='DataSplitter')
+            self.save_metadata()
 
             self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
             self.lmd['current_phase'] = MODEL_STATUS_TRAINING

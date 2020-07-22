@@ -7,12 +7,14 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 class ClickhouseDS(DataSource):
 
-    def _setup(self, query, host='localhost', user='default', password=None, port=8123, protocol='http'):
+    def _setup(self, query, host='localhost', user='default', password=None,
+               port=8123, protocol='http'):
+
         if protocol not in ('https', 'http'):
             raise ValueError('Unexpected protocol {}'.fomat(protocol))
 
         if ' format ' in query.lower():
-            err_msg = 'Please refrain from adding a "FROAMT" statement to the query'
+            err_msg = 'Please refrain from adding a "FORMAT" statement to the query'
             log.error(err_msg)
             raise Exception(err_msg)
         
@@ -39,5 +41,5 @@ class ClickhouseDS(DataSource):
 
         return df, col_map
 
-
-
+    def name(self):
+        return '{}'.format(self.__class__.__name__)

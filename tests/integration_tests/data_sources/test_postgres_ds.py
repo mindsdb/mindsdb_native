@@ -1,14 +1,15 @@
 import pytest
 import datetime
 import logging
-import pg8000
 from mindsdb_native import Predictor
-from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
 from mindsdb_native import F
 
 
 @pytest.mark.integration
 def test_postgres_ds():
+    import pg8000
+    from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
+
     HOST = 'localhost'
     USER = 'postgres'
     PASSWORD = ''
@@ -30,9 +31,12 @@ def test_postgres_ds():
     con.commit()
     con.close()
 
-    mysql_ds = PostgresDS(table='test_mindsdb', host=HOST, user=USER,
+    postgres_ds = PostgresDS(table='test_mindsdb', host=HOST, user=USER,
                           password=PASSWORD, database=DBNAME, port=PORT)
-    assert (len(mysql_ds._df) == 200)
+                        
+    assert postgres_ds.name() == 'PostgresDS: postgres/test_mindsdb'
+
+    assert (len(postgres_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
-    F.analyse_dataset(from_data=mysql_ds)
+    F.analyse_dataset(from_data=postgres_ds)

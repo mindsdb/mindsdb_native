@@ -22,13 +22,13 @@ from mindsdb_native.libs.helpers.text_helpers import (
 
 
 def lof_outliers(col_subtype, col_data):
-    lof = LocalOutlierFactor(contamination='auto')	
-    outlier_scores = lof.fit_predict(np.array(col_data).reshape(-1, 1)	)	
+    lof = LocalOutlierFactor(contamination='auto')
+    outlier_scores = lof.fit_predict(np.array(col_data).reshape(-1, 1)	)
 
-    outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < -0.8]	
+    outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < -0.8]
 
-    if col_subtype == DATA_SUBTYPES.INT:	
-        outliers = [int(x) for x in outliers]	
+    if col_subtype == DATA_SUBTYPES.INT:
+        outliers = [int(x) for x in outliers]
 
     return outliers
 
@@ -229,6 +229,8 @@ class DataAnalyzer(BaseModule):
         stats_v2 = self.transaction.lmd['stats_v2']
 
         sample_settings = self.transaction.lmd['sample_settings']
+
+        population_size = len(input_data.data_frame)
         if sample_settings['sample_for_analysis']:
             sample_margin_of_error = sample_settings['sample_margin_of_error']
             sample_confidence_level = sample_settings['sample_confidence_level']
@@ -241,12 +243,13 @@ class DataAnalyzer(BaseModule):
                                              sample_percentage)
 
             sample_size = len(sample_df)
-            population_size = len(input_data.data_frame)
-            self.transaction.log.info(f'Analyzing a sample of {sample_size} '
-                                      f'from a total population of {population_size}, '
-                                      f'this is equivalent to {round(sample_size * 100 / population_size, 1)}% of your data.')
         else:
+            sample_size = population_size
             sample_df = input_data.data_frame
+
+        self.transaction.log.info(f'Analyzing a sample of {sample_size} '
+                                  f'from a total population of {population_size}, '
+                                  f'this is equivalent to {round(sample_size * 100 / population_size, 1)}% of your data.')
 
         for col_name in self.transaction.lmd['empty_columns']:
             stats_v2[col_name] = {}
@@ -292,14 +295,14 @@ class DataAnalyzer(BaseModule):
 
                 if data_type == DATA_TYPES.NUMERIC:
                         outliers = lof_outliers(data_subtype, col_data)
-                        stats_v2[col_name]['outliers'] = {	
+                        stats_v2[col_name]['outliers'] = {
                             'outlier_values': outliers,
-                            'outlier_buckets': compute_outlier_buckets(outlier_values=outliers,	
-                                                                    hist_x=histogram['x'],	
-                                                                    hist_y=histogram['y'],	
-                                                                    percentage_buckets=percentage_buckets,	
-                                                                    col_stats=stats_v2[col_name]),	
-                            'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""	
+                            'outlier_buckets': compute_outlier_buckets(outlier_values=outliers,
+                                                                    hist_x=histogram['x'],
+                                                                    hist_y=histogram['y'],
+                                                                    percentage_buckets=percentage_buckets,
+                                                                    col_stats=stats_v2[col_name]),
+                            'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""
                         }
 
             if data_type == DATA_TYPES.TEXT:

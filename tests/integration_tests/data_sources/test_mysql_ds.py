@@ -1,12 +1,13 @@
 import pytest
-import mysql.connector
 import logging
 from mindsdb_native import Predictor
-from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
 from mindsdb_native import F
 
 @pytest.mark.integration
 def test_mysql_ds():
+    import mysql.connector
+    from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
+
     HOST = 'localhost'
     USER = 'root'
     PASSWORD = ''
@@ -29,6 +30,9 @@ def test_mysql_ds():
 
     mysql_ds = MySqlDS(table='test_mindsdb', host=HOST, user=USER,
                        password=PASSWORD, database=DATABASE, port=PORT)
+
+    assert mysql_ds.name() == 'MySqlDS: mysql/test_mindsdb'
+
     assert (len(mysql_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)

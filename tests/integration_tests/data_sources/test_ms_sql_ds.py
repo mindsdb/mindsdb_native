@@ -1,13 +1,14 @@
 import pytest
-import pytds
 import logging
 from mindsdb_native import Predictor
-from mindsdb_native.libs.data_sources.ms_sql_ds import MSSQLDS
 from mindsdb_native import F
 
 
 @pytest.mark.integration
 def test_mssql_ds():
+    import pytds
+    from mindsdb_native.libs.data_sources.ms_sql_ds import MSSQLDS
+
     HOST = 'localhost'
     USER = 'sa'
     PASSWORD = '123ABCdef@!'
@@ -27,6 +28,9 @@ def test_mssql_ds():
 
     mssql_ds = MSSQLDS(table='test_mindsdb', host=HOST, user=USER,
                        password=PASSWORD, database=DATABASE, port=PORT)
+
+    assert mssql_ds.name() == 'MSSQLDS: master/test_mindsdb'
+
     assert (len(mssql_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)

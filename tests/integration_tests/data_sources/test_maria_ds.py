@@ -1,15 +1,16 @@
 import pytest
-import mysql.connector
 import datetime
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
-from mindsdb_native import MariaDS
 from mindsdb_native import F
 
 
 @pytest.mark.integration
 def test_maria_ds():
+    import mysql.connector
+    from mindsdb_native import MariaDS
+
     HOST = 'localhost'
     USER = 'root'
     PASSWORD = ''
@@ -68,6 +69,9 @@ def test_maria_ds():
 
     maria_ds = MariaDS(table='test_mindsdb', host=HOST, user=USER,
                        password=PASSWORD, database=DATABASE, port=PORT)
+
+    assert maria_ds.name() == 'MariaDS: mysql/test_mindsdb'
+
     assert (len(maria_ds._df) == 200)
 
     mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)

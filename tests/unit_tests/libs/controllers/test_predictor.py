@@ -137,6 +137,57 @@ class TestPredictor:
             assert 'nr_warnings' in col_data
             assert not col_data['is_foreign_key']
 
+    def test_ignore_columns(self):
+        input_dataframe = pd.DataFrame({
+            'do_use': list(range(100)),
+            'y': list(range(100)),
+            'ignore_this': list(range(100, 0, -1))
+        })
+
+        predictor = Predictor(name='test')
+        predictor.learn(from_data=input_dataframe,
+                                      to_predict='y',
+                                      ignore_columns=['ignore_this'],
+                                      stop_training_in_x_seconds=1,
+                                      )
+        transaction = predictor.transaction
+
+        assert 'do_use' in transaction.input_data.train_df.columns
+        assert 'ignore_this' not in transaction.input_data.train_df.columns
+
+    def test_ignore_foreign_keys(self):
+        input_dataframe = pd.DataFrame({
+            'do_use': list(range(100)),
+            'numeric_id': list(range(100)),
+            'y': list(range(100)),
+        })
+
+        predictor = Predictor(name='test')
+        predictor.learn(from_data=input_dataframe,
+                        to_predict='y',
+                        stop_training_in_x_seconds=1)
+
+        transaction = predictor.transaction
+
+        assert 'do_use' in transaction.input_data.train_df.columns
+        # Foreign key is ignored and removed from data frames
+        assert 'numeric_id' not in transaction.input_data.train_df.columns
+        assert 'numeric_id' in transaction.lmd['columns_to_ignore']
+
+        predictor = Predictor(name='test')
+        predictor.learn(from_data=input_dataframe,
+                        to_predict='y',
+                        stop_training_in_x_seconds=1,
+                        advanced_args={
+                            'handle_foreign_keys': False
+                        })
+
+        transaction = predictor.transaction
+
+        assert 'do_use' in transaction.input_data.train_df.columns
+        assert 'numeric_id' in transaction.input_data.train_df.columns
+        assert 'numeric_id' not in transaction.lmd['columns_to_ignore']
+
     def test_analyze_dataset_empty_column(self):
         n_points = 100
         input_dataframe = pd.DataFrame({
@@ -180,16 +231,18 @@ class TestPredictor:
 
         model_data = F.get_model_data('test_drop_duplicates')
 
-        # Ensure duplicate row was not used for training
+        # Ensure duplicate row was not used for training, or analysis
 
         assert model_data['data_preparation']['total_row_count'] == n_points
         assert model_data['data_preparation']['used_row_count'] <= n_points
-
 
         assert sum([model_data['data_preparation']['train_row_count'],
                    model_data['data_preparation']['validation_row_count'],
                    model_data['data_preparation']['test_row_count']]) == n_points
 
+        assert sum([mdb.transaction.input_data.train_df.shape[0],
+                    mdb.transaction.input_data.test_df.shape[0],
+                    mdb.transaction.input_data.validation_df.shape[0]]) == n_points
 
         # Disable deduplication and ensure the duplicate row is used
         mdb = Predictor(name='test_drop_duplicates')
@@ -205,7 +258,7 @@ class TestPredictor:
 
         model_data = F.get_model_data('test_drop_duplicates')
 
-        # Ensure duplicate row was not used for training
+        # Duplicate row was used for analysis and training
 
         assert model_data['data_preparation']['total_row_count'] == n_points+1
         assert model_data['data_preparation']['used_row_count'] <= n_points+1
@@ -213,6 +266,12 @@ class TestPredictor:
         assert sum([model_data['data_preparation']['train_row_count'],
                     model_data['data_preparation']['validation_row_count'],
                     model_data['data_preparation']['test_row_count']]) == n_points+1
+
+        assert sum([mdb.transaction.input_data.train_df.shape[0],
+                    mdb.transaction.input_data.test_df.shape[0],
+                    mdb.transaction.input_data.validation_df.shape[0]]) == n_points+1
+
+
 
     @pytest.mark.slow
     def test_explain_prediction(self):
