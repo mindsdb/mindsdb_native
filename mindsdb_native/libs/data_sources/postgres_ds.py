@@ -8,7 +8,7 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 class PostgresDS(DataSource):
 
-    def _setup(self, table, query=None, database='postgres', host='localhost',
+    def _setup(self, table=None, query=None, database='postgres', host='localhost',
                port=5432, user='postgres', password=''):
 
         self._database_name = database
