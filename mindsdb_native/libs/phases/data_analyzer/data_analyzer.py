@@ -23,7 +23,12 @@ from mindsdb_native.libs.helpers.text_helpers import (
 
 def lof_outliers(col_subtype, col_data):
     lof = LocalOutlierFactor(contamination='auto')
-    outlier_scores = lof.fit_predict(np.array(col_data).reshape(-1, 1)	)
+    data = np.array(col_data)
+    if len(data.shape) == 1:
+        data = data.reshape(-1, 1)
+    else:
+        data = data.transpose()
+    outlier_scores = lof.fit_predict(data)
 
     outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < -0.8]
 
