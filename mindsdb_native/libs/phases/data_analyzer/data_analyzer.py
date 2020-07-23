@@ -10,7 +10,7 @@ import imagehash
 from PIL import Image
 
 from mindsdb_native.libs.helpers.general_helpers import get_value_bucket
-from sklearn.neighbors import LocalOutlierFactor
+from sklearn.ensemble import IsolationForest
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.text_helpers import (
@@ -22,21 +22,46 @@ from mindsdb_native.libs.helpers.text_helpers import (
 
 
 def lof_outliers(col_subtype, col_data):
-    lof = LocalOutlierFactor(contamination='auto')
+    model = IsolationForest()
     data = np.array(col_data)
+
+    data[0] = [x*np.mean(data[1])/ np.mean(data[0]) for x in data[0]]
+
     if len(data.shape) == 1:
         data = data.reshape(-1, 1)
     else:
         data = data.transpose()
-    outlier_scores = lof.fit_predict(data)
+    model.fit(data)
+    outlier_scores = model.decision_function(data)
 
-    outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < -0.8]
+
+    low_score = min(np.quantile(outlier_scores,0.1),
+    max(np.mean(outlier_scores)/3,np.quantile(outlier_scores,0.3)))
+
+    outliers = [col_data[0][i] for i in range(len(outlier_scores)) if outlier_scores[i] < low_score]
+
 
     if col_subtype == DATA_SUBTYPES.INT:
-        if isinstance(outliers[0], list):
-            outliers = [x[0] for x in outliers]
         outliers = [int(x) for x in outliers]
 
+    # Manual hack
+    #outliers = []
+    for i in range(len(col_data[1])):
+        if i > 0 and i < (len(col_data[1]) - 1):
+            p = col_data[1][i]
+            b = col_data[1][i-1]
+            a = col_data[1][i+1]
+
+            if p > 3*a and p > 3*b:
+                outliers.append(col_data[0][i])
+            if 2.5*p < a and 2.5*p < b:
+                outliers.append(col_data[0][i])
+            if p > 1.4*a and p > 1.4*b and p > 3*(a+b):
+                outliers.append(col_data[0][i])
+            if 1.4*p < a and 1.4*p < b and 4*p < (a+b):
+                outliers.append(col_data[0][i])
+
+    outliers = list(set(outliers))
     return outliers
 
 def clean_int_and_date_data(col_data, log):
@@ -320,7 +345,7 @@ class DataAnalyzer(BaseModule):
                             'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""
                         }
 
-                        
+
             if data_type == DATA_TYPES.TEXT:
                 lang_dist = get_language_dist(col_data)
                 nr_words, word_dist, nr_words_dist = analyze_sentences(col_data)
