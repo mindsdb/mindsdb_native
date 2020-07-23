@@ -146,9 +146,7 @@ class DataTransformer(BaseModule):
                 #print(self.transaction.lmd['weight_map'])
                 column_is_weighted_in_train = column in self.transaction.lmd['weight_map']
 
-                if column_is_weighted_in_train:
-                    dfs = ['input_data.validation_df']
-                else:
+                if not column_is_weighted_in_train:
                     dfs = ['input_data.train_df','input_data.test_df','input_data.validation_df']
 
                 total_len = (len(input_data.train_df) + len(input_data.test_df) + len(input_data.validation_df))
@@ -168,4 +166,3 @@ class DataTransformer(BaseModule):
 
                         if int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times)) > 0:
                             exec(f'{dfn} = {dfn}.append(valid_rows[0:int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times))])')
-
