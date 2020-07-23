@@ -23,7 +23,7 @@ def _get_memory_optimizations(df):
 
     mem_usage_ratio = df_memory / total_memory
     
-    sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > pow(10, 4)
+    sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > (3 * pow(10, 4))
     sample_for_training = mem_usage_ratio >= 0.5
     disable_lightwood_transform_cache = mem_usage_ratio >= 0.2
 
@@ -31,8 +31,8 @@ def _get_memory_optimizations(df):
 
 
 def _prepare_sample_settings(user_provided_settings,
-                            sample_for_analysis,
-                            sample_for_training):
+                             sample_for_analysis,
+                             sample_for_training):
     default_sample_settings = dict(
         sample_for_analysis=sample_for_analysis,
         sample_for_training=sample_for_training,
