@@ -33,6 +33,8 @@ def lof_outliers(col_subtype, col_data):
     outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < -0.8]
 
     if col_subtype == DATA_SUBTYPES.INT:
+        if isinstance(outliers[0], list):
+            outliers = [x[0] for x in outliers]
         outliers = [int(x) for x in outliers]
 
     return outliers
@@ -299,6 +301,7 @@ class DataAnalyzer(BaseModule):
                     stats_v2[col_name]['bias']['warning'] = warning_str + " This doesn't necessarily mean there's an issue with your data, it just indicates a higher than usual probability there might be some issue."
 
                 if data_type == DATA_TYPES.NUMERIC:
+                        '''
                         outliers = lof_outliers(data_subtype, col_data)
                         stats_v2[col_name]['outliers'] = {
                             'outlier_values': outliers,
@@ -309,7 +312,15 @@ class DataAnalyzer(BaseModule):
                                                                     col_stats=stats_v2[col_name]),
                             'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""
                         }
+                        '''
+                        outlier_buckets = lof_outliers(data_subtype, [histogram['x'],histogram['y']])
+                        stats_v2[col_name]['outliers'] = {
+                            'outlier_values': outlier_buckets,
+                            'outlier_buckets': outlier_buckets,
+                            'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""
+                        }
 
+                        
             if data_type == DATA_TYPES.TEXT:
                 lang_dist = get_language_dist(col_data)
                 nr_words, word_dist, nr_words_dist = analyze_sentences(col_data)
