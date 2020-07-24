@@ -149,20 +149,20 @@ class DataTransformer(BaseModule):
                 if not column_is_weighted_in_train:
                     dfs = ['input_data.train_df','input_data.test_df','input_data.validation_df']
 
-                total_len = (len(input_data.train_df) + len(input_data.test_df) + len(input_data.validation_df))
-                # Since pandas doesn't support append in-place we'll just do some eval-based hacks
+                    total_len = (len(input_data.train_df) + len(input_data.test_df) + len(input_data.validation_df))
+                    # Since pandas doesn't support append in-place we'll just do some eval-based hacks
 
-                for dfn in dfs:
-                    max_val_occurances_in_set = int(round(max_val_occurances * len(eval(dfn))/total_len))
-                    for val in occurance_map:
-                        valid_rows = eval(dfn)[eval(dfn)[column] == val]
-                        if len(valid_rows) == 0:
-                            continue
+                    for dfn in dfs:
+                        max_val_occurances_in_set = int(round(max_val_occurances * len(eval(dfn))/total_len))
+                        for val in occurance_map:
+                            valid_rows = eval(dfn)[eval(dfn)[column] == val]
+                            if len(valid_rows) == 0:
+                                continue
 
-                        appended_times = 0
-                        while max_val_occurances_in_set > len(valid_rows) * (2 + appended_times):
-                            exec(f'{dfn} = {dfn}.append(valid_rows)')
-                            appended_times += 1
+                            appended_times = 0
+                            while max_val_occurances_in_set > len(valid_rows) * (2 + appended_times):
+                                exec(f'{dfn} = {dfn}.append(valid_rows)')
+                                appended_times += 1
 
-                        if int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times)) > 0:
-                            exec(f'{dfn} = {dfn}.append(valid_rows[0:int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times))])')
+                            if int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times)) > 0:
+                                exec(f'{dfn} = {dfn}.append(valid_rows[0:int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times))])')
