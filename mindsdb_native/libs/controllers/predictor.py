@@ -225,6 +225,8 @@ class Predictor:
                 handle_foreign_keys = advanced_args.get('handle_foreign_keys', True),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
+                null_values = advanced_args.get('null_values', {}),
+
                 breakpoint=self.breakpoint
             )
 
