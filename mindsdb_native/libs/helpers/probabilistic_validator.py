@@ -87,7 +87,7 @@ class ProbabilisticValidator:
                     X[-1][predicted_value_b] = 1
                 else:
                     predicted_value_b = predicted_value
-                    real_value_b = real_value_b
+                    real_value_b = real_value
 
                     X.append([])
 
