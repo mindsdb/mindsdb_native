@@ -20,7 +20,7 @@ class ProbabilisticValidator:
     def __init__(self, col_stats, col_name, input_columns):
         """
         Chose the algorithm to use for the rest of the model
-        As of right now we go with BernoulliNB¶
+        As of right now we go with BernoulliNB
         """
         self.col_stats = col_stats
         self.col_name = col_name
@@ -61,21 +61,22 @@ class ProbabilisticValidator:
         Y = []
 
         for n in range(len(predictions_arr)):
-            for m in range(len(real_df)):
+            for m in range(len(predictions_arr[n])):
                 row = real_df.iloc[m]
+
+                real_value = row[self.col_name]
                 predicted_value = predictions_arr[n][self.col_name][m]
 
                 if f'{self.col_name}_confidence_range' in predictions_arr[n]:
                     predicted_range = predictions_arr[n][f'{self.col_name}_confidence_range'][m]
 
-                real_value = row[self.col_name]
                 try:
                     predicted_value = predicted_value if self.col_stats['typing']['data_type'] != DATA_TYPES.NUMERIC else float(predicted_value)
                 except Exception:
                     predicted_value = None
 
                 try:
-                    real_value = real_value if self.col_stats['typing']['data_type'] != DATA_TYPES.NUMERIC else float(str(real_value).replace(',','.'))
+                    real_value = real_value if self.col_stats['typing']['data_type'] != DATA_TYPES.NUMERIC else float(real_value)
                 except Exception:
                     real_value = None
 
