@@ -88,9 +88,6 @@ class TestTypeDeductor:
         assert isinstance(json.dumps(transaction.lmd), str)
 
     def test_deduce_foreign_key(self, transaction, lmd):
-        """Tests that basic cases of type deduction work correctly"""
-        hmd = transaction.hmd
-
         lmd['handle_foreign_keys'] = True
 
         type_deductor = TypeDeductor(session=transaction.session,
@@ -110,9 +107,6 @@ class TestTypeDeductor:
 
         assert stats_v2['numeric_id']['is_foreign_key']
         assert stats_v2['uuid']['is_foreign_key']
-
-        assert 'numeric_id' in lmd['columns_to_ignore']
-        assert 'uuid' in lmd['columns_to_ignore']
 
     def test_empty_column(self, transaction, lmd):
         type_deductor = TypeDeductor(session=transaction.session,

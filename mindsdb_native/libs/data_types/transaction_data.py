@@ -6,9 +6,15 @@ class TransactionData:
         self.train_df = None
         self.test_df = None
         self.validation_df = None
-        self.columns = []
 
         self._sample_df = None
+
+    @property
+    def columns(self):
+        if self.data_frame is not None:
+            return self.data_frame.columns
+        else:
+            return self.train_df.columns
 
     def sample_df(self,
                   sample_function,

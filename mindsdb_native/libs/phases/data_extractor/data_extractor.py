@@ -134,8 +134,7 @@ class DataExtractor(BaseModule):
         # --- Dataset gets randomized or sorted (if timeseries) --- #
 
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
-        self.transaction.input_data.columns = result.columns.values.tolist()
-        self.transaction.lmd['columns'] = self.transaction.input_data.columns
+        self.transaction.lmd['columns'] = result.columns.tolist()
         self.transaction.input_data.data_frame = result
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
 

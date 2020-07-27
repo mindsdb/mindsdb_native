@@ -152,16 +152,15 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
-            self._call_phase_module(module_name='DataCleaner')
+            self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
             self.save_metadata()
 
             self._call_phase_module(module_name='DataSplitter')
             self.save_metadata()
 
-            self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
             self.lmd['current_phase'] = MODEL_STATUS_TRAINING
-            self.save_metadata()
             self._call_phase_module(module_name='ModelInterface', mode='train')
+            self.save_metadata()
 
             self.lmd['current_phase'] = MODEL_STATUS_ANALYZING
             self.save_metadata()

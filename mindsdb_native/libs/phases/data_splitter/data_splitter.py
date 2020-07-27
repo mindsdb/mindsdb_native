@@ -99,3 +99,65 @@ class DataSplitter(BaseModule):
             self.log.info('We have split the input data into:')
             self.log.infoChart(data, type='pie')
 
+        # Initialize this here, will be overwritten if `equal_accuracy_for_all_output_categories` is specified to be True in order to account for it
+        self.transaction.lmd['weight_map'] = self.transaction.lmd['output_categories_importance_dictionary']
+
+        # Un-bias dataset for training
+        for column in self.transaction.lmd['predict_columns']:
+            if (self.transaction.lmd['stats_v2'][column]['typing']['data_type'] == DATA_TYPES.CATEGORICAL
+                    and self.transaction.lmd['equal_accuracy_for_all_output_categories'] is True
+                    and self.transaction.lmd['type'] == TRANSACTION_LEARN):
+
+                occurance_map = {}
+                ciclying_map = {}
+
+                for i in range(0, len(self.transaction.lmd['stats_v2'][column]['histogram']['x'])):
+                    ciclying_map[self.transaction.lmd['stats_v2'][column]['histogram']['x'][i]] = 0
+                    occurance_map[self.transaction.lmd['stats_v2'][column]['histogram']['x'][i]] = \
+                    self.transaction.lmd['stats_v2'][column]['histogram']['y'][i]
+
+                max_val_occurances = max(occurance_map.values())
+
+                if self.transaction.hmd['model_backend'] in ('lightwood'):
+                    lightwood_weight_map = {}
+                    for val in occurance_map:
+                        lightwood_weight_map[val] = 1 / occurance_map[val]  # sum(occurance_map.values())
+
+                        if column in self.transaction.lmd['output_categories_importance_dictionary']:
+                            if val in self.transaction.lmd['output_categories_importance_dictionary'][column]:
+                                lightwood_weight_map[val] = \
+                                self.transaction.lmd['output_categories_importance_dictionary'][column][val]
+                            elif '<default>' in self.transaction.lmd['output_categories_importance_dictionary'][
+                                column]:
+                                lightwood_weight_map[val] = \
+                                self.transaction.lmd['output_categories_importance_dictionary'][column]['<default>']
+
+                    self.transaction.lmd['weight_map'][column] = lightwood_weight_map
+
+                # print(self.transaction.lmd['weight_map'])
+                column_is_weighted_in_train = column in self.transaction.lmd['weight_map']
+
+                if column_is_weighted_in_train:
+                    dfs = ['input_data.validation_df']
+                else:
+                    dfs = ['input_data.train_df', 'input_data.test_df', 'input_data.validation_df']
+
+                total_len = (len(self.transaction.input_data.train_df) + len(self.transaction.input_data.test_df) + len(self.transaction.input_data.validation_df))
+                # Since pandas doesn't support append in-place we'll just do some eval-based hacks
+
+                for dfn in dfs:
+                    max_val_occurances_in_set = int(round(max_val_occurances * len(eval(dfn)) / total_len))
+                    for val in occurance_map:
+                        valid_rows = eval(dfn)[eval(dfn)[column] == val]
+                        if len(valid_rows) == 0:
+                            continue
+
+                        appended_times = 0
+                        while max_val_occurances_in_set > len(valid_rows) * (2 + appended_times):
+                            exec(f'{dfn} = {dfn}.append(valid_rows)')
+                            appended_times += 1
+
+                        if int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times)) > 0:
+                            exec(
+                                f'{dfn} = {dfn}.append(valid_rows[0:int(max_val_occurances_in_set - len(valid_rows) * (1 + appended_times))])')
+

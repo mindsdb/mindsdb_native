@@ -87,10 +87,7 @@ class LightwoodBackend():
         config['input_features'] = []
         config['output_features'] = []
 
-        for col_name in self.transaction.input_data.columns or col_name not in self.transaction.lmd['stats_v2']:
-            if col_name in self.transaction.lmd['columns_to_ignore']:
-                continue
-
+        for col_name in self.transaction.input_data.columns:
             col_stats = self.transaction.lmd['stats_v2'][col_name]
             data_subtype = col_stats['typing']['data_subtype']
             data_type = col_stats['typing']['data_type']
