@@ -89,7 +89,7 @@ class ProbabilisticValidator:
                     X.append([])
 
                 has_confidence_range = self.col_stats['typing']['data_type'] == DATA_TYPES.NUMERIC and f'{self.col_name}_confidence_range' in predictions_arr[n]
-                
+
                 if has_confidence_range:
                     predicted_range = predictions_arr[n][f'{self.col_name}_confidence_range'][m]
                     Y.append(predicted_range[0] < real_value < predicted_range[1])
@@ -203,7 +203,3 @@ class ProbabilisticValidator:
             }
 
         return overall_accuracy, accuracy_histogram, cm, accuracy_samples
-
-if __name__ == "__main__":
-    pass
-    # Removing test for now, as tets for the new one stand-alone would require the creation of a bunch of dataframes mimicking those inputed into mindsdb and those predicted by lightwood.
