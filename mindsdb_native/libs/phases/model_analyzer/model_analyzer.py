@@ -94,7 +94,7 @@ class ModelAnalyzer(BaseModule):
 
         for col in output_columns:
             pval = ProbabilisticValidator(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
-            predictions_arr = [normal_predictions_test] + [list(empty_input_predictions_test.values())]
+            predictions_arr = [normal_predictions_test] + [x for x in empty_input_predictions_test.values()]
 
             pval.fit(self.transaction.input_data.test_df, predictions_arr, [[ignored_column] for ignored_column in empty_input_predictions_test])
             overall_accuracy, accuracy_histogram, cm, accuracy_samples = pval.get_accuracy_stats()

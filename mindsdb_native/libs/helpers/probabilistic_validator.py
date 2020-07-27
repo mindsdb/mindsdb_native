@@ -61,12 +61,12 @@ class ProbabilisticValidator:
         Y = []
 
         for n in range(len(predictions_arr)):
-            for m in range(len(predictions_arr[n])):
+            for m in range(len(predictions_arr[n][self.col_name])):
                 row = real_df.iloc[m]
 
                 real_value = row[self.col_name]
                 predicted_value = predictions_arr[n][self.col_name][m]
-
+                
                 try:
                     predicted_value = predicted_value if self.col_stats['typing']['data_type'] != DATA_TYPES.NUMERIC else float(predicted_value)
                 except Exception:

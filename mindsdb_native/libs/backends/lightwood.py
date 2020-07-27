@@ -261,17 +261,29 @@ class LightwoodBackend():
         for k in predictions:
             formated_predictions[k] = predictions[k]['predictions']
 
-            conf_arr_arr = []
+            model_confidence_dict = {}
             for confidence_name in ['selfaware_confidences','loss_confidences', 'quantile_confidences']:
-                if confidence_name in predictions[k]:
-                    conf_arr = [x if x > 0 else 0 for x in predictions[k][confidence_name]]
-                    conf_arr = [x if x < 1 else 1 for x in conf_arr]
-                    conf_arr_arr.append(conf_arr)
 
-            if len(conf_arr_arr) > 0:
-                formated_predictions[f'{k}_model_confidence'] = []
-                for conf_arr in conf_arr_arr:
-                    formated_predictions[f'{k}_model_confidence'].append(np.mean(conf_arr))
+                if confidence_name in predictions[k]:
+                    if k not in model_confidence_dict:
+                        model_confidence_dict[k] = []
+
+                    for i in range(len(predictions[k][confidence_name])):
+                        if len(model_confidence_dict[k]) <= i:
+                            model_confidence_dict[k].append([])
+                        conf = predictions[k][confidence_name][i]
+                        # @TODO We should make sure lightwood never returns confidences above or bellow 0 and 1
+                        if conf < 0:
+                            conf = 0
+                        if conf > 1:
+                            conf = 1
+                        model_confidence_dict[k][i].append(conf)
+
+            for k in model_confidence_dict:
+                model_confidence_dict[k] = [np.mean(x) for x in model_confidence_dict[k]]
+
+            for k  in model_confidence_dict:
+                formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]
 
             if 'confidence_range' in predictions[k]:
                 formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']

@@ -36,7 +36,6 @@ class TransactionOutputRow:
         answers = {}
         for pred_col in self._predict_columns:
             answers[pred_col] = {}
-
             prediction_row = {col: self._data[col][self._row_index] for col in self._data.keys()}
 
             answers[pred_col]['predicted_value'] = prediction_row[pred_col]
