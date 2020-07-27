@@ -93,16 +93,8 @@ class TypeDeductor(BaseModule):
             return type_guess, subtype_guess
 
         def type_check_sequence(element):
+            element = str(element)
             type_guess, subtype_guess = None, None
-
-            if not isinstance(element, six.string_types):
-                # If its a tuple, list, np.array or other iterable thing, convert it to string
-                try:
-                    # Check that its an iterable
-                    iter(element)
-                    element = ','.join(element)
-                except Exception:
-                    pass
 
             for sep_char in [',', '\t', '|', ' ']:
                 all_nr = True

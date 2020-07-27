@@ -137,10 +137,11 @@ class LightwoodBackend():
 
             col_config.update(other_keys)
 
-            if col_name not in self.transaction.lmd['predict_columns']:
-                config['input_features'].append(col_config)
-            else:
+            if col_name in self.transaction.lmd['predict_columns']:
                 config['output_features'].append(col_config)
+            else:
+                config['input_features'].append(col_config)
+
 
         config['data_source'] = {}
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
