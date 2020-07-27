@@ -112,10 +112,10 @@ class LightwoodBackend():
             elif data_subtype == DATA_SUBTYPES.AUDIO:
                 lightwood_data_type = 'audio'
 
-            elif data_type == DATA_SUBTYPES.RICH:
+            elif data_subtype == DATA_SUBTYPES.RICH:
                 lightwood_data_type = 'text'
 
-            elif data_type == DATA_SUBTYPES.SHORT:
+            elif data_subtype == DATA_SUBTYPES.SHORT:
                 lightwood_data_type = 'short_text'
 
             elif data_subtype == DATA_SUBTYPES.ARRAY:
