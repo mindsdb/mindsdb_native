@@ -225,6 +225,9 @@ class PredictTransaction(Transaction):
         if self.input_data.data_frame.shape[0] <= 0:
             self.log.error('No input data provided !')
             return
+
+        self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
+
         if self.lmd['model_is_time_series']:
             self._call_phase_module(module_name='DataSplitter')
 
@@ -247,8 +250,6 @@ class PredictTransaction(Transaction):
                     continue
                 else:
                     self.input_data.data_frame = nulled_out_data
-
-            self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
 
             self._call_phase_module(module_name='ModelInterface', mode='predict')
 
