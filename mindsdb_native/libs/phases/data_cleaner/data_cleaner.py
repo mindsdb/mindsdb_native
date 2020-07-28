@@ -29,6 +29,9 @@ class DataCleaner(BaseModule):
     def run(self):
         df = self.transaction.input_data.data_frame
 
+        for col, nulls in self.transaction.lmd.get('null_values', {}).items():
+            df[col][df[col].is_in(nulls)] = None
+
         empty_columns = self._get_empty_columns(df)
         self.transaction.lmd['empty_columns'] = empty_columns
         self.transaction.lmd['columns_to_ignore'] += empty_columns

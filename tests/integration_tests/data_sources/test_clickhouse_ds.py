@@ -1,12 +1,13 @@
 import pytest
 import requests
 from mindsdb_native import Predictor
-from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 from mindsdb_native import F
 
 
 @pytest.mark.integration
 def test_clickhouse_ds():
+    from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
+
     HOST = 'localhost'
     PORT = 8123
 

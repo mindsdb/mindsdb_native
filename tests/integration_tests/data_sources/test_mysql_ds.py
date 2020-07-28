@@ -1,12 +1,13 @@
 import pytest
-import mysql.connector
 import logging
 from mindsdb_native import Predictor
-from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
 from mindsdb_native import F
 
 @pytest.mark.integration
 def test_mysql_ds():
+    import mysql.connector
+    from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
+
     HOST = 'localhost'
     USER = 'root'
     PASSWORD = ''

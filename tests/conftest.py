@@ -40,4 +40,3 @@ def transaction(logger):
                               heavy_transaction_metadata=hmd,
                               logger=logger)
     return transaction
-

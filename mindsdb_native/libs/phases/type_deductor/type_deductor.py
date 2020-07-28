@@ -206,7 +206,7 @@ class TypeDeductor(BaseModule):
         else:
             curr_data_type, curr_data_subtype = None, None
 
-        # Categorical
+        # Categorical based on unique values
         if curr_data_type != DATA_TYPES.DATE:
             if nr_distinct_vals < 50:
                 if curr_data_type != DATA_TYPES.NUMERIC:
@@ -215,7 +215,7 @@ class TypeDeductor(BaseModule):
                         additional_info['other_potential_subtypes'].append(curr_data_subtype)
                     curr_data_type = DATA_TYPES.CATEGORICAL
 
-        # If curr_data_type is still None, then it's text
+        # If curr_data_type is still None, then it's text or category
         if curr_data_type is None:
             lang_dist = get_language_dist(data)
 
@@ -227,21 +227,20 @@ class TypeDeductor(BaseModule):
             if lang_dist['Unknown'] > 0.6:
                 curr_data_type = DATA_TYPES.CATEGORICAL
             else:
-                curr_data_type = DATA_TYPES.TEXT
+                nr_words, word_dist, nr_words_dist = analyze_sentences(data)
 
-                nr_words, word_dist, _, = analyze_sentences(data)
-
-                if len(word_dist) > 500 and nr_words / len(data) > 5:
-                    curr_data_subtype = DATA_SUBTYPES.RICH
+                if 1 in nr_words_dist and nr_words_dist[1] == nr_words:
+                    curr_data_type = DATA_TYPES.CATEGORICAL
                 elif len(word_dist) <= 25:
                     curr_data_type = DATA_TYPES.CATEGORICAL
                     curr_data_subtype = DATA_SUBTYPES.TAGS
                 else:
-                    curr_data_subtype = DATA_SUBTYPES.SHORT
-
-                type_dist = {curr_data_type: len(data)}
-                subtype_dist = {curr_data_subtype: len(data)}
-                return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
+                    curr_data_type = DATA_TYPES.TEXT
+                    
+                    if len(word_dist) > 500 and nr_words / len(data) > 5:
+                        curr_data_subtype = DATA_SUBTYPES.RICH
+                    else:
+                        curr_data_subtype = DATA_SUBTYPES.SHORT
 
         if curr_data_type == DATA_TYPES.CATEGORICAL and curr_data_subtype != DATA_SUBTYPES.TAGS:
             if nr_distinct_vals > 2:

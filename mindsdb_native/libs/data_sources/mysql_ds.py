@@ -6,7 +6,7 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 class MySqlDS(DataSource):
 
-    def _setup(self, table, query=None, database='mysql', host='localhost',
+    def _setup(self, table=None, query=None, database='mysql', host='localhost',
                port=3306, user='root', password=''):
 
         self._database_name = database
