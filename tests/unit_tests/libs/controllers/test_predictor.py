@@ -628,7 +628,7 @@ class TestPredictor:
         score = r2_score(test_y, predicted_y)
         assert score >= 0.8
 
-    #@pytest.mark.slow
+    @pytest.mark.slow
     def test_category_tags_output(self):
         vocab = random.sample(SMALL_VOCAB, 10)
         vocab = {i: word for i, word in enumerate(vocab)}
