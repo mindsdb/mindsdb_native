@@ -376,7 +376,7 @@ class TestPredictor:
 
         assert predictions
 
-    @pytest.mark.slow
+    #@pytest.mark.slow
     def test_data_source_setting(self):
         data_url = 'https://raw.githubusercontent.com/mindsdb/mindsdb-examples/master/benchmarks/german_credit_data/processed_data/test.csv'
         data_source = FileDS(data_url)
@@ -612,7 +612,8 @@ class TestPredictor:
         predictor = Predictor(name='test')
 
         predictor.learn(from_data=df_train, to_predict='y',
-                        advanced_args=dict(deduplicate_data=False))
+                        advanced_args=dict(deduplicate_data=False),
+                        stop_training_in_x_seconds=30)
 
         model_data = F.get_model_data('test')
         assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL
@@ -654,7 +655,7 @@ class TestPredictor:
 
         predictor.learn(from_data=df_train, to_predict='tags',
                         advanced_args=dict(deduplicate_data=False),
-                        stop_training_in_x_seconds=360)
+                        stop_training_in_x_seconds=30)
 
         model_data = F.get_model_data('test')
         assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL

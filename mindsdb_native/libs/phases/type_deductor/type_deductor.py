@@ -108,8 +108,7 @@ class TypeDeductor(BaseModule):
                         all_nr = False
                         break
 
-                if len(ele_arr) > 1:
-                    if all_nr:
+                if len(ele_arr) > 1 and all_nr:
                         additional_info['separator'] = sep_char
                         type_guess = DATA_TYPES.SEQUENTIAL
                         subtype_guess = DATA_SUBTYPES.ARRAY
@@ -206,14 +205,17 @@ class TypeDeductor(BaseModule):
         else:
             curr_data_type, curr_data_subtype = None, None
 
-        # Categorical based on unique values
-        if curr_data_type != DATA_TYPES.DATE:
-            if nr_distinct_vals < 50:
-                if curr_data_type != DATA_TYPES.NUMERIC:
-                    if curr_data_type is not None:
-                        additional_info['other_potential_types'].append(curr_data_type)
-                        additional_info['other_potential_subtypes'].append(curr_data_subtype)
-                    curr_data_type = DATA_TYPES.CATEGORICAL
+        # Check for Tags subtype
+        try:
+            tags = data.apply(lambda x: [t.strip() for t in x.split(',')])
+            lengths = tags.apply(lambda x: len(x))
+            token_sets = tags.apply(lambda x: set(x)).tolist()
+            unique_tokens = set().union(*token_sets)  # Get unique tokens
+            if lengths.quantile(0.4) > 1 and len(unique_tokens) >= 5 and len(unique_tokens) <= 30:
+                curr_data_type = DATA_TYPES.CATEGORICAL
+                curr_data_subtype = DATA_SUBTYPES.TAGS
+        except AttributeError:
+            pass
 
         # If curr_data_type is still None, then it's text or category
         if curr_data_type is None:
@@ -231,16 +233,20 @@ class TypeDeductor(BaseModule):
 
                 if 1 in nr_words_dist and nr_words_dist[1] == nr_words:
                     curr_data_type = DATA_TYPES.CATEGORICAL
-                elif len(word_dist) <= 25:
-                    curr_data_type = DATA_TYPES.CATEGORICAL
-                    curr_data_subtype = DATA_SUBTYPES.TAGS
                 else:
                     curr_data_type = DATA_TYPES.TEXT
-                    
                     if len(word_dist) > 500 and nr_words / len(data) > 5:
                         curr_data_subtype = DATA_SUBTYPES.RICH
                     else:
                         curr_data_subtype = DATA_SUBTYPES.SHORT
+
+        # Categorical based on unique values
+        if curr_data_type != DATA_TYPES.DATE and curr_data_subtype != DATA_SUBTYPES.TAGS:
+            if nr_distinct_vals <= (0.05 * nr_vals):
+                if curr_data_type is not None:
+                    additional_info['other_potential_types'].append(curr_data_type)
+                    additional_info['other_potential_subtypes'].append(curr_data_subtype)
+                curr_data_type = DATA_TYPES.CATEGORICAL
 
         if curr_data_type == DATA_TYPES.CATEGORICAL and curr_data_subtype != DATA_SUBTYPES.TAGS:
             if nr_distinct_vals > 2:

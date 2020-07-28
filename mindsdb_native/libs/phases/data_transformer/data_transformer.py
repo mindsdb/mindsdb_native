@@ -51,7 +51,7 @@ def _standardize_datetime(date_str):
 
 def _tags_to_tuples(tags_str):
     try:
-        return tuple(tokenize_text(tags_str))
+        return tuple([x.strip() for x in tags_str.split(',')])
     except Exception:
         return tuple()
 
