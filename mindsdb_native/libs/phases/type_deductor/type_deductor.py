@@ -208,8 +208,8 @@ class TypeDeductor(BaseModule):
 
         # Categorical
         if curr_data_type != DATA_TYPES.DATE:
-            if nr_distinct_vals < (nr_vals / 20) or nr_distinct_vals < 6:
-                if (curr_data_type != DATA_TYPES.NUMERIC) or (nr_distinct_vals < 20):
+            if nr_distinct_vals < 50:
+                if curr_data_type != DATA_TYPES.NUMERIC:
                     if curr_data_type is not None:
                         additional_info['other_potential_types'].append(curr_data_type)
                         additional_info['other_potential_subtypes'].append(curr_data_subtype)

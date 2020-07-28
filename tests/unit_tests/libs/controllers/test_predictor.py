@@ -583,12 +583,13 @@ class TestPredictor:
             assert isinstance(importance, (float, int))
             assert (importance >= 0 and importance <= 10)
 
+    @pytest.mark.slow
     def test_category_tags_input(self):
         vocab = random.sample(SMALL_VOCAB, 10)
         # tags contains up to 2 randomly selected tags
         # y contains the sum of indices of tags
         # the dataset should be nearly perfectly predicted
-        n_points = 10000
+        n_points = 5000
         tags = []
         y = []
         for i in range(n_points):
@@ -610,7 +611,8 @@ class TestPredictor:
 
         predictor = Predictor(name='test')
 
-        predictor.learn(from_data=df_train, to_predict='y')
+        predictor.learn(from_data=df_train, to_predict='y',
+                        advanced_args=dict(deduplicate_data=False))
 
         model_data = F.get_model_data('test')
         assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL
@@ -626,6 +628,7 @@ class TestPredictor:
         score = r2_score(test_y, predicted_y)
         assert score >= 0.8
 
+    #@pytest.mark.slow
     def test_category_tags_output(self):
         vocab = random.sample(SMALL_VOCAB, 10)
         vocab = {i: word for i, word in enumerate(vocab)}
@@ -633,9 +636,9 @@ class TestPredictor:
         # x2 contains the index of second tag present
         # if a tag is missing then x1/x2 contain -1 instead
         # Thus the dataset should be perfectly predicted
-        n_points = 10000
-        x1 = [random.randint(0, len(vocab) - 1) if random.random() > 0.2 else -1 for i in range(n_points)]
-        x2 = [random.randint(0, len(vocab) - 1) if random.random() > 0.2 else -1 for i in range(n_points)]
+        n_points = 5000
+        x1 = [random.randint(0, len(vocab) - 1) if random.random() > 0.1 else -1 for i in range(n_points)]
+        x2 = [random.randint(0, len(vocab) - 1) if random.random() > 0.1 else -1 for i in range(n_points)]
         tags = []
         for x1_index, x2_index in zip(x1, x2):
             row_tags = set([vocab.get(x1_index), vocab.get(x2_index)])
@@ -649,7 +652,9 @@ class TestPredictor:
 
         predictor = Predictor('test')
 
-        predictor.learn(from_data=df_train, to_predict='tags')
+        predictor.learn(from_data=df_train, to_predict='tags',
+                        advanced_args=dict(deduplicate_data=False),
+                        stop_training_in_x_seconds=180)
 
         model_data = F.get_model_data('test')
         assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL

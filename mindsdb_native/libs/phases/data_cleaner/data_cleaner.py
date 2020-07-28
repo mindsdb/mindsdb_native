@@ -38,7 +38,12 @@ class DataCleaner(BaseModule):
 
         self._remove_missing_targets(df)
 
+        len_before_dedupe = len(df)
         if self.transaction.lmd.get('deduplicate_data'):
-            self._remove_duplicate_rows(df)
+           self._remove_duplicate_rows(df)
+        len_after_dedupe = len(df)
+
+        if len_after_dedupe < len_before_dedupe/2:
+            self.log.warning(f'Less than half of initial rows remain after deduplication. Consider passing `deduplicate_data=False` if training results are sub-par.')
 
         self.transaction.input_data.data_frame = df
