@@ -228,7 +228,7 @@ class TypeDeductor(BaseModule):
                 lang_dist[lang] /= len(data)
 
             # If most cells are unknown language then it's categorical
-            if lang_dist['Unknown'] > 0.6:
+            if lang_dist['Unknown'] > 0.5:
                 curr_data_type = DATA_TYPES.CATEGORICAL
             else:
                 nr_words, word_dist, nr_words_dist = analyze_sentences(data)
