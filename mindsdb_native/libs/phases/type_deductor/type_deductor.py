@@ -1,4 +1,5 @@
 import string
+import numpy as np
 import imghdr
 import sndhdr
 from copy import deepcopy
@@ -66,7 +67,6 @@ class TypeDeductor(BaseModule):
         additional_info = {}
 
         def type_check_numeric(element):
-            element = str(element)
             type_guess, subtype_guess = None, None
             subtype = get_number_subtype(element)
             if subtype is not None:
@@ -75,7 +75,6 @@ class TypeDeductor(BaseModule):
             return type_guess, subtype_guess
 
         def type_check_date(element):
-            element = str(element)
             type_guess, subtype_guess = None, None
             try:
                 dt = parse_datetime(element)
@@ -93,7 +92,6 @@ class TypeDeductor(BaseModule):
             return type_guess, subtype_guess
 
         def type_check_sequence(element):
-            element = str(element)
             type_guess, subtype_guess = None, None
 
             for sep_char in [',', '\t', '|', ' ']:
@@ -116,7 +114,6 @@ class TypeDeductor(BaseModule):
             return type_guess, subtype_guess
 
         def type_check_file(element):
-            element = str(element)
             type_guess, subtype_guess = None, None
             subtype = get_file_subtype_if_exists(element)
             if subtype:
@@ -128,7 +125,7 @@ class TypeDeductor(BaseModule):
                          type_check_date,
                          type_check_sequence,
                          type_check_file]
-        for element in data:
+        for element in [str(x) for x in data]:
             for type_checker in type_checkers:
                 data_type_guess, subtype_guess = type_checker(element)
                 if data_type_guess:
@@ -206,16 +203,21 @@ class TypeDeductor(BaseModule):
             curr_data_type, curr_data_subtype = None, None
 
         # Check for Tags subtype
-        try:
-            tags = data.apply(lambda x: [t.strip() for t in x.split(',')])
-            lengths = tags.apply(lambda x: len(x))
-            token_sets = tags.apply(lambda x: set(x)).tolist()
-            unique_tokens = set().union(*token_sets)  # Get unique tokens
-            if lengths.quantile(0.4) > 1 and len(unique_tokens) >= 5 and len(unique_tokens) <= 30:
-                curr_data_type = DATA_TYPES.CATEGORICAL
-                curr_data_subtype = DATA_SUBTYPES.TAGS
-        except AttributeError:
-            pass
+        tags = []
+        lengths = []
+        unique_tokens = set()
+        for item in data:
+            try:
+                item_tags = [t.strip() for t in item.split(',')]
+                tags.append(item_tags)
+                lengths.append(len(item_tags))
+                unique_tokens = unique_tokens.union(set(item_tags))
+            except AttributeError:
+                break
+
+        if np.median(lengths) > 1 and len(unique_tokens) >= 5 and len(unique_tokens) <= 30:
+            curr_data_type = DATA_TYPES.CATEGORICAL
+            curr_data_subtype = DATA_SUBTYPES.TAGS
 
         # If curr_data_type is still None, then it's text or category
         if curr_data_type is None:

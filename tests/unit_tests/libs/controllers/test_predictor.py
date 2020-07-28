@@ -613,7 +613,7 @@ class TestPredictor:
 
         predictor.learn(from_data=df_train, to_predict='y',
                         advanced_args=dict(deduplicate_data=False),
-                        stop_training_in_x_seconds=30)
+                        stop_training_in_x_seconds=1)
 
         model_data = F.get_model_data('test')
         assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL
