@@ -1,10 +1,12 @@
 from lightwood.constants.lightwood import ColumnDataTypes
 
-from mindsdb_native.libs.constants.mindsdb import *
-from mindsdb_native.config import *
-
+import numpy as np
 import pandas as pd
 import lightwood
+
+from mindsdb_native.libs.constants.mindsdb import *
+from mindsdb_native.config import *
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class LightwoodBackend():
@@ -261,21 +263,29 @@ class LightwoodBackend():
         for k in predictions:
             formated_predictions[k] = predictions[k]['predictions']
 
-            confidence_arr = []
+            model_confidence_dict = {}
             for confidence_name in ['selfaware_confidences','loss_confidences', 'quantile_confidences']:
-                if confidence_name in predictions[k]:
-                    conf_arr = [x if x > 0 else 0 for x in predictions[k][confidence_name]]
-                    conf_arr = [x if x < 1 else 1 for x in conf_arr]
-                    confidence_arr.append(conf_arr)
 
-            if len(confidence_arr) > 0:
-                confidences = []
-                for n in range(len(confidence_arr[0])):
-                    confidences.append([])
-                    for i in range(len(confidence_arr)):
-                        confidences[-1].append(confidence_arr[i][n])
-                    confidences[-1] = sum(confidences[-1])/len(confidences[-1])
-                formated_predictions[f'{k}_model_confidence'] = confidences
+                if confidence_name in predictions[k]:
+                    if k not in model_confidence_dict:
+                        model_confidence_dict[k] = []
+
+                    for i in range(len(predictions[k][confidence_name])):
+                        if len(model_confidence_dict[k]) <= i:
+                            model_confidence_dict[k].append([])
+                        conf = predictions[k][confidence_name][i]
+                        # @TODO We should make sure lightwood never returns confidences above or bellow 0 and 1
+                        if conf < 0:
+                            conf = 0
+                        if conf > 1:
+                            conf = 1
+                        model_confidence_dict[k][i].append(conf)
+
+            for k in model_confidence_dict:
+                model_confidence_dict[k] = [np.mean(x) for x in model_confidence_dict[k]]
+
+            for k  in model_confidence_dict:
+                formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]
 
             if 'confidence_range' in predictions[k]:
                 formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
