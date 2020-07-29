@@ -378,7 +378,7 @@ class TestPredictor:
 
     @pytest.mark.slow
     def test_data_source_setting(self):
-        data_url = 'https://raw.githubusercontent.com/mindsdb/mindsdb-examples/master/benchmarks/german_credit_data/processed_data/test.csv'
+        data_url = 'https://raw.githubusercontent.com/mindsdb/mindsdb-examples/master/classics/german_credit_data/processed_data/test.csv'
         data_source = FileDS(data_url)
         data_source.set_subtypes({})
 
@@ -524,7 +524,7 @@ class TestPredictor:
         mdb.learn(to_predict='rental_price',
                   from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
                   backend='lightwood',
-                  stop_training_in_x_seconds=1,
+                  stop_training_in_x_seconds=180,
                   use_gpu=use_gpu)
 
         def assert_prediction_interface(predictions):

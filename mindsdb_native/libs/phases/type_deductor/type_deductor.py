@@ -219,6 +219,14 @@ class TypeDeductor(BaseModule):
             curr_data_type = DATA_TYPES.CATEGORICAL
             curr_data_subtype = DATA_SUBTYPES.TAGS
 
+        # Categorical based on unique values
+        if curr_data_type != DATA_TYPES.DATE and curr_data_subtype != DATA_SUBTYPES.TAGS:
+            if nr_distinct_vals <= (0.05 * nr_vals):
+                if curr_data_type is not None:
+                    additional_info['other_potential_types'].append(curr_data_type)
+                    additional_info['other_potential_subtypes'].append(curr_data_subtype)
+                curr_data_type = DATA_TYPES.CATEGORICAL
+
         # If curr_data_type is still None, then it's text or category
         if curr_data_type is None:
             lang_dist = get_language_dist(data)
@@ -241,14 +249,6 @@ class TypeDeductor(BaseModule):
                         curr_data_subtype = DATA_SUBTYPES.RICH
                     else:
                         curr_data_subtype = DATA_SUBTYPES.SHORT
-
-        # Categorical based on unique values
-        if curr_data_type != DATA_TYPES.DATE and curr_data_subtype != DATA_SUBTYPES.TAGS:
-            if nr_distinct_vals <= (0.05 * nr_vals):
-                if curr_data_type is not None:
-                    additional_info['other_potential_types'].append(curr_data_type)
-                    additional_info['other_potential_subtypes'].append(curr_data_subtype)
-                curr_data_type = DATA_TYPES.CATEGORICAL
 
         if curr_data_type == DATA_TYPES.CATEGORICAL and curr_data_subtype != DATA_SUBTYPES.TAGS:
             if nr_distinct_vals > 2:
