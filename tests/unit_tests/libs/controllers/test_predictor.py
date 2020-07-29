@@ -376,7 +376,7 @@ class TestPredictor:
 
     @pytest.mark.slow
     def test_data_source_setting(self):
-        data_url = 'https://raw.githubusercontent.com/mindsdb/mindsdb-examples/master/benchmarks/german_credit_data/processed_data/test.csv'
+        data_url = 'https://raw.githubusercontent.com/mindsdb/mindsdb-examples/master/classics/german_credit_data/processed_data/test.csv'
         data_source = FileDS(data_url)
         data_source.set_subtypes({})
 
