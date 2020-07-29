@@ -21,18 +21,18 @@ def _get_memory_optimizations(df):
     df_memory = sys.getsizeof(df)
     total_memory = psutil.virtual_memory().total
 
-    mem_usage_ratio = df_memory/total_memory
-
-    sample_for_analysis = True if mem_usage_ratio >= 0.1 or len(df) > pow(10,4) else False
-    sample_for_training = True if mem_usage_ratio >= 0.5 else False
-    disable_lightwood_transform_cache = True if mem_usage_ratio >= 0.2 else False
+    mem_usage_ratio = df_memory / total_memory
+    
+    sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > (3 * pow(10, 4))
+    sample_for_training = mem_usage_ratio >= 0.5
+    disable_lightwood_transform_cache = mem_usage_ratio >= 0.2
 
     return sample_for_analysis, sample_for_training, disable_lightwood_transform_cache
 
 
 def _prepare_sample_settings(user_provided_settings,
-                            sample_for_analysis,
-                            sample_for_training):
+                             sample_for_analysis,
+                             sample_for_training):
     default_sample_settings = dict(
         sample_for_analysis=sample_for_analysis,
         sample_for_training=sample_for_training,
@@ -225,6 +225,8 @@ class Predictor:
                 handle_foreign_keys = advanced_args.get('handle_foreign_keys', True),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
+                null_values = advanced_args.get('null_values', {}),
+
                 breakpoint=self.breakpoint
             )
 

@@ -20,7 +20,7 @@ class ProbabilisticValidator:
     def __init__(self, col_stats, col_name, input_columns):
         """
         Chose the algorithm to use for the rest of the model
-        As of right now we go with BernoulliNB¶
+        As of right now we go with BernoulliNB
         """
         self.col_stats = col_stats
         self.col_name = col_name
@@ -61,21 +61,19 @@ class ProbabilisticValidator:
         Y = []
 
         for n in range(len(predictions_arr)):
-            for m in range(len(real_df)):
+            for m in range(len(predictions_arr[n][self.col_name])):
                 row = real_df.iloc[m]
-                predicted_value = predictions_arr[n][self.col_name][m]
-
-                if f'{self.col_name}_confidence_range' in predictions_arr[n]:
-                    predicted_range = predictions_arr[n][f'{self.col_name}_confidence_range'][m]
 
                 real_value = row[self.col_name]
+                predicted_value = predictions_arr[n][self.col_name][m]
+                
                 try:
                     predicted_value = predicted_value if self.col_stats['typing']['data_type'] != DATA_TYPES.NUMERIC else float(predicted_value)
                 except Exception:
                     predicted_value = None
 
                 try:
-                    real_value = real_value if self.col_stats['typing']['data_type'] != DATA_TYPES.NUMERIC else float(str(real_value).replace(',','.'))
+                    real_value = real_value if self.col_stats['typing']['data_type'] != DATA_TYPES.NUMERIC else float(real_value)
                 except Exception:
                     real_value = None
 
@@ -86,11 +84,14 @@ class ProbabilisticValidator:
                     X[-1][predicted_value_b] = 1
                 else:
                     predicted_value_b = predicted_value
-                    real_value_b = real_value_b
+                    real_value_b = real_value
 
                     X.append([])
 
-                if self.col_stats['typing']['data_type'] == DATA_TYPES.NUMERIC:
+                has_confidence_range = self.col_stats['typing']['data_type'] == DATA_TYPES.NUMERIC and f'{self.col_name}_confidence_range' in predictions_arr[n]
+
+                if has_confidence_range:
+                    predicted_range = predictions_arr[n][f'{self.col_name}_confidence_range'][m]
                     Y.append(predicted_range[0] < real_value < predicted_range[1])
                 else:
                     Y.append(real_value_b == predicted_value_b)
@@ -98,7 +99,7 @@ class ProbabilisticValidator:
                 if n == 0:
                     self.real_values_bucketized.append(real_value_b)
                     self.normal_predictions_bucketized.append(predicted_value_b)
-                    if self.col_stats['typing']['data_type'] == DATA_TYPES.NUMERIC:
+                    if has_confidence_range:
                         self.numerical_samples_arr.append((real_value,predicted_range))
 
                 feature_existance = real_present_inputs_arr[m]
@@ -202,7 +203,3 @@ class ProbabilisticValidator:
             }
 
         return overall_accuracy, accuracy_histogram, cm, accuracy_samples
-
-if __name__ == "__main__":
-    pass
-    # Removing test for now, as tets for the new one stand-alone would require the creation of a bunch of dataframes mimicking those inputed into mindsdb and those predicted by lightwood.

@@ -36,16 +36,17 @@ class TransactionOutputRow:
         answers = {}
         for pred_col in self._predict_columns:
             answers[pred_col] = {}
-
             prediction_row = {col: self._data[col][self._row_index] for col in self._data.keys()}
 
             answers[pred_col]['predicted_value'] = prediction_row[pred_col]
 
 
             if f'{pred_col}_model_confidence' in prediction_row:
-                answers[pred_col]['confidence'] = round((prediction_row[f'{pred_col}_model_confidence'] * 3 + prediction_row[f'{pred_col}_confidence'] * 1)/4, 4)
+                answers[pred_col]['confidence'] = (prediction_row[f'{pred_col}_model_confidence'] * 3 + prediction_row[f'{pred_col}_confidence'] * 1)/4
             else:
                 answers[pred_col]['confidence'] = prediction_row[f'{pred_col}_confidence']
+
+            answers[pred_col]['confidence'] = round(answers[pred_col]['confidence'], 4)
 
             quality = 'very confident'
             if answers[pred_col]['confidence'] < 0.8:
