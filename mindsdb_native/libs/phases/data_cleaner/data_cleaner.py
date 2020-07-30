@@ -43,7 +43,7 @@ class DataCleaner(BaseModule):
 
         len_before_dedupe = len(df)
         if self.transaction.lmd.get('deduplicate_data'):
-           self._remove_duplicate_rows(df)
+            self._remove_duplicate_rows(df)
         len_after_dedupe = len(df)
 
         if len_after_dedupe < len_before_dedupe/2:

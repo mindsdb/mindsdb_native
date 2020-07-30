@@ -107,9 +107,9 @@ class TypeDeductor(BaseModule):
                         break
 
                 if len(ele_arr) > 1 and all_nr:
-                        additional_info['separator'] = sep_char
-                        type_guess = DATA_TYPES.SEQUENTIAL
-                        subtype_guess = DATA_SUBTYPES.ARRAY
+                    additional_info['separator'] = sep_char
+                    type_guess = DATA_TYPES.SEQUENTIAL
+                    subtype_guess = DATA_SUBTYPES.ARRAY
 
             return type_guess, subtype_guess
 
