@@ -152,7 +152,11 @@ class Predictor:
                 advanced_args = {}
 
             from_ds = getDS(from_data)
-
+            
+            # Set user-provided subtypes
+            from_ds.set_subtypes(
+                advanced_args.get('subtypes', {})
+            )
 
             transaction_type = TRANSACTION_LEARN
 
