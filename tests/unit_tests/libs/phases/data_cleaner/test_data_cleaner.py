@@ -35,7 +35,7 @@ class TestDataCleaner:
         assert 'do_use' in input_data.data_frame.columns
         assert 'ignore_this' not in input_data.data_frame.columns
 
-    def test_1_user_provided_null_values(self, transaction, lmd):
+    def test_user_provided_null_values(self, transaction, lmd):
         data_cleaner = DataCleaner(session=transaction.session,
                                    transaction=transaction)
 
