@@ -30,7 +30,7 @@ class DataCleaner(BaseModule):
         df = self.transaction.input_data.data_frame
 
         for col, nulls in self.transaction.lmd.get('null_values', {}).items():
-            df[col][df[col].is_in(nulls)] = None
+            df[col].replace(nulls, None, inplace=True)
 
         empty_columns = self._get_empty_columns(df)
         self.transaction.lmd['empty_columns'] = empty_columns
