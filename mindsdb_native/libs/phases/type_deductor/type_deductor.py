@@ -213,8 +213,8 @@ class TypeDeductor(BaseModule):
             except AttributeError:
                 break
 
-        # If more than 10% of the samples can be interpreted as multiple categories and there's more than 10 of them
-        if np.mean(lengths) > 1.1 and len(unique_tokens) >= 10:
+        # If more than 20% of the samples can be interpreted as multiple categories and there's more than 10 of them
+        if np.mean(lengths) > 1.2 and len(unique_tokens) >= 10:
             curr_data_type = DATA_TYPES.CATEGORICAL
             curr_data_subtype = DATA_SUBTYPES.TAGS
 
