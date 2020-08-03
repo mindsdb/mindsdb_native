@@ -1,4 +1,5 @@
 import json
+import random
 from unittest import mock
 
 import pytest
@@ -10,7 +11,7 @@ from datetime import datetime, timedelta
 import torch
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, f1_score, accuracy_score
 
 from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native import F
@@ -22,7 +23,8 @@ from unit_tests.utils import (test_column_types,
                                     generate_value_cols,
                                     generate_timeseries_labels,
                                     generate_log_labels,
-                                    columns_to_file, PickableMock)
+                                    columns_to_file, PickableMock,
+                              SMALL_VOCAB)
 
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
@@ -522,7 +524,7 @@ class TestPredictor:
         mdb.learn(to_predict='rental_price',
                   from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
                   backend='lightwood',
-                  stop_training_in_x_seconds=1,
+                  stop_training_in_x_seconds=180,
                   use_gpu=use_gpu)
 
         def assert_prediction_interface(predictions):
@@ -580,3 +582,94 @@ class TestPredictor:
             assert (len(column) > 0)
             assert isinstance(importance, (float, int))
             assert (importance >= 0 and importance <= 10)
+
+    @pytest.mark.slow
+    def test_category_tags_input(self):
+        vocab = random.sample(SMALL_VOCAB, 10)
+        # tags contains up to 2 randomly selected tags
+        # y contains the sum of indices of tags
+        # the dataset should be nearly perfectly predicted
+        n_points = 5000
+        tags = []
+        y = []
+        for i in range(n_points):
+            row_tags = []
+            row_y = 0
+            for k in range(2):
+                if random.random() > 0.2:
+                    selected_index = random.randint(0, len(vocab) - 1)
+                    if vocab[selected_index] not in row_tags:
+                        row_tags.append(vocab[selected_index])
+                        row_y += selected_index
+            tags.append(','.join(row_tags))
+            y.append(row_y)
+
+        df = pd.DataFrame({'tags': tags, 'y': y})
+
+        df_train = df.iloc[:round(n_points * 0.9)]
+        df_test = df.iloc[round(n_points * 0.9):]
+
+        predictor = Predictor(name='test')
+
+        predictor.learn(from_data=df_train, to_predict='y',
+                        advanced_args=dict(deduplicate_data=False),
+                        stop_training_in_x_seconds=60)
+
+        model_data = F.get_model_data('test')
+        assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL
+        assert model_data['data_analysis_v2']['tags']['typing']['data_subtype'] == DATA_SUBTYPES.TAGS
+
+        predictions = predictor.predict(when_data=df_test)
+        test_y = df_test.y.apply(str)
+
+        predicted_y = []
+        for i in range(len(predictions)):
+            predicted_y.append(predictions[i]['y'])
+
+        score = accuracy_score(test_y, predicted_y)
+        assert score >= 0.3
+
+    @pytest.mark.slow
+    def test_category_tags_output(self):
+        vocab = random.sample(SMALL_VOCAB, 10)
+        vocab = {i: word for i, word in enumerate(vocab)}
+        # x1 contains the index of first tag present
+        # x2 contains the index of second tag present
+        # if a tag is missing then x1/x2 contain -1 instead
+        # Thus the dataset should be perfectly predicted
+        n_points = 5000
+        x1 = [random.randint(0, len(vocab) - 1) if random.random() > 0.1 else -1 for i in range(n_points)]
+        x2 = [random.randint(0, len(vocab) - 1) if random.random() > 0.1 else -1 for i in range(n_points)]
+        tags = []
+        for x1_index, x2_index in zip(x1, x2):
+            row_tags = set([vocab.get(x1_index), vocab.get(x2_index)])
+            row_tags = [x for x in row_tags if x is not None]
+            tags.append(','.join(row_tags))
+
+        df = pd.DataFrame({'x1': x1, 'x2': x2, 'tags': tags})
+
+        df_train = df.iloc[:round(n_points * 0.9)]
+        df_test = df.iloc[round(n_points * 0.9):]
+
+        predictor = Predictor('test')
+
+        predictor.learn(from_data=df_train, to_predict='tags',
+                        advanced_args=dict(deduplicate_data=False),
+                        stop_training_in_x_seconds=60)
+
+        model_data = F.get_model_data('test')
+        assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL
+        assert model_data['data_analysis_v2']['tags']['typing']['data_subtype'] == DATA_SUBTYPES.TAGS
+
+        predictions = predictor.predict(when_data=df_test)
+        test_tags = df_test.tags.apply(lambda x: x.split(','))
+
+        predicted_tags = []
+        for i in range(len(predictions)):
+            predicted_tags.append(predictions[i]['tags'])
+
+        test_tags_encoded = predictor.transaction.model_backend.predictor._mixer.encoders['tags'].encode(test_tags)
+        pred_labels_encoded = predictor.transaction.model_backend.predictor._mixer.encoders['tags'].encode(predicted_tags)
+        score = f1_score(test_tags_encoded, pred_labels_encoded, average='weighted')
+
+        assert score >= 0.3

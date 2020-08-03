@@ -19,7 +19,7 @@ def pytest_configure(config):
         config.option.randomly_seed = 42
 
     if '--show-capture' not in config.invocation_params.args:
-        config.option.show_capture = False
+        config.option.showcapture = 'no'
 
     config.addinivalue_line("markers", "slow: mark test as slow to run")
     config.addinivalue_line("markers", "integration: mark test as integration, only runs with --run-integration provided")

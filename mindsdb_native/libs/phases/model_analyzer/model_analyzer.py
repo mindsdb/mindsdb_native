@@ -21,24 +21,35 @@ class ModelAnalyzer(BaseModule):
 
         # Make predictions on the validation dataset normally and with various columns missing
         normal_predictions = self.transaction.model_backend.predict('validate')
+
+
         normal_predictions_test = self.transaction.model_backend.predict('test')
-        normal_accuracy = evaluate_accuracy(normal_predictions, self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
+        normal_accuracy = evaluate_accuracy(normal_predictions,
+                                            self.transaction.input_data.validation_df,
+                                            self.transaction.lmd['stats_v2'],
+                                            output_columns,
+                                            backend=self.transaction.model_backend)
 
         empty_input_predictions = {}
-        empty_inpurt_accuracy = {}
-
+        empty_input_accuracy = {}
         empty_input_predictions_test = {}
 
-        ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH and x not in [y[0] for y in self.transaction.lmd['model_order_by']]]
+        ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH
+                           and x not in [y[0] for y in self.transaction.lmd['model_order_by']]]
+
         for col in ignorable_input_columns:
             empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
             empty_input_predictions_test[col] = self.transaction.model_backend.predict('test', ignore_columns=[col])
-            empty_inpurt_accuracy[col] = evaluate_accuracy(empty_input_predictions[col], self.transaction.input_data.validation_df, self.transaction.lmd['stats_v2'], output_columns)
+            empty_input_accuracy[col] = evaluate_accuracy(empty_input_predictions[col],
+                                                          self.transaction.input_data.validation_df,
+                                                          self.transaction.lmd['stats_v2'],
+                                                          output_columns,
+                                                          backend=self.transaction.model_backend)
 
         # Get some information about the importance of each column
         self.transaction.lmd['column_importances'] = {}
         for col in ignorable_input_columns:
-            column_importance = (1 - empty_inpurt_accuracy[col]/normal_accuracy)
+            column_importance = (1 - empty_input_accuracy[col]/normal_accuracy)
             column_importance = np.ceil(10*column_importance)
             self.transaction.lmd['column_importances'][col] = float(10 if column_importance > 10 else column_importance)
 
@@ -65,7 +76,8 @@ class ModelAnalyzer(BaseModule):
                 predictions,
                 self.transaction.input_data.train_df,
                 self.transaction.lmd['stats_v2'],
-                [col]
+                [col],
+                backend=self.transaction.model_backend
             )
 
             # Testing data accuracy
@@ -77,7 +89,8 @@ class ModelAnalyzer(BaseModule):
                 predictions,
                 self.transaction.input_data.test_df,
                 self.transaction.lmd['stats_v2'],
-                [col]
+                [col],
+                backend=self.transaction.model_backend
             )
 
             # Validation data accuracy
@@ -89,7 +102,8 @@ class ModelAnalyzer(BaseModule):
                 predictions,
                 self.transaction.input_data.validation_df,
                 self.transaction.lmd['stats_v2'],
-                [col]
+                [col],
+                backend=self.transaction.model_backend
             )
 
         for col in output_columns:

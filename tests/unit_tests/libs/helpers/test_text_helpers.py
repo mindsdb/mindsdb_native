@@ -12,7 +12,7 @@ def test_language_analysis():
     WORDS = {
         'en': ['becuase', 'these', 'first', 'work', 'interpret', 'call', 'think'],
         'ru': ['только', 'говорить', 'когда', 'человек', 'быть', 'первый', 'осень'],
-        'de': ['führen', 'Stelle', 'heißen', 'konnten', 'schlimm', 'mögen', 'Nähe'],
+        'de': ['führen', 'stelle', 'heißen', 'konnten', 'schlimm', 'mögen', 'nähe'],
     }
 
     sent_size = 7
@@ -35,8 +35,8 @@ def test_language_analysis():
 
             for w in sent:
                 if w not in word_dist_test:
-                    word_dist_test[w] = 0
-                word_dist_test[w] += 1
+                    word_dist_test[w.lower()] = 0
+                word_dist_test[w.lower()] += 1
 
         assert word_dist_test == word_dist
         assert nr_words_dist_test == nr_words_dist
