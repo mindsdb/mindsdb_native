@@ -206,16 +206,18 @@ class TypeDeductor(BaseModule):
         if curr_data_subtype != DATA_SUBTYPES.ARRAY:
             lengths = []
             unique_tokens = set()
+            can_be_tags = True
             for item in data:
                 try:
                     item_tags = [t.strip() for t in item.split(',')]
                     lengths.append(len(item_tags))
                     unique_tokens = unique_tokens.union(set(item_tags))
                 except AttributeError:
+                    can_be_tags = False
                     break
 
-            # If more than 20% of the samples can be interpreted as multiple categories and there's more than 10 of them
-            if np.mean(lengths) > 1.2 and len(unique_tokens) >= 10:
+            # If more than 20% of the samples can be interpreted as multiple categories and there's more than 10 of them and they are shared between the various cells
+            if can_be_tags and np.mean(lengths) > 1.2 and len(unique_tokens) >= 10 and len(unique_tokens)/np.mean(lengths) < (len(data)/2):
                 curr_data_type = DATA_TYPES.CATEGORICAL
                 curr_data_subtype = DATA_SUBTYPES.TAGS
 
@@ -257,7 +259,7 @@ class TypeDeductor(BaseModule):
 
                     return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
-        if curr_data_type == DATA_TYPES.CATEGORICAL:
+        if curr_data_type == DATA_TYPES.CATEGORICAL and curr_data_subtype != DATA_SUBTYPES.TAGS:
             if nr_distinct_vals > 2:
                 curr_data_subtype = DATA_SUBTYPES.MULTIPLE
             else:

@@ -49,13 +49,13 @@ class TestTypeDeductor:
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
 
-        n_points = 100
+        n_points = 500
 
         # Apparently for n_category_values = 10 it doesnt work
         n_category_values = 4
         categories_cycle = cycle(range(n_category_values))
         n_multilabel_category_values = 25
-        multiple_categories_str_cycle = cycle([random.choice(VOCAB) for i in range(n_multilabel_category_values)])
+        multiple_categories_str_cycle = cycle([random.choice(VOCAB[0:40]) for i in range(n_multilabel_category_values)])
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
             'numeric_float': np.linspace(0, n_points, n_points),
@@ -65,7 +65,7 @@ class TestTypeDeductor:
             'categorical_int': [next(categories_cycle) for i in range(n_points)],
             'categorical_binary': [0, 1] * (n_points//2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
-            'multiple_categories_array_str': [",".join([f'{next(multiple_categories_str_cycle)}' for j in range(random.randint(1,3))]) for i in range(n_points)],
+            'multiple_categories_array_str': [",".join([f'{next(multiple_categories_str_cycle)}' for j in range(random.randint(1,5))]) for i in range(n_points)],
             'short_text': generate_short_sentences(n_points),
             'rich_text': generate_rich_sentences(n_points)
         }, index=list(range(n_points)))
@@ -81,8 +81,8 @@ class TestTypeDeductor:
             expected_subtype = test_column_types[col_name][1]
             assert stats_v2[col_name]['typing']['data_type'] == expected_type
             assert stats_v2[col_name]['typing']['data_subtype'] == expected_subtype
-            assert stats_v2[col_name]['typing']['data_type_dist'][expected_type] == 100
-            assert stats_v2[col_name]['typing']['data_subtype_dist'][expected_subtype] == 100
+            assert stats_v2[col_name]['typing']['data_type_dist'][expected_type] == 500
+            assert stats_v2[col_name]['typing']['data_subtype_dist'][expected_subtype] == 500
 
         for col_name in stats_v2:
             assert not stats_v2[col_name]['is_foreign_key']
@@ -100,7 +100,7 @@ class TestTypeDeductor:
 
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
-        n_points = 100
+        n_points = 500
 
         input_dataframe = pd.DataFrame({
             'numeric_id': list(range(n_points)),
@@ -123,7 +123,7 @@ class TestTypeDeductor:
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
 
-        n_points = 100
+        n_points = 500
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
             'empty_column': [None for i in range(n_points)],
@@ -140,7 +140,7 @@ class TestTypeDeductor:
         type_deductor = TypeDeductor(session=transaction.session,
                                     transaction=transaction)
 
-        n_points = 100
+        n_points = 500
         input_dataframe = pd.DataFrame({
             'numeric_float': np.linspace(0, n_points, n_points),
         }, index=list(range(n_points)))
@@ -159,7 +159,7 @@ class TestTypeDeductor:
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
 
-        n_points = 100
+        n_points = 500
         input_dataframe = pd.DataFrame({
             'numeric_float': np.linspace(0, n_points, n_points),
         }, index=list(range(n_points)))
@@ -181,7 +181,7 @@ class TestTypeDeductor:
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
 
-        n_points = 100
+        n_points = 500
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
         }, index=list(range(n_points)))
