@@ -16,7 +16,6 @@ import json
 import hashlib
 import numpy
 import flair
-import nltk
 import langdetect
 from lightwood.helpers.text import tokenize_text
 langdetect.DetectorFactory.seed = 0
@@ -49,7 +48,7 @@ def analyze_sentences(data):
     """
     :param data: list of str
 
-    :returns: 
+    :returns:
     tuple(
         int: nr words total,
         dict: word_dist,
