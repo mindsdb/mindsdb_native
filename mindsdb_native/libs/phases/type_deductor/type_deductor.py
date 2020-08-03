@@ -203,29 +203,29 @@ class TypeDeductor(BaseModule):
             curr_data_type, curr_data_subtype = None, None
 
         # Check for Tags subtype
-        tags = []
         lengths = []
         unique_tokens = set()
         for item in data:
             try:
                 item_tags = [t.strip() for t in item.split(',')]
-                tags.append(item_tags)
                 lengths.append(len(item_tags))
                 unique_tokens = unique_tokens.union(set(item_tags))
             except AttributeError:
                 break
 
-        if np.median(lengths) > 1 and len(unique_tokens) >= 5 and len(unique_tokens) <= 30:
+        # If more than 10% of the samples can be interpreted as multiple categories and there's more than 10 of them
+        if np.mean(lengths) > 1.1 and len(unique_tokens) >= 10:
             curr_data_type = DATA_TYPES.CATEGORICAL
             curr_data_subtype = DATA_SUBTYPES.TAGS
 
         # Categorical based on unique values
         if curr_data_type != DATA_TYPES.DATE and curr_data_subtype != DATA_SUBTYPES.TAGS:
-            if nr_distinct_vals <= (0.05 * nr_vals):
-                if curr_data_type is not None:
-                    additional_info['other_potential_types'].append(curr_data_type)
-                    additional_info['other_potential_subtypes'].append(curr_data_subtype)
-                curr_data_type = DATA_TYPES.CATEGORICAL
+            if nr_distinct_vals < (nr_vals / 20) or nr_distinct_vals < 6:
+                if (curr_data_type != DATA_TYPES.NUMERIC) or (nr_distinct_vals < 20):
+                    if curr_data_type is not None:
+                        additional_info['other_potential_types'].append(curr_data_type)
+                        additional_info['other_potential_subtypes'].append(curr_data_subtype)
+                    curr_data_type = DATA_TYPES.CATEGORICAL
 
         # If curr_data_type is still None, then it's text or category
         if curr_data_type is None:
@@ -245,12 +245,18 @@ class TypeDeductor(BaseModule):
                     curr_data_type = DATA_TYPES.CATEGORICAL
                 else:
                     curr_data_type = DATA_TYPES.TEXT
+
                     if len(word_dist) > 500 and nr_words / len(data) > 5:
                         curr_data_subtype = DATA_SUBTYPES.RICH
                     else:
                         curr_data_subtype = DATA_SUBTYPES.SHORT
 
-        if curr_data_type == DATA_TYPES.CATEGORICAL and curr_data_subtype != DATA_SUBTYPES.TAGS:
+                    type_dist = {curr_data_type: len(data)}
+                    subtype_dist = {curr_data_subtype: len(data)}
+
+                    return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
+
+        if curr_data_type == DATA_TYPES.CATEGORICAL:
             if nr_distinct_vals > 2:
                 curr_data_subtype = DATA_SUBTYPES.MULTIPLE
             else:
@@ -261,6 +267,7 @@ class TypeDeductor(BaseModule):
             subtype_dist = {curr_data_subtype: len(data)}
 
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
+
 
     def run(self, input_data):
         stats_v2 = defaultdict(dict)
