@@ -152,8 +152,8 @@ class TestTypeDeductor:
         stats_v2 = lmd['stats_v2']
         assert stats_v2['numeric_float']['typing']['data_type'] == DATA_TYPES.NUMERIC
         assert stats_v2['numeric_float']['typing']['data_subtype'] == DATA_SUBTYPES.FLOAT
-        assert stats_v2['numeric_float']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 50
-        assert stats_v2['numeric_float']['typing']['data_subtype_dist'][DATA_SUBTYPES.FLOAT] == 50
+        assert stats_v2['numeric_float']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 250
+        assert stats_v2['numeric_float']['typing']['data_subtype_dist'][DATA_SUBTYPES.FLOAT] == 250
 
     def test_type_mix(self, transaction, lmd):
         type_deductor = TypeDeductor(session=transaction.session,
@@ -171,8 +171,8 @@ class TestTypeDeductor:
         stats_v2 = lmd['stats_v2']
         assert stats_v2['numeric_float']['typing']['data_type'] == DATA_TYPES.NUMERIC
         assert stats_v2['numeric_float']['typing']['data_subtype'] == DATA_SUBTYPES.FLOAT
-        assert stats_v2['numeric_float']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 98
-        assert stats_v2['numeric_float']['typing']['data_subtype_dist'][DATA_SUBTYPES.FLOAT] == 98
+        assert stats_v2['numeric_float']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 498
+        assert stats_v2['numeric_float']['typing']['data_subtype_dist'][DATA_SUBTYPES.FLOAT] == 498
 
     def test_sample(self, transaction, lmd):
         lmd['sample_settings']['sample_for_analysis'] = True
@@ -214,7 +214,7 @@ class TestTypeDeductor:
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
 
-        n_points = 50
+        n_points = 250
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
         }, index=list(range(n_points)))
@@ -231,5 +231,5 @@ class TestTypeDeductor:
         assert stats_v2['numeric_int']['typing']['data_subtype'] == DATA_SUBTYPES.INT
 
         # This ensures that no sampling was applied
-        assert stats_v2['numeric_int']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 50
-        assert stats_v2['numeric_int']['typing']['data_subtype_dist'][DATA_SUBTYPES.INT] == 50
+        assert stats_v2['numeric_int']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 250
+        assert stats_v2['numeric_int']['typing']['data_subtype_dist'][DATA_SUBTYPES.INT] == 250
