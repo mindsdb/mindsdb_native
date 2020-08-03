@@ -203,20 +203,21 @@ class TypeDeductor(BaseModule):
             curr_data_type, curr_data_subtype = None, None
 
         # Check for Tags subtype
-        lengths = []
-        unique_tokens = set()
-        for item in data:
-            try:
-                item_tags = [t.strip() for t in item.split(',')]
-                lengths.append(len(item_tags))
-                unique_tokens = unique_tokens.union(set(item_tags))
-            except AttributeError:
-                break
+        if curr_data_subtype != DATA_SUBTYPES.ARRAY:
+            lengths = []
+            unique_tokens = set()
+            for item in data:
+                try:
+                    item_tags = [t.strip() for t in item.split(',')]
+                    lengths.append(len(item_tags))
+                    unique_tokens = unique_tokens.union(set(item_tags))
+                except AttributeError:
+                    break
 
-        # If more than 20% of the samples can be interpreted as multiple categories and there's more than 10 of them
-        if np.mean(lengths) > 1.2 and len(unique_tokens) >= 10:
-            curr_data_type = DATA_TYPES.CATEGORICAL
-            curr_data_subtype = DATA_SUBTYPES.TAGS
+            # If more than 20% of the samples can be interpreted as multiple categories and there's more than 10 of them
+            if np.mean(lengths) > 1.2 and len(unique_tokens) >= 10:
+                curr_data_type = DATA_TYPES.CATEGORICAL
+                curr_data_subtype = DATA_SUBTYPES.TAGS
 
         # Categorical based on unique values
         if curr_data_type != DATA_TYPES.DATE and curr_data_subtype != DATA_SUBTYPES.TAGS:
