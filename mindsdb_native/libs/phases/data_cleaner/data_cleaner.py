@@ -1,3 +1,5 @@
+import numpy as np
+
 from mindsdb_native.libs.phases.base_module import BaseModule
 
 
@@ -30,7 +32,21 @@ class DataCleaner(BaseModule):
         df = self.transaction.input_data.data_frame
 
         for col, nulls in self.transaction.lmd.get('null_values', {}).items():
-            df[col][df[col].is_in(nulls)] = None
+            # NOTE: df[col].replace(nulls, None, inplace=True) will
+            # not work as (I) expected, here's an example of what it does:
+            #
+            # >>> import pandas as pd
+            # >>> df = pd.DataFrame({'my_column': [1, 2, 3, 'replace_me']})
+            # >>> df['my_column'].replace('replace_me', None, inplace=True)
+            # >>> df
+            # my_column
+            # 0         1
+            # 1         2
+            # 2         3
+            # 3         3  <--- None is expected instead of 3
+            #
+            # That's why np.nan is used here instead of None
+            df[col].replace(nulls, np.nan, inplace=True)
 
         empty_columns = self._get_empty_columns(df)
         self.transaction.lmd['empty_columns'] = empty_columns

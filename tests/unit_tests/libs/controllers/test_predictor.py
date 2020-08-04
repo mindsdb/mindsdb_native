@@ -273,8 +273,6 @@ class TestPredictor:
                     mdb.transaction.input_data.test_df.shape[0],
                     mdb.transaction.input_data.validation_df.shape[0]]) == n_points+1
 
-
-
     @pytest.mark.slow
     def test_explain_prediction(self):
         mdb = Predictor(name='test_explain_prediction')
@@ -303,7 +301,6 @@ class TestPredictor:
         assert isinstance(explanation_new['prediction_quality'], str)
 
         assert len(str(result[0])) > 20
-
 
     @pytest.mark.skip(reason="Causes error in probabilistic validator")
     @pytest.mark.slow
