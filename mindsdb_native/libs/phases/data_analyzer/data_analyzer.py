@@ -17,7 +17,8 @@ from mindsdb_native.libs.helpers.text_helpers import (
     splitRecursive,
     clean_float,
     analyze_sentences,
-    get_language_dist
+    get_language_dist,
+    shrink_word_dist
 )
 
 
@@ -310,8 +311,8 @@ class DataAnalyzer(BaseModule):
                 nr_words, word_dist, nr_words_dist = analyze_sentences(col_data)
 
                 stats_v2[col_name]['avg_words_per_sentence'] = nr_words / len(col_data)
-                stats_v2[col_name]['word_dist'] = dict(word_dist)
-                stats_v2[col_name]['nr_words_dist'] = dict(nr_words_dist)
+                stats_v2[col_name]['word_dist'] = shrink_word_dist(word_dist)
+                stats_v2[col_name]['nr_words_dist'] = nr_words_dist
                 stats_v2[col_name]['lang_dist'] = lang_dist
 
             stats_v2[col_name]['nr_warnings'] = 0
