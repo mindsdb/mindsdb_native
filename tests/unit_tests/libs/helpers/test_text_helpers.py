@@ -10,7 +10,7 @@ from mindsdb_native.libs.helpers.text_helpers import (
 
 def test_language_analysis():
     WORDS = {
-        'en': ['becuase', 'these', 'first', 'work', 'interpret', 'call', 'think'],
+        'en': ['becuase', 'tree', 'merge', 'work', 'interpret', 'call', 'think'],
         'ru': ['только', 'говорить', 'когда', 'человек', 'быть', 'первый', 'осень'],
         'de': ['führen', 'stelle', 'heißen', 'konnten', 'schlimm', 'mögen', 'nähe'],
     }
