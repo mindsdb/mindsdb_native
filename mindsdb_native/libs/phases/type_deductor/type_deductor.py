@@ -1,8 +1,11 @@
 import string
+import numpy as np
 import imghdr
 import sndhdr
 from copy import deepcopy
 from collections import Counter, defaultdict
+
+import six
 from dateutil.parser import parse as parse_datetime
 from mindsdb_native.libs.helpers.text_helpers import (
     analyze_sentences,
@@ -90,20 +93,21 @@ class TypeDeductor(BaseModule):
 
         def type_check_sequence(element):
             type_guess, subtype_guess = None, None
-            for char in [',', '\t', '|', ' ']:
+
+            for sep_char in [',', '\t', '|', ' ']:
                 all_nr = True
                 if '[' in element:
-                    ele_arr = element.rstrip(']').lstrip('[').split(char)
+                    ele_arr = element.rstrip(']').lstrip('[').split(sep_char)
                 else:
-                    ele_arr = element.rstrip(')').lstrip('(').split(char)
+                    ele_arr = element.rstrip(')').lstrip('(').split(sep_char)
 
                 for ele in ele_arr:
                     if not get_number_subtype(ele):
                         all_nr = False
                         break
 
-                if all_nr:
-                    additional_info['separator'] = char
+                if len(ele_arr) > 1 and all_nr:
+                    additional_info['separator'] = sep_char
                     type_guess = DATA_TYPES.SEQUENTIAL
                     subtype_guess = DATA_SUBTYPES.ARRAY
 
@@ -121,7 +125,7 @@ class TypeDeductor(BaseModule):
                          type_check_date,
                          type_check_sequence,
                          type_check_file]
-        for element in map(str, data):
+        for element in [str(x) for x in data]:
             for type_checker in type_checkers:
                 data_type_guess, subtype_guess = type_checker(element)
                 if data_type_guess:
@@ -198,8 +202,26 @@ class TypeDeductor(BaseModule):
         else:
             curr_data_type, curr_data_subtype = None, None
 
+        # Check for Tags subtype
+        if curr_data_subtype != DATA_SUBTYPES.ARRAY:
+            lengths = []
+            unique_tokens = set()
+
+            can_be_tags = False
+            if len(data) == len([x for x in data if isinstance(x,str)]):     
+                can_be_tags = True
+                for item in data:
+                    item_tags = [t.strip() for t in item.split(',')]
+                    lengths.append(len(item_tags))
+                    unique_tokens = unique_tokens.union(set(item_tags))
+
+            # If more than 30% of the samples contain more than 1 category and there's more than 6 of them and they are shared between the various cells
+            if can_be_tags and np.mean(lengths) > 1.3 and len(unique_tokens) >= 6 and len(unique_tokens)/np.mean(lengths) < (len(data)/4):
+                curr_data_type = DATA_TYPES.CATEGORICAL
+                curr_data_subtype = DATA_SUBTYPES.TAGS
+
         # Categorical based on unique values
-        if curr_data_type != DATA_TYPES.DATE:
+        if curr_data_type != DATA_TYPES.DATE and curr_data_subtype != DATA_SUBTYPES.TAGS:
             if nr_distinct_vals < (nr_vals / 20) or nr_distinct_vals < 6:
                 if (curr_data_type != DATA_TYPES.NUMERIC) or (nr_distinct_vals < 20):
                     if curr_data_type is not None:
@@ -225,7 +247,7 @@ class TypeDeductor(BaseModule):
                     curr_data_type = DATA_TYPES.CATEGORICAL
                 else:
                     curr_data_type = DATA_TYPES.TEXT
-                    
+
                     if len(word_dist) > 500 and nr_words / len(data) > 5:
                         curr_data_subtype = DATA_SUBTYPES.RICH
                     else:
@@ -236,7 +258,7 @@ class TypeDeductor(BaseModule):
 
                     return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
-        if curr_data_type == DATA_TYPES.CATEGORICAL:
+        if curr_data_type == DATA_TYPES.CATEGORICAL and curr_data_subtype != DATA_SUBTYPES.TAGS:
             if nr_distinct_vals > 2:
                 curr_data_subtype = DATA_SUBTYPES.MULTIPLE
             else:
@@ -247,6 +269,7 @@ class TypeDeductor(BaseModule):
             subtype_dist = {curr_data_subtype: len(data)}
 
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
+
 
     def run(self, input_data):
         stats_v2 = defaultdict(dict)

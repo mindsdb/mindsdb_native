@@ -1,5 +1,6 @@
 import json
 from itertools import cycle
+import random
 from unittest import mock
 from uuid import uuid4
 import pytest
@@ -14,7 +15,8 @@ from mindsdb_native.libs.phases.type_deductor.type_deductor import TypeDeductor
 from unit_tests.utils import (
     test_column_types,
     generate_short_sentences,
-    generate_rich_sentences
+    generate_rich_sentences,
+    VOCAB
 )
 
 
@@ -52,6 +54,9 @@ class TestTypeDeductor:
         # Apparently for n_category_values = 10 it doesnt work
         n_category_values = 4
         categories_cycle = cycle(range(n_category_values))
+        n_multilabel_category_values = 25
+        multiple_categories_str_cycle = cycle(random.choices(VOCAB[0:20], k=n_multilabel_category_values))
+        
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
             'numeric_float': np.linspace(0, n_points, n_points),
@@ -61,6 +66,7 @@ class TestTypeDeductor:
             'categorical_int': [next(categories_cycle) for i in range(n_points)],
             'categorical_binary': [0, 1] * (n_points//2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)],
+            'multiple_categories_array_str': [",".join([f'{next(multiple_categories_str_cycle)}' for j in range(random.randint(1,6))]) for i in range(n_points)],
             'short_text': generate_short_sentences(n_points),
             'rich_text': generate_rich_sentences(n_points)
         }, index=list(range(n_points)))

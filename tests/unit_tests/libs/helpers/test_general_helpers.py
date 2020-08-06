@@ -1,5 +1,5 @@
 import pandas as pd
-from mindsdb_native.libs.constants.mindsdb import DATA_TYPES
+from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 from mindsdb_native.libs.helpers.general_helpers import (evaluate_accuracy)
 
 
@@ -16,7 +16,8 @@ class TestEvaluateAccuracy:
         }
 
         col_stats = {
-            'y': {'typing': {'data_type': DATA_TYPES.NUMERIC}}
+            'y': {'typing': {'data_type': DATA_TYPES.NUMERIC,
+                             'data_subtype': DATA_SUBTYPES.INT}}
         }
 
         output_columns = ['y']
@@ -33,7 +34,8 @@ class TestEvaluateAccuracy:
         }
 
         col_stats = {
-            'y': {'typing': {'data_type': DATA_TYPES.CATEGORICAL}}
+            'y': {'typing': {'data_type': DATA_TYPES.CATEGORICAL,
+                             'data_subtype': DATA_SUBTYPES.MULTIPLE}}
         }
 
         output_columns = ['y']
@@ -57,8 +59,8 @@ class TestEvaluateAccuracy:
         }
 
         col_stats = {
-            'y1': {'typing': {'data_type': DATA_TYPES.NUMERIC}},
-            'y2': {'typing': {'data_type': DATA_TYPES.CATEGORICAL}}
+            'y1': {'typing': {'data_type': DATA_TYPES.NUMERIC, 'data_subtype': DATA_SUBTYPES.FLOAT}},
+            'y2': {'typing': {'data_type': DATA_TYPES.CATEGORICAL, 'data_subtype': DATA_SUBTYPES.MULTIPLE}}
         }
 
         output_columns = ['y1', 'y2']
@@ -70,18 +72,19 @@ class TestEvaluateAccuracy:
         assert round(accuracy, 2) == round((0.75 + 0.5)/2, 2)
 
     def test_evaluate_weird_data_types(self):
-        for dtype in [
-            DATA_TYPES.DATE,
-            DATA_TYPES.TEXT,
-            DATA_TYPES.SEQUENTIAL,
-            DATA_TYPES.FILE_PATH,
+        for dtype, data_subtype in [
+            (DATA_TYPES.DATE, DATA_SUBTYPES.DATE),
+            (DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT),
+            (DATA_TYPES.SEQUENTIAL, DATA_SUBTYPES.ARRAY),
+            (DATA_TYPES.FILE_PATH, None)
         ]:
             predictions = {
                 'y': ["1", "2", "3", "4"]
             }
 
             col_stats = {
-                'y': {'typing': {'data_type': dtype}}
+                'y': {'typing': {'data_type': dtype,
+                                 'data_subtype': data_subtype}}
             }
 
             output_columns = ['y']
