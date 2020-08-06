@@ -206,17 +206,16 @@ class TypeDeductor(BaseModule):
         if curr_data_subtype != DATA_SUBTYPES.ARRAY:
             lengths = []
             unique_tokens = set()
-            can_be_tags = True
-            for item in data:
-                try:
+
+            can_be_tags = False
+            if len(data) == len([x for x in data if isinstance(x,str)]):     
+                can_be_tags = True
+                for item in data:
                     item_tags = [t.strip() for t in item.split(',')]
                     lengths.append(len(item_tags))
                     unique_tokens = unique_tokens.union(set(item_tags))
-                except AttributeError:
-                    can_be_tags = False
-                    break
 
-            # If more than 30% of the samples contain more than 1 category and there's more than 10 of them and they are shared between the various cells
+            # If more than 30% of the samples contain more than 1 category and there's more than 6 of them and they are shared between the various cells
             if can_be_tags and np.mean(lengths) > 1.3 and len(unique_tokens) >= 6 and len(unique_tokens)/np.mean(lengths) < (len(data)/4):
                 curr_data_type = DATA_TYPES.CATEGORICAL
                 curr_data_subtype = DATA_SUBTYPES.TAGS
