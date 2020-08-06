@@ -51,7 +51,7 @@ class ModelAnalyzer(BaseModule):
         for col in ignorable_input_columns:
             accuracy_increase = (normal_accuracy - empty_input_accuracy[col])
             # normalize from 0 to 10
-            self.transaction.lmd['column_importances'][col] = 5 * (accuracy_increase + 1)
+            self.transaction.lmd['column_importances'][col] = 10 * max(0, accuracy_increase)
 
         # Run Probabilistic Validator
         overall_accuracy_arr = []
