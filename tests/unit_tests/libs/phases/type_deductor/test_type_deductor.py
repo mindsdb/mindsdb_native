@@ -55,7 +55,8 @@ class TestTypeDeductor:
         n_category_values = 4
         categories_cycle = cycle(range(n_category_values))
         n_multilabel_category_values = 25
-        multiple_categories_str_cycle = cycle([random.choice(VOCAB[0:20]) for i in range(n_multilabel_category_values)])
+        multiple_categories_str_cycle = cycle(random.choices(VOCAB[0:20], k=n_multilabel_category_values))
+        
         input_dataframe = pd.DataFrame({
             'numeric_int': list(range(n_points)),
             'numeric_float': np.linspace(0, n_points, n_points),
