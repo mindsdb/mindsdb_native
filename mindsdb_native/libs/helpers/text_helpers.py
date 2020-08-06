@@ -18,6 +18,9 @@ import numpy
 import flair
 import langdetect
 from lightwood.helpers.text import tokenize_text
+import nltk
+from nltk.corpus import stopwords
+
 langdetect.DetectorFactory.seed = 0
 
 
@@ -56,17 +59,25 @@ def analyze_sentences(data):
     )
     """
     nr_words = 0
-    word_dist = Counter()
-    nr_words_dist = Counter()
+    word_dist = defaultdict(int)
+    nr_words_dist = defaultdict(int)
+    nltk.download('stopwords')
+    stop_words = set(stopwords.words('english'))
     for text in data:
+        text = text.lower()
         tokens = tokenize_text(text)
+        tokens_no_stop = [x for x in tokens if x not in stop_words]
         nr_words_dist[len(tokens)] += 1
         nr_words += len(tokens)
-        for tok in tokens:
+        for tok in tokens_no_stop:
             word_dist[tok] += 1
 
     return nr_words, dict(word_dist), dict(nr_words_dist)
 
+def shrink_word_dist(word_dist):
+    tiny_word_dist = dict(sorted(word_dist.items(), key=lambda x: x[1], reverse=True)[:min(50,len(word_dist))])
+    tiny_word_dist['other words'] = sum(word_dist.values()) - sum(tiny_word_dist.values())
+    return tiny_word_dist
 
 def word_tokenize(string):
     sep_tag = '{#SEP#}'
