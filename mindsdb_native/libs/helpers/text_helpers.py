@@ -151,6 +151,7 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
 
     data_looks_like_id = True
 
+    # Detect UUID
     if not foregin_key_type:
         prev_val_length = None
         for val in data:
@@ -166,8 +167,8 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
                 prev_val_length = len(str(val))
             elif len(str(val)) != prev_val_length:
                 is_same_length = False
-            else:
-                prev_val_length = len(str(val))
+
+            prev_val_length = len(str(val))
 
             if not (is_uuid and is_same_length):
                 data_looks_like_id = False
@@ -179,6 +180,9 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
             foreign_key_name = True
     for keyword in ['account', 'uuid', 'identifier', 'user']:
         if keyword in column_name:
+            foreign_key_name = True
+    for name in ['id']:
+        if name == column_name:
             foreign_key_name = True
 
     return foreign_key_name and (foregin_key_type or data_looks_like_id)

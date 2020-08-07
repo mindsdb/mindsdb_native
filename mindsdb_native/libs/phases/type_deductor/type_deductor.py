@@ -208,7 +208,7 @@ class TypeDeductor(BaseModule):
             unique_tokens = set()
 
             can_be_tags = False
-            if len(data) == len([x for x in data if isinstance(x,str)]):     
+            if len(data) == len([x for x in data if isinstance(x,str)]):
                 can_be_tags = True
                 for item in data:
                     item_tags = [t.strip() for t in item.split(',')]
