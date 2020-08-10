@@ -158,10 +158,8 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
             is_uuid = True
             is_same_length = True
 
-            for char in str(val):
-                if char not in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                                'a', 'b', 'c', 'd', 'e', 'f', '-']:
-                    is_uuid = False
+            uuid_charset = set('0123456789abcdef-')
+            set(val).issubset(uuid_charset)
 
             if prev_val_length is None:
                 prev_val_length = len(str(val))
