@@ -64,7 +64,7 @@ class TestDataAnalyzer:
         n_points = 100
         n_category_values = 4
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
             'numeric_float': np.linspace(0, n_points, n_points),
             'date_timestamp': [(datetime.now() - timedelta(minutes=int(i))).isoformat() for i in range(n_points)],
             'date_date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
@@ -118,7 +118,7 @@ class TestDataAnalyzer:
 
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
@@ -143,7 +143,7 @@ class TestDataAnalyzer:
 
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)

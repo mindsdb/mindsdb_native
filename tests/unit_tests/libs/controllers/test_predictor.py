@@ -36,7 +36,7 @@ class TestPredictor:
 
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
             'categorical_binary': [0, 1] * (n_points // 2),
         }, index=list(range(n_points)))
         input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int*input_dataframe.categorical_binary
@@ -66,7 +66,7 @@ class TestPredictor:
         n_points = 100
         n_category_values = 4
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
             'numeric_float': np.linspace(0, n_points, n_points),
             'date_timestamp': [
                 (datetime.now() - timedelta(minutes=int(i))).isoformat() for i in
@@ -102,7 +102,7 @@ class TestPredictor:
         n_points = 100
         n_category_values = 4
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
             'numeric_float': np.linspace(0, n_points, n_points),
             'date_timestamp': [
                 (datetime.now() - timedelta(minutes=int(i))).isoformat() for i in
@@ -194,7 +194,7 @@ class TestPredictor:
     def test_analyze_dataset_empty_column(self):
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
             'empty_column': [None for i in range(n_points)]
         }, index=list(range(n_points)))
 
@@ -205,7 +205,7 @@ class TestPredictor:
     def test_analyze_dataset_empty_values(self):
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
             'numeric_int2': list(range(n_points)),
         }, index=list(range(n_points)))
         input_dataframe['numeric_int'].iloc[::2] = None
@@ -217,9 +217,10 @@ class TestPredictor:
     def test_predictor_deduplicate_data(self):
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 44 for x in list(range(n_points))],
+            'numeric_int_2': [x % 20 for x in list(range(n_points))],
         }, index=list(range(n_points)))
-        input_dataframe['y'] = input_dataframe['numeric_int'] + 1
+        input_dataframe['y'] = input_dataframe['numeric_int'] % 10
 
         # Add duplicate row
         input_dataframe = input_dataframe.append(input_dataframe.iloc[99], ignore_index=True)
