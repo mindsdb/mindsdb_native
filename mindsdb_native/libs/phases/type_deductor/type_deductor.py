@@ -317,7 +317,7 @@ class TypeDeductor(BaseModule):
                                                                   col_name,
                                                                   data_subtype,
                                                                   additional_info['other_potential_subtypes'])
-            if stats_v2[col_name]['is_foreign_key'] and self.transaction.lmd['handle_foreign_keys']:
+            if stats_v2[col_name]['is_foreign_key'] and self.transaction.lmd['handle_foreign_keys'] and col_name not in self.transaction.lmd['predict_columns']:
                 self.transaction.lmd['columns_to_ignore'].append(col_name)
 
             if data_subtype_dist:

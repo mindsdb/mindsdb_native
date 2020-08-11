@@ -30,6 +30,7 @@ class TestTypeDeductor:
         lmd['data_preparation'] = {}
         lmd['force_categorical_encoding'] = []
         lmd['columns_to_ignore'] = []
+        lmd['predict_columns'] = []
 
         lmd['sample_settings'] = dict(
             sample_for_analysis=False,
