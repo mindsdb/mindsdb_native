@@ -192,4 +192,4 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
         if name == column_name:
             foreign_key_name = True
 
-    return (foreign_key_name and (foregin_key_type or data_looks_like_id)) or tiny_and_distinct
+    return (foreign_key_name and (foregin_key_type or data_looks_like_id)) or (DATA_SUBTYPES.INT == data_subtype and tiny_and_distinct)

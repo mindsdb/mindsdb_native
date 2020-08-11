@@ -45,7 +45,7 @@ class TestTypeDeductor:
     def test_type_deduction(self, transaction, lmd):
         """Tests that basic cases of type deduction work correctly"""
         hmd = transaction.hmd
-
+        lmd['handle_foreign_keys'] = True
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
 
@@ -56,9 +56,9 @@ class TestTypeDeductor:
         categories_cycle = cycle(range(n_category_values))
         n_multilabel_category_values = 25
         multiple_categories_str_cycle = cycle(random.choices(VOCAB[0:20], k=n_multilabel_category_values))
-        
+
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 20 for x in list(range(n_points))],
             'numeric_float': np.linspace(0, n_points, n_points),
             'date_timestamp': [(datetime.now() - timedelta(minutes=int(i))).isoformat() for i in range(n_points)],
             'date_date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
@@ -121,12 +121,13 @@ class TestTypeDeductor:
         assert 'uuid' in lmd['columns_to_ignore']
 
     def test_empty_column(self, transaction, lmd):
+        lmd['handle_foreign_keys'] = True
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
 
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 20 for x in list(range(n_points))],
             'empty_column': [None for i in range(n_points)],
         }, index=list(range(n_points)))
 
@@ -138,6 +139,7 @@ class TestTypeDeductor:
         assert stats_v2['empty_column']['typing']['data_type'] is None
 
     def test_empty_values(self, transaction, lmd):
+        lmd['handle_foreign_keys'] = True
         type_deductor = TypeDeductor(session=transaction.session,
                                     transaction=transaction)
 
@@ -157,6 +159,7 @@ class TestTypeDeductor:
         assert stats_v2['numeric_float']['typing']['data_subtype_dist'][DATA_SUBTYPES.FLOAT] == 50
 
     def test_type_mix(self, transaction, lmd):
+        lmd['handle_foreign_keys'] = True
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
 
@@ -177,6 +180,7 @@ class TestTypeDeductor:
 
     def test_sample(self, transaction, lmd):
         lmd['sample_settings']['sample_for_analysis'] = True
+        lmd['handle_foreign_keys'] = True
         transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
 
         type_deductor = TypeDeductor(session=transaction.session,
@@ -184,7 +188,7 @@ class TestTypeDeductor:
 
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 20 for x in list(range(n_points))],
         }, index=list(range(n_points)))
 
         input_data = TransactionData()
@@ -210,6 +214,7 @@ class TestTypeDeductor:
         lmd['sample_settings']['sample_for_analysis'] = True
         lmd['sample_settings']['sample_margin_of_error'] = 0.95
         lmd['sample_settings']['sample_confidence_level'] = 0.05
+        lmd['handle_foreign_keys'] = True
         transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
 
         type_deductor = TypeDeductor(session=transaction.session,
@@ -217,7 +222,7 @@ class TestTypeDeductor:
 
         n_points = 50
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 20 for x in list(range(n_points))],
         }, index=list(range(n_points)))
 
         input_data = TransactionData()
