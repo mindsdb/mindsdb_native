@@ -159,7 +159,7 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
             is_same_length = True
 
             uuid_charset = set('0123456789abcdef-')
-            set(val).issubset(uuid_charset)
+            set(str(val)).issubset(uuid_charset)
 
             if prev_val_length is None:
                 prev_val_length = len(str(val))
