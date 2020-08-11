@@ -162,3 +162,24 @@ class TestDataAnalyzer:
 
         data_analyzer.run(input_data)
         assert not transaction.hmd['sample_function'].called
+
+    def test_guess_probability(self, transaction, lmd):
+        data_analyzer = DataAnalyzer(
+            session=transaction.session,
+            transaction=transaction
+        )
+
+        input_dataframe = pd.DataFrame({
+            'categorical_int': [1, 2, 1, 3, 4, 3, 2, 4, 5, 1, 2, 3],
+            'categorical_int': [2, 1, 3, 4, 3, 2, 4, 5, 1, 2, 1, 2],
+            'categorical_binary': ['cat', 'cat', 'cat', 'dog', 'dog', 'cat', 'cat', 'cat', 'cat', 'cat', 'cat', 'dog']
+        }, index=[*range(12)])
+
+        stats_v2 = self.get_stats_v2(input_dataframe.columns)
+        lmd['stats_v2'] = stats_v2
+
+        input_data = TransactionData()
+        input_data.data_frame = input_dataframe
+
+        data_analyzer.run(input_data)
+        assert data_analyzer.transaction.lmd['stats_v2']['categorical_binary']['guess_probability'] == (9 / 12)**2 + (3 / 12)**2

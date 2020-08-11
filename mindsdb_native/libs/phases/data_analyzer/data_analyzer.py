@@ -322,6 +322,10 @@ class DataAnalyzer(BaseModule):
                 stats_v2[col_name]['nr_warnings'] += 1
             self.log.info(f'Finished analyzing column: {col_name} !\n')
 
+            if data_type == DATA_TYPES.CATEGORICAL:
+                total = sum(histogram['y'])
+                stats_v2[col_name]['guess_probability'] = sum((v / total)**2 for v in histogram['y'])
+        
         self.transaction.lmd['data_preparation']['accepted_margin_of_error'] = self.transaction.lmd['sample_settings']['sample_margin_of_error']
 
         self.transaction.lmd['data_preparation']['total_row_count'] = len(input_data.data_frame)
