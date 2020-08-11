@@ -16,10 +16,10 @@ jobs:
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with: 
-          path-to-signatures: '.github/signatures/cla.json'
+          path-to-signatures: 'assets/contributions-agreement/signatures/cla.json'
           # Add path to the CLA here
-          path-to-cla-document: 'https://github.com/mindsdb/mindsdb/blob/stable/CONTRIBUTING.md'
-          branch: 'master'
+          path-to-cla-document: 'https://github.com/mindsdb/mindsdb_native/blob/stable/assets/contributions-agreement/individual-contributor.md'
+          branch: 'stable'
           allowlist: bot*
           empty-commit-flag: false
           blockchain-storage-flag: false
