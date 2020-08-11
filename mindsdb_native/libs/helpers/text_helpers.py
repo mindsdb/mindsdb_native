@@ -174,7 +174,7 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
 
     tiny_and_distinct = True
     for val in data:
-        for splitter in [' ', ',', '\t', '|', '#', '.']
+        for splitter in [' ', ',', '\t', '|', '#', '.']:
             if len(val.split(splitter)) > 1:
                 tiny_and_distinct = False
 
