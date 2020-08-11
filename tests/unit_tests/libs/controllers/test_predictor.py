@@ -671,3 +671,27 @@ class TestPredictor:
         score = f1_score(test_tags_encoded, pred_labels_encoded, average='weighted')
 
         assert score >= 0.3
+
+    def test_user_provided_split_indices(self):
+        predictor = Predictor('test')
+
+        df = pd.DataFrame({
+            'col_a': [*range(100)],
+            'col_b': [*range(100)]
+        })
+
+        predictor.learn(
+            from_data=df,
+            to_predict='col_b',
+            advanced_args={
+                'data_split_indexes': {
+                    'validation_indexes': [*range(0, 30)],
+                    'train_indexes': [*range(30, 60)],
+                    'test_indexes': [*range(60, 100)]
+                }
+            }
+        )
+
+        assert predictor.transaction.input_data.train_df['col_a'].tolist() == [*range(30, 60)]
+        assert predictor.transaction.input_data.test_df['col_a'].tolist() == [*range(60, 100)]
+        assert predictor.transaction.input_data.validation_df['col_a'].tolist() == [*range(0, 30)]
