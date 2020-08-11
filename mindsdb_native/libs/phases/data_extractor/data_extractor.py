@@ -60,9 +60,14 @@ class DataExtractor(BaseModule):
                 asc_values = [True for i in self.transaction.lmd['model_group_by']] + asc_values
             df = df.sort_values(sort_by, ascending=asc_values)
 
-        elif self.transaction.lmd['type'] == TRANSACTION_LEARN and self.transaction.lmd.get('data_split_indexes') is None:
-            # if its not a time series, randomize the input data and we are learning
-            df = df.sample(frac=1, random_state=len(df))
+        # if its not a time series, randomize the input data and we are learning
+        elif self.transaction.lmd['type'] == TRANSACTION_LEARN:
+            data_split_indexes = self.transaction.lmd.get('data_split_indexes')
+            if data_split_indexes is None:
+                df = df.sample(frac=1, random_state=len(df))
+            else:
+                for v in data_split_indexes.values():
+                    random.shuffle(v)
 
         return df
 
