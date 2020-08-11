@@ -172,6 +172,15 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
                 data_looks_like_id = False
                 break
 
+    tiny_and_distinct = True
+    for val in data:
+        for splitter in [' ', ',', '\t', '|', '#', '.']
+            if len(val.split(splitter)) > 1:
+                tiny_and_distinct = False
+
+    if len(list(set(data))) + 1 < len(data):
+        tiny_and_distinct = False
+
     foreign_key_name = False
     for endings in ['-id', '_id', 'ID', 'Id']:
         if column_name.endswith(endings):
@@ -183,4 +192,4 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
         if name == column_name:
             foreign_key_name = True
 
-    return foreign_key_name and (foregin_key_type or data_looks_like_id)
+    return (foreign_key_name and (foregin_key_type or data_looks_like_id)) or tiny_and_distinct
