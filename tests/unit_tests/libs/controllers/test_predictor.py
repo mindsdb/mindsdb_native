@@ -692,6 +692,6 @@ class TestPredictor:
             }
         )
 
-        assert predictor.transaction.input_data.train_df['col_a'].tolist() == [*range(30, 60)]
-        assert predictor.transaction.input_data.test_df['col_a'].tolist() == [*range(60, 100)]
-        assert predictor.transaction.input_data.validation_df['col_a'].tolist() == [*range(0, 30)]
+        assert set(predictor.transaction.input_data.train_df['col_a'].tolist()) == set(range(30, 60))
+        assert set(predictor.transaction.input_data.test_df['col_a'].tolist()) == set(range(60, 100))
+        assert set(predictor.transaction.input_data.validation_df['col_a'].tolist()) == set(range(0, 30))
