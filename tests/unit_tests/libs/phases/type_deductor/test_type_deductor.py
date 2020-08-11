@@ -59,7 +59,7 @@ class TestTypeDeductor:
         multiple_categories_str_cycle = cycle(random.choices(VOCAB[0:20], k=n_multilabel_category_values))
 
         input_dataframe = pd.DataFrame({
-            'numeric_int': [x % 20 for x in list(range(n_points))],
+            'numeric_int': [x % 10 for x in list(range(n_points))],
             'numeric_float': np.linspace(0, n_points, n_points),
             'date_timestamp': [(datetime.now() - timedelta(minutes=int(i))).isoformat() for i in range(n_points)],
             'date_date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
@@ -128,7 +128,7 @@ class TestTypeDeductor:
 
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': [x % 20 for x in list(range(n_points))],
+            'numeric_int': [x % 10 for x in list(range(n_points))],
             'empty_column': [None for i in range(n_points)],
         }, index=list(range(n_points)))
 
@@ -189,7 +189,7 @@ class TestTypeDeductor:
 
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': [x % 20 for x in list(range(n_points))],
+            'numeric_int': [x % 10 for x in list(range(n_points))],
         }, index=list(range(n_points)))
 
         input_data = TransactionData()
@@ -223,7 +223,7 @@ class TestTypeDeductor:
 
         n_points = 50
         input_dataframe = pd.DataFrame({
-            'numeric_int': [x % 20 for x in list(range(n_points))],
+            'numeric_int': [x % 10 for x in list(range(n_points))],
         }, index=list(range(n_points)))
 
         input_data = TransactionData()
