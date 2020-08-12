@@ -62,12 +62,7 @@ class DataExtractor(BaseModule):
 
         # if its not a time series, randomize the input data and we are learning
         elif self.transaction.lmd['type'] == TRANSACTION_LEARN:
-            data_split_indexes = self.transaction.lmd.get('data_split_indexes')
-            if data_split_indexes is None:
-                df = df.sample(frac=1, random_state=len(df))
-            else:
-                for v in data_split_indexes.values():
-                    random.shuffle(v)
+            df = df.sample(frac=1, random_state=len(df))
 
         return df
 
