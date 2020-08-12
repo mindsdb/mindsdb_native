@@ -148,11 +148,13 @@ class TestPredictor:
         })
 
         predictor = Predictor(name='test')
-        predictor.learn(from_data=input_dataframe,
-                                      to_predict='y',
-                                      ignore_columns=['ignore_this'],
-                                      stop_training_in_x_seconds=1,
-                                      )
+        predictor.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            ignore_columns=['ignore_this'],
+            stop_training_in_x_seconds=1,
+            use_gpu=False
+        )
         transaction = predictor.transaction
 
         assert 'do_use' in transaction.input_data.train_df.columns
@@ -168,7 +170,8 @@ class TestPredictor:
         predictor = Predictor(name='test')
         predictor.learn(from_data=input_dataframe,
                         to_predict='y',
-                        stop_training_in_x_seconds=1)
+                        stop_training_in_x_seconds=1,
+                        use_gpu=False)
 
         transaction = predictor.transaction
 
@@ -181,9 +184,8 @@ class TestPredictor:
         predictor.learn(from_data=input_dataframe,
                         to_predict='y',
                         stop_training_in_x_seconds=1,
-                        advanced_args={
-                            'handle_foreign_keys': False
-                        })
+                        advanced_args={'handle_foreign_keys': False},
+                        use_gpu=False)
 
         transaction = predictor.transaction
 
@@ -368,7 +370,8 @@ class TestPredictor:
 
         predictor.learn(to_predict='rental_price',
                         from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-                        backend=dt_model)
+                        backend=dt_model,
+                        use_gpu=False)
         predictions = predictor.predict(
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             backend=dt_model)
@@ -450,7 +453,8 @@ class TestPredictor:
             order_by=feature_headers[0],
             # ,window_size_seconds=ts_hours* 3600 * 1.5
             window_size=3,
-            stop_training_in_x_seconds=1
+            stop_training_in_x_seconds=1,
+            use_gpu=False
         )
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
@@ -495,7 +499,8 @@ class TestPredictor:
         mdb = Predictor(name='test_multilabel_prediction')
         mdb.learn(from_data=train_file_name,
                   to_predict=label_headers,
-                  stop_training_in_x_seconds=1)
+                  stop_training_in_x_seconds=1,
+                  use_gpu=False)
 
         results = mdb.predict(when_data=test_file_name)
         models = F.get_models()
@@ -612,7 +617,8 @@ class TestPredictor:
 
         predictor.learn(from_data=df_train, to_predict='y',
                         advanced_args=dict(deduplicate_data=False),
-                        stop_training_in_x_seconds=60)
+                        stop_training_in_x_seconds=60,
+                        use_gpu=False)
 
         model_data = F.get_model_data('test')
         assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL
@@ -652,9 +658,11 @@ class TestPredictor:
 
         predictor = Predictor('test')
 
-        predictor.learn(from_data=df_train, to_predict='tags',
+        predictor.learn(from_data=df_train,
+                        to_predict='tags',
                         advanced_args=dict(deduplicate_data=False),
-                        stop_training_in_x_seconds=60)
+                        stop_training_in_x_seconds=60,
+                        use_gpu=False)
 
         model_data = F.get_model_data('test')
         assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL
@@ -672,3 +680,28 @@ class TestPredictor:
         score = f1_score(test_tags_encoded, pred_labels_encoded, average='weighted')
 
         assert score >= 0.3
+
+    def test_user_provided_split_indices(self):
+        predictor = Predictor('test')
+
+        df = pd.DataFrame({
+            'col_a': [*range(100)],
+            'col_b': [*range(100)]
+        })
+
+        predictor.learn(
+            from_data=df,
+            to_predict='col_b',
+            advanced_args={
+                'data_split_indexes': {
+                    'validation_indexes': [*range(0, 30)],
+                    'train_indexes': [*range(30, 60)],
+                    'test_indexes': [*range(60, 100)]
+                }
+            },
+            use_gpu=False
+        )
+
+        assert set(predictor.transaction.input_data.train_df['col_a'].tolist()) == set(range(30, 60))
+        assert set(predictor.transaction.input_data.test_df['col_a'].tolist()) == set(range(60, 100))
+        assert set(predictor.transaction.input_data.validation_df['col_a'].tolist()) == set(range(0, 30))
