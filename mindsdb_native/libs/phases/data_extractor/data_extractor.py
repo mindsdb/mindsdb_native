@@ -60,8 +60,8 @@ class DataExtractor(BaseModule):
                 asc_values = [True for i in self.transaction.lmd['model_group_by']] + asc_values
             df = df.sort_values(sort_by, ascending=asc_values)
 
+        # if its not a time series, randomize the input data and we are learning
         elif self.transaction.lmd['type'] == TRANSACTION_LEARN:
-            # if its not a time series, randomize the input data and we are learning
             df = df.sample(frac=1, random_state=len(df))
 
         return df

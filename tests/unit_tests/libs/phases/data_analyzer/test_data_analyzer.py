@@ -64,7 +64,7 @@ class TestDataAnalyzer:
         n_points = 100
         n_category_values = 4
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
             'numeric_float': np.linspace(0, n_points, n_points),
             'date_timestamp': [(datetime.now() - timedelta(minutes=int(i))).isoformat() for i in range(n_points)],
             'date_date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
@@ -118,7 +118,7 @@ class TestDataAnalyzer:
 
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
@@ -143,7 +143,7 @@ class TestDataAnalyzer:
 
         n_points = 100
         input_dataframe = pd.DataFrame({
-            'numeric_int': list(range(n_points)),
+            'numeric_int': [x % 10 for x in list(range(n_points))],
         }, index=list(range(n_points)))
 
         stats_v2 = self.get_stats_v2(input_dataframe.columns)
@@ -162,3 +162,24 @@ class TestDataAnalyzer:
 
         data_analyzer.run(input_data)
         assert not transaction.hmd['sample_function'].called
+
+    def test_guess_probability(self, transaction, lmd):
+        data_analyzer = DataAnalyzer(
+            session=transaction.session,
+            transaction=transaction
+        )
+
+        input_dataframe = pd.DataFrame({
+            'categorical_int': [1, 2, 1, 3, 4, 3, 2, 4, 5, 1, 2, 3],
+            'categorical_int': [2, 1, 3, 4, 3, 2, 4, 5, 1, 2, 1, 2],
+            'categorical_binary': ['cat', 'cat', 'cat', 'dog', 'dog', 'cat', 'cat', 'cat', 'cat', 'cat', 'cat', 'dog']
+        }, index=[*range(12)])
+
+        stats_v2 = self.get_stats_v2(input_dataframe.columns)
+        lmd['stats_v2'] = stats_v2
+
+        input_data = TransactionData()
+        input_data.data_frame = input_dataframe
+
+        data_analyzer.run(input_data)
+        assert data_analyzer.transaction.lmd['stats_v2']['categorical_binary']['guess_probability'] == (9 / 12)**2 + (3 / 12)**2

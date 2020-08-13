@@ -151,27 +151,38 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
 
     data_looks_like_id = True
 
+    # Detect UUID
     if not foregin_key_type:
         prev_val_length = None
         for val in data:
             is_uuid = True
             is_same_length = True
 
-            for char in str(val):
-                if char not in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                                'a', 'b', 'c', 'd', 'e', 'f', '-']:
-                    is_uuid = False
+            uuid_charset = set('0123456789abcdef-')
+            set(str(val)).issubset(uuid_charset)
 
             if prev_val_length is None:
                 prev_val_length = len(str(val))
             elif len(str(val)) != prev_val_length:
                 is_same_length = False
-            else:
-                prev_val_length = len(str(val))
+
+            prev_val_length = len(str(val))
 
             if not (is_uuid and is_same_length):
                 data_looks_like_id = False
                 break
+
+    tiny_and_distinct = False
+    '''
+    tiny_and_distinct = True
+    for val in data:
+        for splitter in [' ', ',', '\t', '|', '#', '.']:
+            if len(str(val).split(splitter)) > 1:
+                tiny_and_distinct = False
+
+    if len(list(set(data))) + 1 < len(data):
+        tiny_and_distinct = False
+    '''
 
     foreign_key_name = False
     for endings in ['-id', '_id', 'ID', 'Id']:
@@ -180,5 +191,8 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
     for keyword in ['account', 'uuid', 'identifier', 'user']:
         if keyword in column_name:
             foreign_key_name = True
+    for name in ['id']:
+        if name == column_name:
+            foreign_key_name = True
 
-    return foreign_key_name and (foregin_key_type or data_looks_like_id)
+    return (foreign_key_name and (foregin_key_type or data_looks_like_id)) or (DATA_SUBTYPES.INT == data_subtype and tiny_and_distinct)
