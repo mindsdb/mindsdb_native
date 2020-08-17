@@ -4,6 +4,7 @@ from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 from mindsdb_native.libs.data_types.mindsdb_logger import log
+from skleran.metrics import accuracy_score, r2_score
 
 import pandas as pd
 import numpy as np
@@ -31,7 +32,6 @@ class ModelAnalyzer(BaseModule):
                                             output_columns,
                                             backend=self.transaction.model_backend)
         
-        exit('bye')
         for col in output_columns:
             reals = self.transaction.input_data.validation_df[col]
             preds = normal_predictions[col]
@@ -39,13 +39,13 @@ class ModelAnalyzer(BaseModule):
             fails = False
 
             if self.transaction.lmd['stats_v2'][col]['data_type'] == DATA_TYPES.CATEGORICAL:
-                from skleran.metrics import accuracy_score
                 if accuracy_score(reals, preds) < self.transaction.lmd['stats_v2'][col]['guess_probability']:
                     fails = True
             elif self.transaction.lmd['stats_v2'][col]['data_type'] == DATA_TYPES.NUMERIC:
-                from sklearn.metrics import r2_score
                 if r2_score(reals, preds) < 0:
                     fails = True
+            else:
+                pass
                 
             if fails:
                 if self.transaction.lmd['force_predict']:
