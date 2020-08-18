@@ -325,7 +325,7 @@ class DataAnalyzer(BaseModule):
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     delimiter = self.transaction.lmd.get('tags_delimiter', ',')
-                    data = [x.strip() for x in item.split(delimiter) for item in col_data]
+                    data = [x.strip() for x in (item.split(delimiter) for item in col_data)]
 
                     tag_set = set()
                     for arr in data:
