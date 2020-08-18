@@ -232,6 +232,7 @@ class Predictor:
                 null_values = advanced_args.get('null_values', {}),
                 data_split_indexes = advanced_args.get('data_split_indexes', None),
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
+                force_predict = advanced_args.get('force_predict', False),
 
                 breakpoint=self.breakpoint
             )
