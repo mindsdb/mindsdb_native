@@ -37,11 +37,18 @@ class ModelAnalyzer(BaseModule):
             preds = normal_predictions[col]
 
             fails = False
-
-            if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL:
-                if accuracy_score(reals, preds) < self.transaction.lmd['stats_v2'][col]['guess_probability']:
-                    fails = True
-            elif self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.NUMERIC:
+            
+            data_type = self.transaction.lmd['stats_v2'][col]['typing']['data_type']
+            data_subtype = self.transaction.lmd['stats_v2'][col]['typing']['data_subtype']
+            
+            if data_type == DATA_TYPES.CATEGORICAL:
+                if data_subtype == DATA_SUBTYPES.TAGS:
+                    # need to implement stats_v2[col]['guess_probability'] for tags
+                    pass
+                else:
+                    if accuracy_score(reals, preds) < self.transaction.lmd['stats_v2'][col]['guess_probability']:
+                        fails = True
+            elif data_type == DATA_TYPES.NUMERIC:
                 if r2_score(reals, preds) < 0:
                     fails = True
             else:
