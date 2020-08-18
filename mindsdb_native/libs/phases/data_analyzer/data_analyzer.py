@@ -324,11 +324,22 @@ class DataAnalyzer(BaseModule):
 
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
-                    print(stats_v2)
+                    delimiter = self.transaction.lmd.get('tags_delimiter', ',')
+                    data = [x.strip() for x in item.split(delimiter) for item in col_data]
+
+                    tag_set = set()
+                    for arr in data:
+                        tag_set.update(arr)
+                    stats_v2[col_name]['tag_set'] = tag_set
+
+                    tag_counter = Counter()
+                    for arr in data:
+                        tag_counter.update(arr)
+                    stats_v2[col_name]['guess_probability'] = sum((v / len(data))**2 for v in tag_counter.values())
                 else:
                     total = sum(histogram['y'])
                     stats_v2[col_name]['guess_probability'] = sum((v / total)**2 for v in histogram['y'])
-        exit('bye')d
+
         self.transaction.lmd['data_preparation']['accepted_margin_of_error'] = self.transaction.lmd['sample_settings']['sample_margin_of_error']
 
         self.transaction.lmd['data_preparation']['total_row_count'] = len(input_data.data_frame)
