@@ -298,11 +298,13 @@ class DataAnalyzer(BaseModule):
                         outliers = lof_outliers(data_subtype, col_data)
                         stats_v2[col_name]['outliers'] = {
                             'outlier_values': outliers,
-                            'outlier_buckets': compute_outlier_buckets(outlier_values=outliers,
-                                                                    hist_x=histogram['x'],
-                                                                    hist_y=histogram['y'],
-                                                                    percentage_buckets=percentage_buckets,
-                                                                    col_stats=stats_v2[col_name]),
+                            'outlier_buckets': compute_outlier_buckets(
+                                outlier_values=outliers,
+                                hist_x=histogram['x'],
+                                hist_y=histogram['y'],
+                                percentage_buckets=percentage_buckets,
+                                col_stats=stats_v2[col_name]
+                            ),
                             'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""
                         }
 
