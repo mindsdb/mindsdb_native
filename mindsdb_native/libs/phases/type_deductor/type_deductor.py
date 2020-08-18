@@ -208,10 +208,11 @@ class TypeDeductor(BaseModule):
             unique_tokens = set()
 
             can_be_tags = False
-            if len(data) == len([x for x in data if isinstance(x,str)]):
+            if all(isinstance(x, str) for x in data):
                 can_be_tags = True
+                delimiter = self.transaction.lmd.get('tags_delimiter', ',')
                 for item in data:
-                    item_tags = [t.strip() for t in item.split(',')]
+                    item_tags = [t.strip() for t in item.split(delimiter)]
                     lengths.append(len(item_tags))
                     unique_tokens = unique_tokens.union(set(item_tags))
 
