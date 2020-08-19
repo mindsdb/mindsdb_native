@@ -43,10 +43,11 @@ class ModelAnalyzer(BaseModule):
             
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
-                    # need to implement stats_v2[col]['guess_probability'] for tags
-                    pass
+                    encoder = self.transaction.model_backend.predictor._mixer.encoders[col]
+                    if accuracy_score(encoder.encode(reals), encoder.encode(preds)) <= self.transaction.lmd['stats_v2'][col]['guess_probability']:
+                        fails = True
                 else:
-                    if accuracy_score(reals, preds) < self.transaction.lmd['stats_v2'][col]['guess_probability']:
+                    if accuracy_score(reals, preds) <= self.transaction.lmd['stats_v2'][col]['guess_probability']:
                         fails = True
             elif data_type == DATA_TYPES.NUMERIC:
                 if r2_score(reals, preds) < 0:
