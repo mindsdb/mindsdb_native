@@ -1,10 +1,7 @@
 from mindsdb_native.libs.helpers.general_helpers import pickle_obj, disable_console_output
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
-from mindsdb_native.libs.helpers.general_helpers import (
-    evaluate_accuracy,
-    evaluate_multilabel_accuracy
-)
+from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from sklearn.metrics import accuracy_score, r2_score
