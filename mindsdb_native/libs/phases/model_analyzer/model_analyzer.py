@@ -3,6 +3,8 @@ from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
+from mindsdb_native.libs.data_types.mindsdb_logger import log
+from sklearn.metrics import accuracy_score, r2_score
 
 import pandas as pd
 import numpy as np
@@ -29,6 +31,35 @@ class ModelAnalyzer(BaseModule):
                                             self.transaction.lmd['stats_v2'],
                                             output_columns,
                                             backend=self.transaction.model_backend)
+        
+        for col in output_columns:
+            reals = self.transaction.input_data.validation_df[col]
+            preds = normal_predictions[col]
+
+            fails = False
+            
+            data_type = self.transaction.lmd['stats_v2'][col]['typing']['data_type']
+            data_subtype = self.transaction.lmd['stats_v2'][col]['typing']['data_subtype']
+            
+            if data_type == DATA_TYPES.CATEGORICAL:
+                if data_subtype == DATA_SUBTYPES.TAGS:
+                    # need to implement stats_v2[col]['guess_probability'] for tags
+                    pass
+                else:
+                    if accuracy_score(reals, preds) < self.transaction.lmd['stats_v2'][col]['guess_probability']:
+                        fails = True
+            elif data_type == DATA_TYPES.NUMERIC:
+                if r2_score(reals, preds) < 0:
+                    fails = True
+            else:
+                pass
+
+            if fails:
+                if not self.transaction.lmd['force_predict']:
+                    def predict_wrapper(*args, **kwargs):
+                        raise Exception('Failed to train model')
+                    self.session.predict = predict_wrapper
+                log.error('Failed to train model to predict {}'.format(col))
 
         empty_input_predictions = {}
         empty_input_accuracy = {}
