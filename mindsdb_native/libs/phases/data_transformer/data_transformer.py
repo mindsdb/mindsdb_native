@@ -64,6 +64,15 @@ def _lightwood_datetime_processing(dt):
         return None
 
 
+def _standardize_timeseries(arr):
+    """eliminates square brackets and commas from the array string"""
+    try:
+        s = arr[1:-1].replace(",", "")
+        return s
+    except Exception:
+        return arr
+
+
 def _clean_float_or_none(val):
     try:
         return clean_float(val)
@@ -117,6 +126,10 @@ class DataTransformer(BaseModule):
 
             if data_type == DATA_TYPES.TEXT:
                 self._apply_to_all_data(input_data, column, str, transaction_type)
+
+            if data_type == DATA_TYPES.SEQUENTIAL:
+                if data_subtype == DATA_SUBTYPES.ARRAY:
+                    self._apply_to_all_data(input_data, column, _standardize_timeseries, transaction_type)
 
             if self.transaction.hmd['model_backend'] == 'lightwood':
                 if data_type == DATA_TYPES.DATE:
