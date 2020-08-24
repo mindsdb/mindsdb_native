@@ -72,7 +72,7 @@ def _standardize_timeseries(ts_str):
     try:
         ts_str = ts_str.rstrip(']').lstrip('[')
         ts_str = ts_str.rstrip(' ').lstrip(' ')
-        return ts_str.replace(', ', ' ').replace(',', '')
+        return ts_str.replace(', ', ' ').replace(',', ' ')
     except Exception:
         return ts_str
 
