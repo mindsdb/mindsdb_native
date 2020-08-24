@@ -192,8 +192,8 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
             randomness_per_index = []
             for i, _ in enumerate(str_data[0]):
                 all_ascii = all(isascii(x[i]) for x in str_data)
-                all_alpha = all(x[i].isalpha() for x in str_data)
-                all_numeric = all(x[i].isnumeric() for x in str_data)
+                all_alpha = all_ascii and all(x[i].isalpha() for x in str_data)
+                all_numeric = all_ascii and all(x[i].isnumeric() for x in str_data)
 
                 if all_alpha:
                     N = 26
