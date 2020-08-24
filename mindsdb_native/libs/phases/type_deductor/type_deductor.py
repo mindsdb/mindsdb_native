@@ -335,3 +335,10 @@ class TypeDeductor(BaseModule):
                     pass
 
         self.transaction.lmd['stats_v2'] = stats_v2
+
+        for col in sample_df.columns.values:
+            if col in stats_v2:
+                print(col, ':', stats_v2[col]['is_foreign_key'])
+                
+        exit('bye')
+
