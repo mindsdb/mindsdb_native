@@ -165,6 +165,9 @@ def _is_foreign_key_name(name):
 def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
     data = list(data)
 
+    if len(data) == 0:
+        return False
+
     foregin_key_type = DATA_SUBTYPES.INT in [*other_potential_subtypes, data_subtype]
 
     # Detect UUID
