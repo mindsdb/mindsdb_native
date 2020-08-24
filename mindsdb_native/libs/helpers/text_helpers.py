@@ -182,7 +182,7 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
         is_uuid = False
     else:
         all_same_length = all(len(str(data[0])) == len(str(x)) for x in data)
-        uuid_charset = set('0123456789abcdef-')
+        uuid_charset = set('0123456789abcdefABCDEF-')
         all_uuid_charset = all(set(str(x)).issubset(uuid_charset) for x in data)
         is_uuid = all_uuid_charset and all_same_length
 
