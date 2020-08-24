@@ -2,11 +2,12 @@ from mindsdb_native.libs.helpers.general_helpers import pickle_obj, disable_cons
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
+from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 
-import pandas as pd
 import numpy as np
-
+from nonconformist.icp import IcpRegressor
+from nonconformist.nc import RegressorNc, AbsErrorErrFunc, RegressorNormalizer, ClassifierNc, MarginErrFunc
 
 class ModelAnalyzer(BaseModule):
 
@@ -120,3 +121,42 @@ class ModelAnalyzer(BaseModule):
             self.transaction.hmd['probabilistic_validators'][col] = pickle_obj(pval)
 
         self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr)/len(overall_accuracy_arr)
+
+        # conformal prediction confidence estimation
+
+        # 1. determine if classification or regression
+        data_type = self.transaction.lmd['stats_v2'][self.transaction.lmd['predict_columns'][0]]['typing']['data_type']
+        is_classification = data_type == DATA_TYPES.CATEGORICAL
+
+        if is_classification:
+            nc_function = MarginErrFunc # better suited than InverseProbability as it'd need the complete P distribution over classes
+            adapter = ConformalClassifierAdapter
+        else:
+            nc_function = AbsErrorErrFunc
+            adapter = ConformalRegressorAdapter
+
+        model = adapter(self.transaction.model_backend.predictor,
+                        fit_params={'target': output_columns[0]}) # TODO: what if n_target > 1?
+
+        nc = RegressorNc(model, nc_function)
+        target = self.transaction.lmd['predict_columns'][0]
+        self.transaction.icp = IcpRegressor(nc)
+
+        # train conformal estimator
+        X_tr = self.transaction.input_data.train_df
+        y_tr = X_tr.pop(target).values
+        X_tr = X_tr.values
+        self.transaction.icp.fit(X_tr, y_tr)
+
+        # calibrate conformal estimator
+        X_val = self.transaction.input_data.validation_df
+        true_y_val = X_val.pop(target).values
+        self.transaction.icp.calibrate(X_val, true_y_val)
+
+        # test dataframe
+        X_test = self.transaction.input_data.test_df
+        _ = X_test.pop(target).values
+
+        # prediction ranges for test set
+        X_test = self.transaction.input_data.test_df.values
+        self.transaction.conformal_ranges = self.transaction.icp.predict(X_test, significance=0.05)
