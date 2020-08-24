@@ -64,13 +64,17 @@ def _lightwood_datetime_processing(dt):
         return None
 
 
-def _standardize_timeseries(arr):
-    """eliminates square brackets and commas from the array string"""
+def _standardize_timeseries(ts_str):
+    """
+    erases square brackets, trailing whitespace, 
+    and commas from the array as string
+    """
     try:
-        s = arr[1:-1].replace(",", "")
-        return s
+        ts_str = ts_str.rstrip(']').lstrip('[')
+        ts_str = ts_str.rstrip(' ').lstrip(' ')
+        return ts_str.replace(', ', ' ').replace(',', '')
     except Exception:
-        return arr
+        return ts_str
 
 
 def _clean_float_or_none(val):
