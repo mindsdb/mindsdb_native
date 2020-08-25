@@ -333,9 +333,5 @@ class TypeDeductor(BaseModule):
                 except Exception:
                     # Functionality is specific to mindsdb logger
                     pass
-        
-        for col in sample_df.columns:
-            if col in stats_v2:
-                print(col, ':', stats_v2[col]['is_foreign_key'])
-        exit('bye')
+
         self.transaction.lmd['stats_v2'] = stats_v2
