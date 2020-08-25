@@ -6,8 +6,10 @@ from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAda
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 
 import numpy as np
-from nonconformist.icp import IcpRegressor
-from nonconformist.nc import RegressorNc, AbsErrorErrFunc, RegressorNormalizer, ClassifierNc, MarginErrFunc
+from sklearn.preprocessing import OneHotEncoder
+from nonconformist.icp import IcpRegressor, IcpClassifier
+from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, MarginErrFunc
+
 
 class ModelAnalyzer(BaseModule):
 
@@ -123,33 +125,42 @@ class ModelAnalyzer(BaseModule):
         self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr)/len(overall_accuracy_arr)
 
         # conformal prediction confidence estimation
+        target = self.transaction.lmd['predict_columns'][0]
+        X = self.transaction.input_data.train_df.copy(deep=True)
+        y = X.pop(target)
+
         data_type = self.transaction.lmd['stats_v2'][self.transaction.lmd['predict_columns'][0]]['typing']['data_type']
         is_classification = data_type == DATA_TYPES.CATEGORICAL
 
+        fit_params = {'target': target,                               # TODO: what if n_target > 1?
+                      'columns': self.transaction.lmd['columns']}
+
         if is_classification:
-            nc_function = MarginErrFunc  # better than IPS as we'd need the complete distribution over all classes
+            enc = OneHotEncoder(sparse=False)
+            enc.fit(y.values.reshape(-1, 1))
+            fit_params['one_hot_enc'] = enc
+
             adapter = ConformalClassifierAdapter
+            nc_function = MarginErrFunc  # better than IPS as we'd need the complete distribution over all classes
+            nc_class = ClassifierNc
+            icp_class = IcpClassifier
         else:
-            nc_function = AbsErrorErrFunc
             adapter = ConformalRegressorAdapter
+            nc_function = AbsErrorErrFunc
+            nc_class = RegressorNc
+            icp_class = IcpRegressor
 
-        target = self.transaction.lmd['predict_columns'][0]
-        model = adapter(self.transaction.model_backend.predictor,
-                        fit_params={'target': target,                               # TODO: what if n_target > 1?
-                                    'columns': self.transaction.lmd['columns']})
-        nc = RegressorNc(model, nc_function)
-        self.transaction.icp = IcpRegressor(nc)
-
-        # "train" conformal estimator
-        X = self.transaction.input_data.train_df.copy(deep=True)
-        y = X.pop(target)
+        model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
+        nc = nc_class(model, nc_function)
+        self.transaction.icp = icp_class(nc)
         self.transaction.icp.fit(X.values, y.values)
 
         # calibrate conformal estimator on test set
         X = self.transaction.input_data.test_df.copy(deep=True)
-        y = X.pop(target)
+        y = X.pop(target).astype(int) if is_classification else X.pop(target)
         self.transaction.icp.calibrate(X.values, y.values)
 
         # prediction ranges for validation set
+        # TODO: This should be moved
         X = self.transaction.input_data.validation_df.copy(deep=True)
         self.transaction.lmd['conformal_ranges'] = self.transaction.icp.predict(X.values, significance=0.05)

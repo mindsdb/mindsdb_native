@@ -48,6 +48,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         super(ConformalClassifierAdapter, self).__init__(model, fit_params)
         self.mdb_pred = model
         self.target = fit_params['target']
+        self.columns = fit_params['columns']  # including target
 
     def fit(self, x, y):
         """
@@ -66,8 +67,11 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         ones, this should a numpy.array of shape (n_test, n_classes) with
         class probability estimates
         """
-        x = _df_from_x(x)
+        cols = [c for c in self.columns]
+        if x.shape[-1] < len(cols):
+            cols.remove(self.target)
+        x = _df_from_x(x, cols)
         predictions = self.mdb_pred.predict(when_data=x)
-        ys = np.array(predictions[self.target]['predictions']).astype(np.int)
-        ys = self.fit_params['one_hot_enc'].transform(ys.reshape(-1, 1)) # ideally, complete class distribution here
+        ys = np.array(predictions[self.target]['predictions'])
+        ys = self.fit_params['one_hot_enc'].transform(ys.reshape(-1, 1))  # ideally, complete class distribution here
         return ys
