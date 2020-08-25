@@ -29,8 +29,12 @@ except:
 try:
     from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
 except:
-    print("PostgresDS Datasource is not available by default. If you wish to use it, please install psycopg2 or mindsdb[extra_data_sources]")
+    print("PostgresDS Datasource is not available by default. If you wish to use it, please install 'pg8000' or mindsdb[extra_data_sources]")
 
+try:
+    from mindsdb_native.libs.data_sources.ms_sql_ds import MSSQLDS
+except:
+    print("MSSQL Datasource is not available by default. If you wish to use it, please install 'python-tds' or mindsdb[extra_data_sources]")
 
 
 from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
