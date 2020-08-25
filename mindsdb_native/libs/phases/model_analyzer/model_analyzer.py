@@ -123,40 +123,33 @@ class ModelAnalyzer(BaseModule):
         self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr)/len(overall_accuracy_arr)
 
         # conformal prediction confidence estimation
-
-        # 1. determine if classification or regression
         data_type = self.transaction.lmd['stats_v2'][self.transaction.lmd['predict_columns'][0]]['typing']['data_type']
         is_classification = data_type == DATA_TYPES.CATEGORICAL
 
         if is_classification:
-            nc_function = MarginErrFunc # better suited than InverseProbability as it'd need the complete P distribution over classes
+            nc_function = MarginErrFunc  # better than IPS as we'd need the complete distribution over all classes
             adapter = ConformalClassifierAdapter
         else:
             nc_function = AbsErrorErrFunc
             adapter = ConformalRegressorAdapter
 
-        model = adapter(self.transaction.model_backend.predictor,
-                        fit_params={'target': output_columns[0]}) # TODO: what if n_target > 1?
-
-        nc = RegressorNc(model, nc_function)
         target = self.transaction.lmd['predict_columns'][0]
+        model = adapter(self.transaction.model_backend.predictor,
+                        fit_params={'target': target,                               # TODO: what if n_target > 1?
+                                    'columns': self.transaction.lmd['columns']})
+        nc = RegressorNc(model, nc_function)
         self.transaction.icp = IcpRegressor(nc)
 
-        # train conformal estimator
-        X_tr = self.transaction.input_data.train_df
-        y_tr = X_tr.pop(target).values
-        X_tr = X_tr.values
-        self.transaction.icp.fit(X_tr, y_tr)
+        # "train" conformal estimator
+        X = self.transaction.input_data.train_df.copy(deep=True)
+        y = X.pop(target)
+        self.transaction.icp.fit(X.values, y.values)
 
-        # calibrate conformal estimator
-        X_val = self.transaction.input_data.validation_df
-        true_y_val = X_val.pop(target).values
-        self.transaction.icp.calibrate(X_val, true_y_val)
+        # calibrate conformal estimator on test set
+        X = self.transaction.input_data.test_df.copy(deep=True)
+        y = X.pop(target)
+        self.transaction.icp.calibrate(X.values, y.values)
 
-        # test dataframe
-        X_test = self.transaction.input_data.test_df
-        _ = X_test.pop(target).values
-
-        # prediction ranges for test set
-        X_test = self.transaction.input_data.test_df.values
-        self.transaction.conformal_ranges = self.transaction.icp.predict(X_test, significance=0.05)
+        # prediction ranges for validation set
+        X = self.transaction.input_data.validation_df.copy(deep=True)
+        self.transaction.lmd['conformal_ranges'] = self.transaction.icp.predict(X.values, significance=0.05)
