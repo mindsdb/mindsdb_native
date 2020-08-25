@@ -141,12 +141,12 @@ class ModelAnalyzer(BaseModule):
             fit_params['one_hot_enc'] = enc
 
             adapter = ConformalClassifierAdapter
-            nc_function = MarginErrFunc  # better than IPS as we'd need the complete distribution over all classes
+            nc_function = MarginErrFunc()  # better than IPS as we'd need the complete distribution over all classes
             nc_class = ClassifierNc
             icp_class = IcpClassifier
         else:
             adapter = ConformalRegressorAdapter
-            nc_function = AbsErrorErrFunc
+            nc_function = AbsErrorErrFunc()
             nc_class = RegressorNc
             icp_class = IcpRegressor
 
