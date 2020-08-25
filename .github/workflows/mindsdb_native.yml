@@ -27,5 +27,4 @@ jobs:
       run: |
           cd tests/unit_tests/libs
           pytest
-        fi
       shell: bash
