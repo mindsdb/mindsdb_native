@@ -14,7 +14,8 @@ from collections import Counter, defaultdict
 import string
 import json
 import hashlib
-import numpy
+import numpy as np
+import scipy.stats as st
 import flair
 import langdetect
 from lightwood.helpers.text import tokenize_text
@@ -93,7 +94,7 @@ def clean_float(val):
     if isinstance(val, (int, float)):
         return float(val)
 
-    if isinstance(val, numpy.float64):
+    if isinstance(val, np.float64):
         return val
 
     val = str(val).strip(' ')
@@ -161,10 +162,17 @@ def _is_foreign_key_name(name):
     return False
 
 
+def isascii(string):
+    """
+    Used instead of str.isascii because python 3.6 doesn't have that
+    """
+    return all(ord(c) < 128 for c in string)
+
+
 def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
     data = list(data)
 
-    foregin_key_type = DATA_SUBTYPES.INT in other_potential_subtypes or DATA_SUBTYPES.INT == data_subtype
+    foregin_key_type = DATA_SUBTYPES.INT in [*other_potential_subtypes, data_subtype]
 
     # Detect UUID
     if foregin_key_type:
@@ -174,6 +182,18 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
         uuid_charset = set('0123456789abcdefABCDEF-')
         all_uuid_charset = all(set(str(x)).issubset(uuid_charset) for x in data)
         is_uuid = all_uuid_charset and all_same_length
+
+        if all_same_length and len(data) == len(set(data)):
+            str_data = [str(x) for x in data]
+            
+            randomness_per_index = []
+            for i, _ in enumerate(str_data[0]):
+                N = len(set(x[i] for x in str_data))
+                S = st.entropy([*Counter(x[i] for x in str_data).values()])
+                randomness_per_index.append(S / np.log(N))
+
+            if np.mean(randomness_per_index) > 0.95:
+                return True
 
     '''
     tiny_and_distinct = True
