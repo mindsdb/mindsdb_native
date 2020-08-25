@@ -186,28 +186,17 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
         all_uuid_charset = all(set(str(x)).issubset(uuid_charset) for x in data)
         is_uuid = all_uuid_charset and all_same_length
 
-        if all_same_length:
+        if all_same_length and len(data) == len(set(data)):
             str_data = [str(x) for x in data]
             
             randomness_per_index = []
             for i, _ in enumerate(str_data[0]):
-                all_ascii = all(isascii(x[i]) for x in str_data)
-                all_alpha = all_ascii and all(x[i].isalpha() for x in str_data)
-                all_numeric = all_ascii and all(x[i].isnumeric() for x in str_data)
+                N = len(set(x[i] for x in str_data))
+                S = st.entropy([*Counter(x[i] for x in str_data).values()])
+                randomness_per_index.append(S / np.log(N))
 
-                if all_alpha:
-                    N = 26
-                elif all_numeric:
-                    N = 10
-
-                if all_alpha or all_numeric:
-                    S = st.entropy([*Counter(x[i] for x in str_data).values()])
-                    randomness_per_index.append(S / np.log(N))
-                else:
-                    break
-            else:
-                if np.mean(randomness_per_index) > 0.95:
-                    return True
+            if np.mean(randomness_per_index) > 0.95:
+                return True
 
     '''
     tiny_and_distinct = True
