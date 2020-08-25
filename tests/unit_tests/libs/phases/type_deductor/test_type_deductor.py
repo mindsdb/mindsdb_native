@@ -121,24 +121,6 @@ class TestTypeDeductor:
         assert 'numeric_id' in lmd['columns_to_ignore']
         assert 'uuid' in lmd['columns_to_ignore']
 
-    def test_empty_column(self, transaction, lmd):
-        lmd['handle_foreign_keys'] = True
-        type_deductor = TypeDeductor(session=transaction.session,
-                                     transaction=transaction)
-
-        n_points = 100
-        input_dataframe = pd.DataFrame({
-            'numeric_int': [x % 10 for x in list(range(n_points))],
-            'empty_column': [None for i in range(n_points)],
-        }, index=list(range(n_points)))
-
-        input_data = TransactionData()
-        input_data.data_frame = input_dataframe
-        type_deductor.run(input_data)
-
-        stats_v2 = lmd['stats_v2']
-        assert stats_v2['empty_column']['typing']['data_type'] is None
-
     def test_empty_values(self, transaction, lmd):
         lmd['handle_foreign_keys'] = True
         type_deductor = TypeDeductor(session=transaction.session,
