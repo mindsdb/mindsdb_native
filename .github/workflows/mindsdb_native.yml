@@ -26,8 +26,7 @@ jobs:
         pip install -r optional_requirements_extra_data_sources.txt
     - name: Run tests
       run: |
-          cd tests/unit_tests/
-          pytest --run-slow --durations=20
+          pytest --run-slow --durations=20 tests/unit_tests
       shell: bash
 
   deploy:
