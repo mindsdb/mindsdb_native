@@ -33,7 +33,6 @@ class TestEvaluateAccuracy(unittest.TestCase):
         r = self.p.predict(when_data=x_te)
 
         for y_hat, r in zip(r._data[target], r._transaction.lmd['conformal_ranges']):
-            print(f"[{r[0]} -- {y_hat} -- {r[1]}]")
             self.assertTrue(r[0] <= y_hat <= r[1])
 
     def test_classifier(self):
@@ -51,10 +50,6 @@ class TestEvaluateAccuracy(unittest.TestCase):
         for y_hat, r in zip(r._data[target], r._transaction.lmd['conformal_ranges']):
             self.assertTrue(r[int(y_hat)])
 
-            y_hat = self.p.transaction.lmd['label_encoder'].transform([[y_hat]])
-            y_hat = [bool(i) for i in y_hat[0]]
-            print(f"range: {r} vs point: {y_hat}")
-
     def test_home_rentals(self):
         df = pd.read_csv("https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv")
         x_tr, x_te = train_test_split(df, test_size=0.1)
@@ -68,7 +63,6 @@ class TestEvaluateAccuracy(unittest.TestCase):
         r = self.p.predict(when_data=x_te)
 
         for y_hat, r in zip(r._data[target], r._transaction.lmd['conformal_ranges']):
-            print(f"[{r[0]} -- {y_hat} -- {r[1]}]")
             self.assertTrue(r[0] <= y_hat <= r[1])
 
 
