@@ -27,7 +27,7 @@ jobs:
     - name: Run tests
       run: |
           cd tests/unit_tests/
-          pytest --run-slow
+          pytest --run-slow --durations=20
       shell: bash
 
   deploy:
