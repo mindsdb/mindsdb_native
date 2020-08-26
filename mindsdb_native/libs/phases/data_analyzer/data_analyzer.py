@@ -331,7 +331,7 @@ class DataAnalyzer(BaseModule):
                     for item in col_data:
                         arr = [x.strip() for x in item.split(delimiter)]
                         stats_v2[col_name]['tag_hist'].update(arr)
-                    stats_v2[col_name]['guess_probability'] = np.mean((v / len(col_data))**2 for v in stats_v2[col_name]['tag_hist'].values())
+                    stats_v2[col_name]['guess_probability'] = np.mean([(v / len(col_data))**2 for v in stats_v2[col_name]['tag_hist'].values()])
                     stats_v2[col_name]['balanced_guess_probability'] = 0.5
                 else:
                     stats_v2[col_name]['guess_probability'] = sum((k / len(col_data))**2 for k in histogram['y'])
