@@ -217,7 +217,10 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
         #                             Counter({w: 3, e: 4})
         #                             S = entropy[3, 4]
         #                             randomness = S / np.log(2) <----- 2 unique values at this index
-        
+        #
+        # Scaling entropy by np.log(num_of_unique_values) produces a number in range [0, 1]
+        #
+
         if all_same_length and len(data) == len(set(data)):
             str_data = [str(x) for x in data]
             
