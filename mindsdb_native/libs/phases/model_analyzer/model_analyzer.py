@@ -139,6 +139,7 @@ class ModelAnalyzer(BaseModule):
             enc = OneHotEncoder(sparse=False)
             enc.fit(y.values.reshape(-1, 1))
             fit_params['one_hot_enc'] = enc
+            self.transaction.lmd['label_encoder'] = enc
 
             adapter = ConformalClassifierAdapter
             nc_function = MarginErrFunc()  # better than IPS as we'd need the complete distribution over all classes
@@ -159,8 +160,3 @@ class ModelAnalyzer(BaseModule):
         X = self.transaction.input_data.test_df.copy(deep=True)
         y = X.pop(target).astype(int) if is_classification else X.pop(target)
         self.transaction.icp.calibrate(X.values, y.values)
-
-        # prediction ranges for validation set
-        # TODO: This should be moved
-        X = self.transaction.input_data.validation_df.copy(deep=True)
-        self.transaction.lmd['conformal_ranges'] = self.transaction.icp.predict(X.values, significance=0.05)

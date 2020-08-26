@@ -344,6 +344,7 @@ class Predictor:
             light_transaction_metadata = dict(
                 name = self.name,
                 type = transaction_type,
+                icp = self.transaction.icp,
                 use_gpu = use_gpu,
                 data_preparation = {},
                 run_confidence_variation_analysis = run_confidence_variation_analysis,
