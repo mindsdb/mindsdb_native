@@ -34,6 +34,7 @@ jobs:
           docker-compose -d
           pytest --run-integration tests/integration_tests
           docker-compose down
+        fi
       shell: bash
 
   deploy:
