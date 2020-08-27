@@ -6,6 +6,7 @@ from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAda
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 
 import numpy as np
+from copy import deepcopy
 from sklearn.preprocessing import OneHotEncoder
 from nonconformist.icp import IcpRegressor, IcpClassifier
 from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, MarginErrFunc
@@ -159,7 +160,7 @@ class ModelAnalyzer(BaseModule):
         self.transaction.icp.fit(X.values, y.values)
 
         # calibrate conformal estimator on test set
-        X = self.transaction.input_data.test_df.copy(deep=True)
+        X = deepcopy(self.transaction.input_data.test_df)
         y = X.pop(target).values
         if is_classification:
             if isinstance(enc.categories_[0][0], str):

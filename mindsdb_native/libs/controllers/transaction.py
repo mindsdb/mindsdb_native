@@ -282,7 +282,7 @@ class PredictTransaction(Transaction):
 
                     output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
 
-            X = self.input_data.data_frame.copy(deep=True)
+            X = deepcopy(self.input_data.data_frame)
             for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                 X.pop(col)
 
