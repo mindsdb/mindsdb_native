@@ -11,8 +11,9 @@ from mindsdb_native.config import CONFIG
 import _thread
 import traceback
 import importlib
-import pickle
 import datetime
+import pickle
+import dill
 import sys
 from copy import deepcopy
 import pandas as pd
@@ -74,6 +75,16 @@ class Transaction:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb heavy metadata in the file: {fn}')
 
+        icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_icp.pickle')
+        try:
+            with open(icp_fn, 'rb') as fp:
+                self.hmd['icp'] = dill.load(fp)
+                # restore MDB predictor in ICP object
+                self.hmd['icp'].nc_function.model.model = self.session.transaction.model_backend.predictor
+        except Exception as e:
+            self.log.error(e)
+            self.log.error(f'Could not load mindsdb conformal predictor in the file: {icp_fn}')
+
     def save_metadata(self):
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'] + '_light_model_metadata.pickle')
         self.lmd['updated_at'] = str(datetime.datetime.now())
@@ -86,7 +97,7 @@ class Transaction:
 
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_heavy_model_metadata.pickle')
         save_hmd = {}
-        null_out_fields = ['from_data']
+        null_out_fields = ['from_data', 'icp']
         for k in null_out_fields:
             save_hmd[k] = None
 
@@ -103,6 +114,20 @@ class Transaction:
         except Exception as e:
             self.log.error(e)
             self.log.error(f'Could not save mindsdb heavy metadata in the file: {fn}')
+
+        if 'icp' in self.hmd.keys():
+            icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_icp.pickle')
+            try:
+                with open(icp_fn, 'wb') as fp:
+                    mdb_predictor = self.hmd['icp'].nc_function.model.model
+                    self.hmd['icp'].nc_function.model.last_x = None
+                    self.hmd['icp'].nc_function.model.last_y = None
+                    self.hmd['icp'].nc_function.model.model = None  # avoid duplicate when saving
+                    dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
+                    self.hmd['icp'].nc_function.model.model = mdb_predictor  # restore model
+            except Exception as e:
+                self.log.error(e)
+                self.log.error(f'Could not save mindsdb conformal predictor in the file: {icp_fn}')
 
     def _call_phase_module(self, module_name, **kwargs):
         """
@@ -286,7 +311,7 @@ class PredictTransaction(Transaction):
             for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                 X.pop(col)
 
-            self.lmd['conformal_ranges'] = self.lmd['icp'].predict(X.values, significance=0.05)
+            self.lmd['conformal_ranges'] = self.hmd['icp'].predict(X.values, significance=0.05)
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)

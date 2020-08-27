@@ -156,8 +156,8 @@ class ModelAnalyzer(BaseModule):
 
         model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
         nc = nc_class(model, nc_function)
-        self.transaction.icp = icp_class(nc)
-        self.transaction.icp.fit(X.values, y.values)
+        self.transaction.hmd['icp'] = icp_class(nc)
+        self.transaction.hmd['icp'].fit(X.values, y.values)
 
         # calibrate conformal estimator on test set
         X = deepcopy(self.transaction.input_data.test_df)
@@ -168,4 +168,4 @@ class ModelAnalyzer(BaseModule):
                 y = np.array([cats.index(i) for i in y])
             y = y.astype(int)
 
-        self.transaction.icp.calibrate(X.values, y)
+        self.transaction.hmd['icp'].calibrate(X.values, y)

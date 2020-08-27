@@ -337,6 +337,7 @@ class Predictor:
                 _, _, disable_lightwood_transform_cache = _get_memory_optimizations(when_ds.df)
             heavy_transaction_metadata['when'] = when
             heavy_transaction_metadata['name'] = self.name
+            heavy_transaction_metadata['icp'] = self.transaction.hmd['icp']
 
             if backend is not None:
                 heavy_transaction_metadata['model_backend'] = backend
@@ -344,7 +345,6 @@ class Predictor:
             light_transaction_metadata = dict(
                 name = self.name,
                 type = transaction_type,
-                icp = self.transaction.icp,
                 use_gpu = use_gpu,
                 data_preparation = {},
                 run_confidence_variation_analysis = run_confidence_variation_analysis,
