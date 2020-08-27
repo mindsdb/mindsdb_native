@@ -16,8 +16,8 @@ class ConformalRegressorAdapter(RegressorAdapter):
         super(ConformalRegressorAdapter, self).__init__(model, fit_params)
         self.mdb_pred = model
         self.target = fit_params['target']
-        self.columns = set(fit_params['all_columns'])   # including target
-        self.ignore_columns = set(fit_params['columns_to_ignore'])
+        self.columns = fit_params['all_columns']
+        self.ignore_columns = fit_params['columns_to_ignore']
 
     def fit(self, x, y):
         """
@@ -31,17 +31,14 @@ class ConformalRegressorAdapter(RegressorAdapter):
     def predict(self, x):
         """
         :param x: numpy.array, shape (n_train, n_features). Raw data for predicting outputs.
+        n_features = (|all_cols| - |ignored| - |target|)
 
         :return: output compatible with nonconformity function. For default
         ones, this should a numpy.array of shape (n_test) with predicted values
         """
         cols = copy.deepcopy(self.columns)
-        if x.shape[-1] == len(cols) - 1:
-            cols.remove(self.target)
-        elif x.shape[-1] < len(cols) - 1:
-            cols = cols - self.ignore_columns
-            if x.shape[-1] == len(cols) - 1:
-                cols.remove(self.target)
+        for col in [self.target] + self.ignore_columns:
+            cols.remove(col)
         x = _df_from_x(x, cols)
         predictions = self.mdb_pred.predict(when_data=x)
         ys = np.array(predictions[self.target]['predictions'])

@@ -283,6 +283,9 @@ class PredictTransaction(Transaction):
                     output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
 
             X = self.input_data.data_frame.copy(deep=True)
+            for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
+                X.pop(col)
+
             self.lmd['conformal_ranges'] = self.lmd['icp'].predict(X.values, significance=0.05)
 
             if mode == 'predict':
