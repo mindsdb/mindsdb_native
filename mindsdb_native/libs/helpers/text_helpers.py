@@ -14,7 +14,8 @@ from collections import Counter, defaultdict
 import string
 import json
 import hashlib
-import numpy
+import numpy as np
+import scipy.stats as st
 import flair
 import langdetect
 from lightwood.helpers.text import tokenize_text
@@ -93,7 +94,7 @@ def clean_float(val):
     if isinstance(val, (int, float)):
         return float(val)
 
-    if isinstance(val, numpy.float64):
+    if isinstance(val, np.float64):
         return val
 
     val = str(val).strip(' ')
@@ -142,37 +143,58 @@ def splitRecursive(word, tokens):
 
 def hashtext(cell):
     text = json.dumps(cell)
-    hash = hashlib.md5(text.encode('utf8')).hexdigest()
-    return hash
+    return hashlib.md5(text.encode('utf8')).hexdigest()
+
+
+def _is_foreign_key_name(name):
+    for endings in ['-id', '_id', 'ID', 'Id']:
+        if name.endswith(endings):
+            return True
+
+    for keyword in ['account', 'uuid', 'identifier', 'user']:
+        if keyword in name:
+            return True
+
+    for keyword in ['id']:
+        if keyword == name:
+            return True
+
+    return False
+
+
+def isascii(string):
+    """
+    Used instead of str.isascii because python 3.6 doesn't have that
+    """
+    return all(ord(c) < 128 for c in string)
 
 
 def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
-    foregin_key_type = DATA_SUBTYPES.INT in other_potential_subtypes or DATA_SUBTYPES.INT == data_subtype
+    data = list(data)
 
-    data_looks_like_id = True
+    foregin_key_type = DATA_SUBTYPES.INT in [*other_potential_subtypes, data_subtype]
 
     # Detect UUID
-    if not foregin_key_type:
-        prev_val_length = None
-        for val in data:
-            is_uuid = True
-            is_same_length = True
+    if foregin_key_type:
+        is_uuid = False
+    else:
+        all_same_length = all(len(str(data[0])) == len(str(x)) for x in data)
+        uuid_charset = set('0123456789abcdefABCDEF-')
+        all_uuid_charset = all(set(str(x)).issubset(uuid_charset) for x in data)
+        is_uuid = all_uuid_charset and all_same_length
 
-            uuid_charset = set('0123456789abcdef-')
-            set(str(val)).issubset(uuid_charset)
+        if all_same_length and len(data) == len(set(data)):
+            str_data = [str(x) for x in data]
+            
+            randomness_per_index = []
+            for i, _ in enumerate(str_data[0]):
+                N = len(set(x[i] for x in str_data))
+                S = st.entropy([*Counter(x[i] for x in str_data).values()])
+                randomness_per_index.append(S / np.log(N))
 
-            if prev_val_length is None:
-                prev_val_length = len(str(val))
-            elif len(str(val)) != prev_val_length:
-                is_same_length = False
+            if np.mean(randomness_per_index) > 0.95:
+                return True
 
-            prev_val_length = len(str(val))
-
-            if not (is_uuid and is_same_length):
-                data_looks_like_id = False
-                break
-
-    tiny_and_distinct = False
     '''
     tiny_and_distinct = True
     for val in data:
@@ -183,16 +205,13 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
     if len(list(set(data))) + 1 < len(data):
         tiny_and_distinct = False
     '''
+    tiny_and_distinct = False
 
-    foreign_key_name = False
-    for endings in ['-id', '_id', 'ID', 'Id']:
-        if column_name.endswith(endings):
-            foreign_key_name = True
-    for keyword in ['account', 'uuid', 'identifier', 'user']:
-        if keyword in column_name:
-            foreign_key_name = True
-    for name in ['id']:
-        if name == column_name:
-            foreign_key_name = True
+    if _is_foreign_key_name(column_name):
+        if foregin_key_type or is_uuid:
+            return True
 
-    return (foreign_key_name and (foregin_key_type or data_looks_like_id)) or (DATA_SUBTYPES.INT == data_subtype and tiny_and_distinct)
+    if DATA_SUBTYPES.INT == data_subtype and tiny_and_distinct:
+        return True
+
+    return False
