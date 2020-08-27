@@ -132,8 +132,10 @@ class ModelAnalyzer(BaseModule):
         data_type = self.transaction.lmd['stats_v2'][self.transaction.lmd['predict_columns'][0]]['typing']['data_type']
         is_classification = data_type == DATA_TYPES.CATEGORICAL
 
-        fit_params = {'target': target,                               # TODO: what if n_target > 1?
-                      'columns': self.transaction.lmd['columns']}
+        # TODO: what if n_target > 1?
+        fit_params = {'target': target,
+                      'all_columns': self.transaction.lmd['columns'],
+                      'columns_to_ignore': self.transaction.lmd['columns_to_ignore']}
 
         if is_classification:
             enc = OneHotEncoder(sparse=False)
@@ -158,5 +160,11 @@ class ModelAnalyzer(BaseModule):
 
         # calibrate conformal estimator on test set
         X = self.transaction.input_data.test_df.copy(deep=True)
-        y = X.pop(target).astype(int) if is_classification else X.pop(target)
-        self.transaction.icp.calibrate(X.values, y.values)
+        y = X.pop(target).values
+        if is_classification:
+            if isinstance(enc.categories_[0][0], str):
+                cats = enc.categories_[0].tolist()
+                y = np.array([cats.index(i) for i in y])
+            y = y.astype(int)
+
+        self.transaction.icp.calibrate(X.values, y)
