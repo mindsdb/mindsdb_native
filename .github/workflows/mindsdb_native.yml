@@ -31,7 +31,7 @@ jobs:
     - name: Run integration tests
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
-          docker-compose -d
+          docker-compose up -d 
           pytest --run-integration tests/integration_tests
           docker-compose down
         fi
