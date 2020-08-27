@@ -14,7 +14,6 @@ def _df_from_x(x, columns):
 class ConformalRegressorAdapter(RegressorAdapter):
     def __init__(self, model, fit_params=None):
         super(ConformalRegressorAdapter, self).__init__(model, fit_params)
-        self.mdb_pred = model
         self.target = fit_params['target']
         self.columns = fit_params['all_columns']
         self.ignore_columns = fit_params['columns_to_ignore']
@@ -40,7 +39,7 @@ class ConformalRegressorAdapter(RegressorAdapter):
         for col in [self.target] + self.ignore_columns:
             cols.remove(col)
         x = _df_from_x(x, cols)
-        predictions = self.mdb_pred.predict(when_data=x)
+        predictions = self.model.predict(when_data=x)
         ys = np.array(predictions[self.target]['predictions'])
         return ys
 
@@ -48,7 +47,6 @@ class ConformalRegressorAdapter(RegressorAdapter):
 class ConformalClassifierAdapter(ClassifierAdapter):
     def __init__(self, model, fit_params=None):
         super(ConformalClassifierAdapter, self).__init__(model, fit_params)
-        self.mdb_pred = model
         self.target = fit_params['target']
         self.columns = fit_params['all_columns']
         self.ignore_columns = fit_params['columns_to_ignore']
@@ -75,7 +73,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         for col in [self.target] + self.ignore_columns:
             cols.remove(col)
         x = _df_from_x(x, cols)
-        predictions = self.mdb_pred.predict(when_data=x)
+        predictions = self.model.predict(when_data=x)
         ys = np.array(predictions[self.target]['predictions'])
         ys = self.fit_params['one_hot_enc'].transform(ys.reshape(-1, 1))  # ideally, complete class distribution here
         return ys
