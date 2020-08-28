@@ -138,6 +138,8 @@ class ModelAnalyzer(BaseModule):
                       'all_columns': self.transaction.lmd['columns'],
                       'columns_to_ignore': self.transaction.lmd['columns_to_ignore']}
 
+        self.transaction.lmd['stats_v2']['train_std_dev'] = self.transaction.input_data.train_df[target].std()
+
         if is_classification:
             enc = OneHotEncoder(sparse=False)
             enc.fit(y.values.reshape(-1, 1))

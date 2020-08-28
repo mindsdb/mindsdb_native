@@ -17,6 +17,7 @@ import dill
 import sys
 from copy import deepcopy
 import pandas as pd
+import numpy as np
 
 
 class Transaction:
@@ -311,7 +312,23 @@ class PredictTransaction(Transaction):
             for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                 X.pop(col)
 
-            self.lmd['conformal_ranges'] = self.hmd['icp'].predict(X.values, significance=0.05)
+            # confidence estimation
+            self.lmd['all_conformal_ranges'] = self.hmd['icp'].predict(X.values)
+            self.lmd['icp_confidence'] = np.zeros((self.input_data.data_frame[column].shape[0]))
+            self.lmd['final_icp_range'] = np.zeros((self.input_data.data_frame[column].shape[0], 2))
+
+            tolerance_constant = 2  # std devs
+            tolerance = self.lmd['stats_v2']['train_std_dev'] * tolerance_constant
+
+            for sample_idx in range(self.lmd['all_conformal_ranges'].shape[0]):
+                sample = self.lmd['all_conformal_ranges'][sample_idx, :, :]
+                for idx in range(sample.shape[1]):
+                    significance = (99 - idx) / 100
+                    diff = sample[1, idx] - sample[0, idx]
+                    if diff <= tolerance:
+                        self.lmd['icp_confidence'][sample_idx] = significance
+                        self.lmd['final_icp_range'][sample_idx, :] = sample[:, idx]
+                        break
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
