@@ -44,7 +44,7 @@ class ModelAnalyzer(BaseModule):
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     encoder = self.transaction.model_backend.predictor._mixer.encoders[col]
-                    if balanced_accuracy_score(encoder.encode(reals), encoder.encode(preds)) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
+                    if balanced_accuracy_score(encoder.encode(reals).argmax(axis=1), encoder.encode(preds).argmax(axis=1)) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
                         fails = True
                 else:
                     if balanced_accuracy_score(reals, preds) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
