@@ -183,9 +183,22 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
         all_uuid_charset = all(set(str(x)).issubset(uuid_charset) for x in data)
         is_uuid = all_uuid_charset and all_same_length
 
-        if all_same_length and len(data) == len(set(data)):
-            str_data = [str(x) for x in data]
-            
+        str_data = [str(x) for x in data]
+
+        unique_str_data = set(str_data)
+
+        # If >= 85% of data are unique strings
+        if len(unique_str_data) / len(str_data) >= 0.85:
+
+            for x in str_data:
+                if ' ' in x:
+                    break
+
+            # If data doesn't contain spaces
+            else:
+                return True
+
+        if all_same_length and len(data) == len(unique_str_data):            
             randomness_per_index = []
             for i, _ in enumerate(str_data[0]):
                 N = len(set(x[i] for x in str_data))
