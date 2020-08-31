@@ -4,7 +4,7 @@ from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 from mindsdb_native.libs.data_types.mindsdb_logger import log
-from sklearn.metrics import accuracy_score, r2_score
+from sklearn.metrics import balanced_accuracy_score, r2_score
 
 import pandas as pd
 import numpy as np
@@ -44,10 +44,10 @@ class ModelAnalyzer(BaseModule):
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     encoder = self.transaction.model_backend.predictor._mixer.encoders[col]
-                    if accuracy_score(encoder.encode(reals), encoder.encode(preds)) <= self.transaction.lmd['stats_v2'][col]['guess_probability']:
+                    if balanced_accuracy_score(encoder.encode(reals).argmax(axis=1), encoder.encode(preds).argmax(axis=1)) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
                         fails = True
                 else:
-                    if accuracy_score(reals, preds) <= self.transaction.lmd['stats_v2'][col]['guess_probability']:
+                    if balanced_accuracy_score(reals, preds) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
                         fails = True
             elif data_type == DATA_TYPES.NUMERIC:
                 if r2_score(reals, preds) < 0:
