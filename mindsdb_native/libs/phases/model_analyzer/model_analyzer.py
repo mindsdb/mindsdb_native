@@ -138,7 +138,9 @@ class ModelAnalyzer(BaseModule):
                       'all_columns': self.transaction.lmd['columns'],
                       'columns_to_ignore': self.transaction.lmd['columns_to_ignore']}
 
-        self.transaction.lmd['stats_v2']['train_std_dev'] = self.transaction.input_data.train_df[target].std()
+        if not is_classification:
+            self.transaction.lmd['stats_v2']['train_std_dev'] = self.transaction.input_data.train_df[target].std()
+
 
         if is_classification:
             enc = OneHotEncoder(sparse=False)
@@ -158,7 +160,10 @@ class ModelAnalyzer(BaseModule):
 
         model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
         nc = nc_class(model, nc_function)
-        self.transaction.hmd['icp'] = icp_class(nc)
+        if is_classification:
+            self.transaction.hmd['icp'] = icp_class(nc, smoothing=False) # ?
+        else:
+            self.transaction.hmd['icp'] = icp_class(nc)
         self.transaction.hmd['icp'].fit(X.values, y.values)
 
         # calibrate conformal estimator on test set

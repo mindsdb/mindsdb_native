@@ -313,27 +313,51 @@ class PredictTransaction(Transaction):
                 X.pop(col)
 
             # confidence estimation
-            self.lmd['all_conformal_ranges'] = self.hmd['icp'].predict(X.values)
             self.lmd['icp_confidence'] = np.zeros((self.input_data.data_frame[column].shape[0]))
-            self.lmd['final_icp_range'] = np.zeros((self.input_data.data_frame[column].shape[0], 2))
 
-            tol_const = 2  # std devs
-            tolerance = self.lmd['stats_v2']['train_std_dev'] * tol_const
+            # regression
+            if self.lmd['stats_v2'].get('train_std_dev'):
+                tol_const = 2  # std devs
+                tolerance = self.lmd['stats_v2']['train_std_dev'] * tol_const
+                self.lmd['all_conformal_ranges'] = self.hmd['icp'].predict(X.values)
+                self.lmd['final_icp_range'] = np.zeros((self.input_data.data_frame[column].shape[0], 2))
 
-            for sample_idx in range(self.lmd['all_conformal_ranges'].shape[0]):
-                sample = self.lmd['all_conformal_ranges'][sample_idx, :, :]
-                for idx in range(sample.shape[1]):
-                    significance = (99 - idx) / 100
-                    diff = sample[1, idx] - sample[0, idx]
-                    if diff <= tolerance:
-                        self.lmd['icp_confidence'][sample_idx] = significance
-                        self.lmd['final_icp_range'][sample_idx, :] = sample[:, idx]
-                        break
-                else:
-                    self.lmd['icp_confidence'][sample_idx] = 0.9901  # default
-                    bounds = sample[:, 0]
-                    sigma = (bounds[1] - bounds[0])/2
-                    self.lmd['final_icp_range'][sample_idx, :] = [bounds[0] - sigma, bounds[1] + sigma]
+                for sample_idx in range(self.lmd['all_conformal_ranges'].shape[0]):
+                    sample = self.lmd['all_conformal_ranges'][sample_idx, :, :]
+                    for idx in range(sample.shape[1]):
+                        significance = (99 - idx) / 100
+                        diff = sample[1, idx] - sample[0, idx]
+                        if diff <= tolerance:
+                            self.lmd['icp_confidence'][sample_idx] = significance
+                            self.lmd['final_icp_range'][sample_idx, :] = sample[:, idx]
+                            break
+                    else:
+                        self.lmd['icp_confidence'][sample_idx] = 0.9901  # default
+                        bounds = sample[:, 0]
+                        sigma = (bounds[1] - bounds[0])/2
+                        self.lmd['final_icp_range'][sample_idx, :] = [bounds[0] - sigma, bounds[1] + sigma]
+
+            # classification
+            else:
+                all_ranges = np.array([self.hmd['icp'].predict(X.values, significance=s/100) for s in range(1, 100)])
+                self.lmd['all_conformal_ranges'] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+                final_ranges = []
+
+                for sample_idx in range(self.lmd['all_conformal_ranges'].shape[0]):
+                    sample = self.lmd['all_conformal_ranges'][sample_idx, :, :]
+                    for idx in range(sample.shape[1]):
+                        significance = (99 - idx) / 100
+                        if np.sum(sample[:, idx]) == 1:
+                            self.lmd['icp_confidence'][sample_idx] = significance
+                            final_ranges.append(sample[:, idx])
+                            break
+                    else:
+                        self.lmd['icp_confidence'][sample_idx] = 0.9901  # default
+                        final_ranges.append(sample[:, 0])
+
+                self.lmd['final_icp_range'] = np.zeros((self.input_data.data_frame[column].shape[0], final_ranges[0].shape[0]))
+                for i in range(self.input_data.data_frame[column].shape[0]):
+                    self.lmd['final_icp_range'][i, :] = final_ranges[i]
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
