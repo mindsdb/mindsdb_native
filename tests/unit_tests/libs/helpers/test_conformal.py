@@ -21,6 +21,10 @@ class TestEvaluateAccuracy(unittest.TestCase):
         return x
 
     def test_regressor(self):
+        """
+        Sanity check. Passes if point predictions of MindsDB fall within the range
+        of predicted values by the Inductive Conformal Predictor.
+        """
         X, y = load_boston(return_X_y=True)
         X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.1, random_state=5)
         target = 'medv'
@@ -32,10 +36,14 @@ class TestEvaluateAccuracy(unittest.TestCase):
         x_te = self._df_from_xy(X_test, Y_test, target)
         r = self.p.predict(when_data=x_te)
 
-        for y_hat, r in zip(r._data[target], r._transaction.lmd['conformal_ranges']):
+        for y_hat, r in zip(r._data[target], r._transaction.lmd['final_icp_range']):
             self.assertTrue(r[0] <= y_hat <= r[1])
 
     def test_classifier(self):
+        """
+        Sanity check. Passes if point class predictions of MindsDB fall within the range
+        of predicted classes by the Inductive Conformal Predictor.
+        """
         X, y = load_iris(return_X_y=True)
         X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.1, random_state=5)
         target = 'target'
@@ -47,10 +55,14 @@ class TestEvaluateAccuracy(unittest.TestCase):
         x_te = self._df_from_xy(X_test, Y_test, target)
         r = self.p.predict(when_data=x_te)
 
-        for y_hat, r in zip(r._data[target], r._transaction.lmd['conformal_ranges']):
-            self.assertTrue(r[int(y_hat)])
+        for y_hat, pr in zip(r._data[target], r._transaction.lmd['final_icp_range']):
+            self.assertTrue(pr[int(y_hat)])
 
     def test_home_rentals(self):
+        """
+        Sanity check. Passes if point predictions of MindsDB fall within the range
+        of predicted values by the Inductive Conformal Predictor.
+        """
         df = pd.read_csv("https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv")
         x_tr, x_te = train_test_split(df, test_size=0.1)
         target = 'rental_price'
@@ -62,7 +74,7 @@ class TestEvaluateAccuracy(unittest.TestCase):
         x_te = self._df_from_x(x_te, columns=df.columns)
         r = self.p.predict(when_data=x_te)
 
-        for y_hat, r in zip(r._data[target], r._transaction.lmd['conformal_ranges']):
+        for y_hat, r in zip(r._data[target], r._transaction.lmd['final_icp_range']):
             self.assertTrue(r[0] <= y_hat <= r[1])
 
 
