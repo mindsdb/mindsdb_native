@@ -317,8 +317,8 @@ class PredictTransaction(Transaction):
             self.lmd['icp_confidence'] = np.zeros((self.input_data.data_frame[column].shape[0]))
             self.lmd['final_icp_range'] = np.zeros((self.input_data.data_frame[column].shape[0], 2))
 
-            tolerance_constant = 2  # std devs
-            tolerance = self.lmd['stats_v2']['train_std_dev'] * tolerance_constant
+            tol_const = 2  # std devs
+            tolerance = self.lmd['stats_v2']['train_std_dev'] * tol_const
 
             for sample_idx in range(self.lmd['all_conformal_ranges'].shape[0]):
                 sample = self.lmd['all_conformal_ranges'][sample_idx, :, :]
@@ -329,6 +329,11 @@ class PredictTransaction(Transaction):
                         self.lmd['icp_confidence'][sample_idx] = significance
                         self.lmd['final_icp_range'][sample_idx, :] = sample[:, idx]
                         break
+                else:
+                    self.lmd['icp_confidence'][sample_idx] = 0.9901  # default
+                    bounds = sample[:, 0]
+                    sigma = (bounds[1] - bounds[0])/2
+                    self.lmd['final_icp_range'][sample_idx, :] = [bounds[0] - sigma, bounds[1] + sigma]
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
