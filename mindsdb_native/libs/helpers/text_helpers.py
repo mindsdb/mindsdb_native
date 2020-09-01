@@ -169,7 +169,7 @@ def isascii(string):
     return all(ord(c) < 128 for c in string)
 
 
-def is_identifier(data, column_name, data_subtype, other_potential_subtypes):
+def get_identifier_description(data, column_name, data_subtype, other_potential_subtypes):
     data = list(data)
 
     foregin_key_type = DATA_SUBTYPES.INT in [*other_potential_subtypes, data_subtype]
@@ -231,7 +231,7 @@ def is_identifier(data, column_name, data_subtype, other_potential_subtypes):
                 randomness_per_index.append(S / np.log(N))
 
             if np.mean(randomness_per_index) > 0.95:
-                return True
+                return 'Hash-like identifier'
 
     '''
     tiny_and_distinct = True
@@ -246,10 +246,13 @@ def is_identifier(data, column_name, data_subtype, other_potential_subtypes):
     tiny_and_distinct = False
 
     if _is_foreign_key_name(column_name):
-        if foregin_key_type or is_uuid:
-            return True
+        if foregin_key_type:
+            return 'Identifier'
+
+        if is_uuid:
+            return 'UUID'
 
     if DATA_SUBTYPES.INT == data_subtype and tiny_and_distinct:
-        return True
+        return 'Identifier'
 
-    return False
+    return None
