@@ -137,9 +137,6 @@ class ModelAnalyzer(BaseModule):
                       'all_columns': self.transaction.lmd['columns'],
                       'columns_to_ignore': self.transaction.lmd['columns_to_ignore']}
 
-        if not is_classification:
-            self.transaction.lmd['stats_v2']['train_std_dev'] = self.transaction.input_data.train_df[target].std()
-
         if is_classification:
             all_targets = [elt[1][target].values for elt in inspect.getmembers(self.transaction.input_data)
                            if elt[0] in {'test_df', 'train_df', 'validation_df'}]
@@ -154,6 +151,7 @@ class ModelAnalyzer(BaseModule):
             nc_class = ClassifierNc
             icp_class = IcpClassifier
         else:
+            self.transaction.lmd['stats_v2']['train_std_dev'] = self.transaction.input_data.train_df[target].std()
             adapter = ConformalRegressorAdapter
             nc_function = AbsErrorErrFunc()
             nc_class = RegressorNc
@@ -162,11 +160,11 @@ class ModelAnalyzer(BaseModule):
         model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
         nc = nc_class(model, nc_function)
         if is_classification:
-            self.transaction.hmd['icp'] = icp_class(nc, smoothing=False) # ?
+            self.transaction.hmd['icp'] = icp_class(nc, smoothing=False)
         else:
             self.transaction.hmd['icp'] = icp_class(nc)
 
-        X = self.transaction.input_data.train_df.copy(deep=True)
+        X = deepcopy(self.transaction.input_data.train_df)
         y = X.pop(target)
         self.transaction.hmd['icp'].fit(X.values, y.values)
 

@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import copy
 
+
 def _df_from_x(x, columns):
     x = pd.DataFrame(x)
     x.columns = columns
@@ -23,7 +24,8 @@ class ConformalRegressorAdapter(RegressorAdapter):
         :param x: numpy.array, shape (n_train, n_features)
         :param y: numpy.array, shape (n_train)
         We omit implementing this method as the Conformal Estimator is called once
-        the MindsDB mixer has already been trained.
+        the MindsDB mixer has already been trained. However, it has to be called to
+        setup some things in the nonconformist backend.
         """
         pass
 
@@ -56,7 +58,8 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         :param x: numpy.array, shape (n_train, n_features)
         :param y: numpy.array, shape (n_train)
         We omit implementing this method as the Conformal Estimator is called once
-        the MindsDB mixer has already been trained.
+        the MindsDB mixer has already been trained. However, it has to be called to
+        setup some things in the nonconformist backend.
         """
         pass
 

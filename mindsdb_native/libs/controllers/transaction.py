@@ -120,12 +120,13 @@ class Transaction:
             icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_icp.pickle')
             try:
                 with open(icp_fn, 'wb') as fp:
+                    # clear data cache and predictor (avoids duplicate saving)
                     mdb_predictor = self.hmd['icp'].nc_function.model.model
+                    self.hmd['icp'].nc_function.model.model = None
                     self.hmd['icp'].nc_function.model.last_x = None
                     self.hmd['icp'].nc_function.model.last_y = None
-                    self.hmd['icp'].nc_function.model.model = None  # avoid duplicate when saving
                     dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
-                    self.hmd['icp'].nc_function.model.model = mdb_predictor  # restore model
+                    self.hmd['icp'].nc_function.model.model = mdb_predictor  # restore predictor
             except Exception as e:
                 self.log.error(e)
                 self.log.error(f'Could not save mindsdb conformal predictor in the file: {icp_fn}')
@@ -308,12 +309,11 @@ class PredictTransaction(Transaction):
 
                     output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
 
+            # confidence estimation
+            self.lmd['icp_confidence'] = np.zeros((self.input_data.data_frame[column].shape[0]))
             X = deepcopy(self.input_data.data_frame)
             for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                 X.pop(col)
-
-            # confidence estimation
-            self.lmd['icp_confidence'] = np.zeros((self.input_data.data_frame[column].shape[0]))
 
             # regression
             if not self.lmd['stats_v2']['is_classification']:
