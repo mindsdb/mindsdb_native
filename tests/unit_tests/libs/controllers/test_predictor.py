@@ -168,10 +168,12 @@ class TestPredictor:
         })
 
         predictor = Predictor(name='test')
-        predictor.learn(from_data=input_dataframe,
-                        to_predict='y',
-                        stop_training_in_x_seconds=1,
-                        use_gpu=False)
+        predictor.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False
+        )
 
         transaction = predictor.transaction
 
@@ -181,11 +183,13 @@ class TestPredictor:
         assert 'numeric_id' in transaction.lmd['columns_to_ignore']
 
         predictor = Predictor(name='test')
-        predictor.learn(from_data=input_dataframe,
-                        to_predict='y',
-                        stop_training_in_x_seconds=1,
-                        advanced_args={'handle_foreign_keys': False},
-                        use_gpu=False)
+        predictor.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            advanced_args={'force_column_usage': ['numeric_id']},
+            use_gpu=False
+        )
 
         transaction = predictor.transaction
 

@@ -46,7 +46,8 @@ class TestTypeDeductor:
     def test_type_deduction(self, transaction, lmd):
         """Tests that basic cases of type deduction work correctly"""
         hmd = transaction.hmd
-        lmd['handle_foreign_keys'] = True
+        lmd['force_column_usage'] = []
+        lmd['force_column_usage'] = []
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
 
@@ -98,7 +99,7 @@ class TestTypeDeductor:
         """Tests that basic cases of type deduction work correctly"""
         hmd = transaction.hmd
 
-        lmd['handle_foreign_keys'] = True
+        lmd['force_column_usage'] = []
 
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
@@ -122,7 +123,7 @@ class TestTypeDeductor:
         assert 'uuid' in lmd['columns_to_ignore']
 
     def test_empty_values(self, transaction, lmd):
-        lmd['handle_foreign_keys'] = True
+        lmd['force_column_usage'] = []
         type_deductor = TypeDeductor(session=transaction.session,
                                     transaction=transaction)
 
@@ -142,7 +143,7 @@ class TestTypeDeductor:
         assert stats_v2['numeric_float']['typing']['data_subtype_dist'][DATA_SUBTYPES.FLOAT] == 50
 
     def test_type_mix(self, transaction, lmd):
-        lmd['handle_foreign_keys'] = True
+        lmd['force_column_usage'] = []
         type_deductor = TypeDeductor(session=transaction.session,
                                      transaction=transaction)
 
@@ -163,7 +164,7 @@ class TestTypeDeductor:
 
     def test_sample(self, transaction, lmd):
         lmd['sample_settings']['sample_for_analysis'] = True
-        lmd['handle_foreign_keys'] = True
+        lmd['force_column_usage'] = []
         transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
 
         type_deductor = TypeDeductor(session=transaction.session,
@@ -197,7 +198,7 @@ class TestTypeDeductor:
         lmd['sample_settings']['sample_for_analysis'] = True
         lmd['sample_settings']['sample_margin_of_error'] = 0.95
         lmd['sample_settings']['sample_confidence_level'] = 0.05
-        lmd['handle_foreign_keys'] = True
+        lmd['force_column_usage'] = []
         transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
 
         type_deductor = TypeDeductor(session=transaction.session,
