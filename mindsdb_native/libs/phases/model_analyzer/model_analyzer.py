@@ -5,6 +5,7 @@ from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 
+import inspect
 import numpy as np
 from copy import deepcopy
 from sklearn.preprocessing import OneHotEncoder
@@ -127,13 +128,11 @@ class ModelAnalyzer(BaseModule):
 
         # conformal prediction confidence estimation
         target = self.transaction.lmd['predict_columns'][0]
-        X = self.transaction.input_data.train_df.copy(deep=True)
-        y = X.pop(target)
 
         data_type = self.transaction.lmd['stats_v2'][self.transaction.lmd['predict_columns'][0]]['typing']['data_type']
         is_classification = data_type == DATA_TYPES.CATEGORICAL
+        self.transaction.lmd['stats_v2']['is_classification'] = is_classification
 
-        # TODO: what if n_target > 1?
         fit_params = {'target': target,
                       'all_columns': self.transaction.lmd['columns'],
                       'columns_to_ignore': self.transaction.lmd['columns_to_ignore']}
@@ -141,10 +140,12 @@ class ModelAnalyzer(BaseModule):
         if not is_classification:
             self.transaction.lmd['stats_v2']['train_std_dev'] = self.transaction.input_data.train_df[target].std()
 
-
         if is_classification:
+            all_targets = [elt[1][target].values for elt in inspect.getmembers(self.transaction.input_data)
+                           if elt[0] in {'test_df', 'train_df', 'validation_df'}]
+            all_classes = np.unique(np.concatenate([np.unique(arr) for arr in all_targets]))
             enc = OneHotEncoder(sparse=False)
-            enc.fit(y.values.reshape(-1, 1))
+            enc.fit(all_classes.reshape(-1, 1))
             fit_params['one_hot_enc'] = enc
             self.transaction.lmd['label_encoder'] = enc
 
@@ -164,6 +165,9 @@ class ModelAnalyzer(BaseModule):
             self.transaction.hmd['icp'] = icp_class(nc, smoothing=False) # ?
         else:
             self.transaction.hmd['icp'] = icp_class(nc)
+
+        X = self.transaction.input_data.train_df.copy(deep=True)
+        y = X.pop(target)
         self.transaction.hmd['icp'].fit(X.values, y.values)
 
         # calibrate conformal estimator on test set

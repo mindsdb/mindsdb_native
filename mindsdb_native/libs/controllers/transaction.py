@@ -316,7 +316,7 @@ class PredictTransaction(Transaction):
             self.lmd['icp_confidence'] = np.zeros((self.input_data.data_frame[column].shape[0]))
 
             # regression
-            if self.lmd['stats_v2'].get('train_std_dev'):
+            if not self.lmd['stats_v2']['is_classification']:
                 tol_const = 2  # std devs
                 tolerance = self.lmd['stats_v2']['train_std_dev'] * tol_const
                 self.lmd['all_conformal_ranges'] = self.hmd['icp'].predict(X.values)
