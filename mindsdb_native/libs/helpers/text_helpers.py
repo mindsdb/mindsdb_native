@@ -174,7 +174,6 @@ def is_identifier(data, column_name, data_subtype, other_potential_subtypes):
 
     foregin_key_type = DATA_SUBTYPES.INT in [*other_potential_subtypes, data_subtype]
 
-    # Detect UUID
     if foregin_key_type:
         is_uuid = False
     else:
@@ -182,6 +181,21 @@ def is_identifier(data, column_name, data_subtype, other_potential_subtypes):
         uuid_charset = set('0123456789abcdefABCDEF-')
         all_uuid_charset = all(set(str(x)).issubset(uuid_charset) for x in data)
         is_uuid = all_uuid_charset and all_same_length
+
+        str_data = [str(x) for x in data]
+
+        unique_str_data = set(str_data)
+
+        # If >= 85% of data are unique strings
+        if len(unique_str_data) / len(str_data) >= 0.85:
+
+            for x in str_data:
+                if ' ' in x:
+                    break
+
+            # If data doesn't contain spaces
+            else:
+                return True
 
 
         # If all data points are strings of equal length
@@ -221,9 +235,7 @@ def is_identifier(data, column_name, data_subtype, other_potential_subtypes):
         # Scaling entropy by np.log(num_of_unique_values) produces a number in range [0, 1]
         #
 
-        if all_same_length and len(data) == len(set(data)):
-            str_data = [str(x) for x in data]
-            
+        if all_same_length and len(data) == len(unique_str_data):            
             randomness_per_index = []
             for i, _ in enumerate(str_data[0]):
                 N = len(set(x[i] for x in str_data))
