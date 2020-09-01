@@ -169,7 +169,7 @@ def isascii(string):
     return all(ord(c) < 128 for c in string)
 
 
-def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
+def is_identifier(data, column_name, data_subtype, other_potential_subtypes):
     data = list(data)
 
     foregin_key_type = DATA_SUBTYPES.INT in [*other_potential_subtypes, data_subtype]

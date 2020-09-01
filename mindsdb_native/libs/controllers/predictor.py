@@ -226,7 +226,7 @@ class Predictor:
 
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
-                handle_foreign_keys = advanced_args.get('handle_foreign_keys', True),
+                handle_identifiers = advanced_args.get('handle_identifiers', True),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
                 null_values = advanced_args.get('null_values', {}),

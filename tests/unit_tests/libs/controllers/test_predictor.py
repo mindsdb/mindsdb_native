@@ -94,7 +94,7 @@ class TestPredictor:
             assert col_data['histogram']
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
-            assert not col_data['is_foreign_key']
+            assert not col_data['is_identifier']
 
         assert isinstance(json.dumps(model_data), str)
 
@@ -138,7 +138,7 @@ class TestPredictor:
             assert col_data['histogram']
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
-            assert not col_data['is_foreign_key']
+            assert not col_data['is_identifier']
 
     def test_ignore_columns(self):
         input_dataframe = pd.DataFrame({
@@ -184,7 +184,7 @@ class TestPredictor:
         predictor.learn(from_data=input_dataframe,
                         to_predict='y',
                         stop_training_in_x_seconds=1,
-                        advanced_args={'handle_foreign_keys': False},
+                        advanced_args={'handle_identifiers': False},
                         use_gpu=False)
 
         transaction = predictor.transaction
