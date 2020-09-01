@@ -318,8 +318,6 @@ class TypeDeductor(BaseModule):
             stats_v2[col_name]['typing'] = type_data
             stats_v2[col_name]['additional_info'] = additional_info
 
-            stats_v2[col_name]['is_identifier'] = data_subtype == DATA_SUBTYPES.IDENTIFIER
-
             if data_subtype == DATA_SUBTYPES.IDENTIFIER and self.transaction.lmd['handle_identifiers'] and col_name not in self.transaction.lmd['predict_columns']:
                 self.transaction.lmd['columns_to_ignore'].append(col_name)
 

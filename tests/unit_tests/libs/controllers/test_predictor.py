@@ -94,7 +94,6 @@ class TestPredictor:
             assert col_data['histogram']
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
-            assert not col_data['is_identifier']
 
         assert isinstance(json.dumps(model_data), str)
 
@@ -138,7 +137,6 @@ class TestPredictor:
             assert col_data['histogram']
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
-            assert not col_data['is_identifier']
 
     def test_ignore_columns(self):
         input_dataframe = pd.DataFrame({
