@@ -20,7 +20,7 @@ from mindsdb_native.libs.constants.mindsdb import (
 from mindsdb_native.libs.helpers.text_helpers import (
     word_tokenize,
     cast_string_to_python_type,
-    is_foreign_key
+    is_identifier
 )
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
@@ -314,12 +314,14 @@ class TypeDeductor(BaseModule):
             stats_v2[col_name]['typing'] = type_data
             stats_v2[col_name]['additional_info'] = additional_info
 
-            stats_v2[col_name]['is_foreign_key'] = is_foreign_key(col_data,
-                                                                  col_name,
-                                                                  data_subtype,
-                                                                  additional_info['other_potential_subtypes'])
+            stats_v2[col_name]['is_identifier'] = is_identifier(
+                col_data,
+                col_name,
+                data_subtype,
+                additional_info['other_potential_subtypes']
+            )
 
-            if stats_v2[col_name]['is_foreign_key'] and self.transaction.lmd['handle_foreign_keys'] and col_name not in self.transaction.lmd['predict_columns']:
+            if stats_v2[col_name]['is_identifier'] and self.transaction.lmd['handle_foreign_keys'] and col_name not in self.transaction.lmd['predict_columns']:
                 self.transaction.lmd['columns_to_ignore'].append(col_name)
 
             if data_subtype_dist:

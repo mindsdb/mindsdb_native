@@ -87,7 +87,7 @@ class TestTypeDeductor:
             assert stats_v2[col_name]['typing']['data_subtype_dist'][expected_subtype] == 100
 
         for col_name in stats_v2:
-            assert not stats_v2[col_name]['is_foreign_key']
+            assert not stats_v2[col_name]['is_identifier']
 
         assert DATA_SUBTYPES.INT in stats_v2['categorical_int']['additional_info']['other_potential_subtypes']
         assert hmd == {}
@@ -115,8 +115,8 @@ class TestTypeDeductor:
 
         stats_v2 = lmd['stats_v2']
 
-        assert stats_v2['numeric_id']['is_foreign_key']
-        assert stats_v2['uuid']['is_foreign_key']
+        assert stats_v2['numeric_id']['is_identifier']
+        assert stats_v2['uuid']['is_identifier']
 
         assert 'numeric_id' in lmd['columns_to_ignore']
         assert 'uuid' in lmd['columns_to_ignore']
