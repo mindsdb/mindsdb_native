@@ -169,7 +169,7 @@ class ModelAnalyzer(BaseModule):
         self.transaction.hmd['icp'].fit(X.values, y.values)
 
         # calibrate conformal estimator on test set
-        X = deepcopy(self.transaction.input_data.test_df)
+        X = deepcopy(self.transaction.input_data.validation_df)
         y = X.pop(target).values
         if is_classification:
             if isinstance(enc.categories_[0][0], str):

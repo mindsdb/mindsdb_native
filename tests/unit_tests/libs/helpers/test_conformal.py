@@ -9,7 +9,7 @@ class TestEvaluateAccuracy(unittest.TestCase):
 
     def _df_from_x(self, x, columns=None):
         x = pd.DataFrame(x)
-        if isinstance(columns, type(None)):
+        if columns is None:
             x.columns = 'c' + pd.Series([i for i in range(len(x.columns))]).astype(str)
         else:
             x.columns = columns
