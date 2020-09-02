@@ -15,8 +15,8 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
-    if config.getoption("randomly_seed") == 'default':
-        config.option.randomly_seed = 42
+   # if config.getoption("randomly_seed") == 'default':
+   #     config.option.randomly_seed = 42
 
     if '--show-capture' not in config.invocation_params.args:
         config.option.showcapture = 'no'
