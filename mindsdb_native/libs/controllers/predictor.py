@@ -160,11 +160,12 @@ class Predictor:
 
             transaction_type = TRANSACTION_LEARN
 
-            sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(
-                from_ds.df)
-            sample_settings, sample_function = _prepare_sample_settings(sample_settings,
-                                                        sample_for_analysis,
-                                                        sample_for_training)
+            sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(from_ds.df)
+            sample_settings, sample_function = _prepare_sample_settings(
+                sample_settings,
+                sample_for_analysis,
+                sample_for_training
+            )
 
             self.log.warning(f'Sample for analysis: {sample_for_analysis}')
             self.log.warning(f'Sample for training: {sample_for_training}')
@@ -226,7 +227,7 @@ class Predictor:
 
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
-                handle_foreign_keys = advanced_args.get('handle_foreign_keys', True),
+                force_column_usage = advanced_args.get('force_column_usage', []),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
                 null_values = advanced_args.get('null_values', {}),
@@ -256,10 +257,12 @@ class Predictor:
                 if old_hmd['from_data'] is not None:
                     heavy_transaction_metadata['from_data'] = old_hmd['from_data']
 
-            self.transaction = LearnTransaction(session=self,
-                        light_transaction_metadata=light_transaction_metadata,
-                        heavy_transaction_metadata=heavy_transaction_metadata,
-                        logger=self.log)
+            self.transaction = LearnTransaction(
+                session=self,
+                light_transaction_metadata=light_transaction_metadata,
+                heavy_transaction_metadata=heavy_transaction_metadata,
+                logger=self.log
+            )
 
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
@@ -353,7 +356,9 @@ class Predictor:
                 breakpoint=self.breakpoint
             )
 
-            self.transaction = PredictTransaction(session=self,
-                                    light_transaction_metadata=light_transaction_metadata,
-                                    heavy_transaction_metadata=heavy_transaction_metadata)
+            self.transaction = PredictTransaction(
+                session=self,
+                light_transaction_metadata=light_transaction_metadata,
+                heavy_transaction_metadata=heavy_transaction_metadata
+            )
             return self.transaction.output_data
