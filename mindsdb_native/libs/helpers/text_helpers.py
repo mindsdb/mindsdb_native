@@ -169,7 +169,7 @@ def isascii(string):
     return all(ord(c) < 128 for c in string)
 
 
-def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
+def get_identifier_description(data, column_name, data_subtype, other_potential_subtypes):
     data = list(data)
 
     foregin_key_type = DATA_SUBTYPES.INT in [*other_potential_subtypes, data_subtype]
@@ -183,6 +183,44 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
         all_uuid_charset = all(set(str(x)).issubset(uuid_charset) for x in data)
         is_uuid = all_uuid_charset and all_same_length
 
+
+        # If all data points are strings of equal length
+        # then compute entropy per each index through all data
+        #
+        # Example:
+        #
+        #   column
+        # 1 'wqk5'
+        # 2 'wq6z'
+        # 3 'wqv7'
+        # 4 'eq8O'
+        # 5 'eqkO'
+        # 6 'eqyS'
+        # 7 'eqAe' 
+        #    ||||
+        #    ||||-------------------- index 3
+        #    |||                      Counter({5: 1, z: 1, 7: 1, O: 2, s: 1, e: 1})
+        #    |||                      S = entropy[1, 1, 1, 2, 1, 1]
+        #    |||                      randomness = S / np.log(6) <----- 6 unique values at this index
+        #    |||
+        #    |||--------------------- index 2
+        #    ||                       Counter({k: 2, 6: 1, v: 1, 8: 1, Y: 1, A: 1})
+        #    ||                       S = entropy[2, 1, 1, 1, 1, 1]
+        #    ||                       randomness = S / np.log(6) <----- 6 unique values at this index
+        #    ||
+        #    ||---------------------- index 1
+        #    |                        Counter({q: 7})
+        #    |                        S = entropy[7]
+        #    |                        randomness = S / np.log(1) <----- 1 unique value at this index
+        #    |
+        #    |----------------------- index 0
+        #                             Counter({w: 3, e: 4})
+        #                             S = entropy[3, 4]
+        #                             randomness = S / np.log(2) <----- 2 unique values at this index
+        #
+        # Scaling entropy by np.log(num_of_unique_values) produces a number in range [0, 1]
+        #
+
         if all_same_length and len(data) == len(set(data)):
             str_data = [str(x) for x in data]
             
@@ -193,7 +231,7 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
                 randomness_per_index.append(S / np.log(N))
 
             if np.mean(randomness_per_index) > 0.95:
-                return True
+                return 'Hash-like identifier'
 
     '''
     tiny_and_distinct = True
@@ -208,10 +246,13 @@ def is_foreign_key(data, column_name, data_subtype, other_potential_subtypes):
     tiny_and_distinct = False
 
     if _is_foreign_key_name(column_name):
-        if foregin_key_type or is_uuid:
-            return True
+        if foregin_key_type:
+            return 'Identifier'
+
+        if is_uuid:
+            return 'UUID'
 
     if DATA_SUBTYPES.INT == data_subtype and tiny_and_distinct:
-        return True
+        return 'Identifier'
 
-    return False
+    return None

@@ -94,7 +94,7 @@ class TestPredictor:
             assert col_data['histogram']
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
-            assert not col_data['is_foreign_key']
+            assert col_data['identifier'] is None
 
         assert isinstance(json.dumps(model_data), str)
 
@@ -138,7 +138,7 @@ class TestPredictor:
             assert col_data['histogram']
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
-            assert not col_data['is_foreign_key']
+            assert col_data['identifier'] is None
 
     def test_ignore_columns(self):
         input_dataframe = pd.DataFrame({
@@ -168,10 +168,12 @@ class TestPredictor:
         })
 
         predictor = Predictor(name='test')
-        predictor.learn(from_data=input_dataframe,
-                        to_predict='y',
-                        stop_training_in_x_seconds=1,
-                        use_gpu=False)
+        predictor.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False
+        )
 
         transaction = predictor.transaction
 
@@ -181,11 +183,13 @@ class TestPredictor:
         assert 'numeric_id' in transaction.lmd['columns_to_ignore']
 
         predictor = Predictor(name='test')
-        predictor.learn(from_data=input_dataframe,
-                        to_predict='y',
-                        stop_training_in_x_seconds=1,
-                        advanced_args={'handle_foreign_keys': False},
-                        use_gpu=False)
+        predictor.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            advanced_args={'force_column_usage': ['numeric_id']},
+            use_gpu=False
+        )
 
         transaction = predictor.transaction
 

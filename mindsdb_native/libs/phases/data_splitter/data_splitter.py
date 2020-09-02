@@ -103,4 +103,3 @@ class DataSplitter(BaseModule):
 
             self.log.info('We have split the input data into:')
             self.log.infoChart(data, type='pie')
-
