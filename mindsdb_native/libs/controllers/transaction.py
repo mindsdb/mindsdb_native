@@ -327,7 +327,7 @@ class PredictTransaction(Transaction):
                             diff = sample[1, idx] - sample[0, idx]
                             if diff <= tolerance:
                                 output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = sample[:, idx]
+                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
                                 break
                         else:
                             output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
