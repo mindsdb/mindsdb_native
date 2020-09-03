@@ -128,8 +128,8 @@ class ModelAnalyzer(BaseModule):
 
         # conformal prediction confidence estimation
         self.transaction.lmd['stats_v2']['is_classification'] = {}
-        self.transaction.lmd['label_encoders'] = {}
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
+        self.transaction.hmd['label_encoders'] = {}
         self.transaction.hmd['icp'] = {}
 
         for target in output_columns:
@@ -148,7 +148,7 @@ class ModelAnalyzer(BaseModule):
                 enc = OneHotEncoder(sparse=False)
                 enc.fit(all_classes.reshape(-1, 1))
                 fit_params['one_hot_enc'] = enc
-                self.transaction.lmd['label_encoders'][target] = enc
+                self.transaction.hmd['label_encoders'][target] = enc
 
                 adapter = ConformalClassifierAdapter
                 nc_function = MarginErrFunc()  # better than IPS as we'd need the complete distribution over all classes
