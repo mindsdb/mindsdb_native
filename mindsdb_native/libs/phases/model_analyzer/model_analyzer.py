@@ -166,6 +166,7 @@ class ModelAnalyzer(BaseModule):
 
         for target in output_columns:
             data_type = self.transaction.lmd['stats_v2'][target]['typing']['data_type']
+            data_subtype = self.transaction.lmd['stats_v2'][target]['typing']['data_subtype']
             is_classification = data_type == DATA_TYPES.CATEGORICAL
             self.transaction.lmd['stats_v2']['is_classification'][target] = is_classification
 
@@ -175,18 +176,24 @@ class ModelAnalyzer(BaseModule):
                                                [col for col in output_columns if col != target]}
 
             if is_classification:
-                all_targets = [elt[1][target].values for elt in inspect.getmembers(self.transaction.input_data)
-                               if elt[0] in {'test_df', 'train_df', 'validation_df'}]
-                all_classes = np.unique(np.concatenate([np.unique(arr) for arr in all_targets]))
-                enc = OneHotEncoder(sparse=False)
-                enc.fit(all_classes.reshape(-1, 1))
-                fit_params['one_hot_enc'] = enc
-                self.transaction.hmd['label_encoders'][target] = enc
+                if data_subtype != 'Tags':
+                    all_targets = [elt[1][target].values for elt in inspect.getmembers(self.transaction.input_data)
+                                   if elt[0] in {'test_df', 'train_df', 'validation_df'}]
+                    all_classes = np.unique(np.concatenate([np.unique(arr) for arr in all_targets]))
+
+                    enc = OneHotEncoder(sparse=False)
+                    enc.fit(all_classes.reshape(-1, 1))
+                    fit_params['one_hot_enc'] = enc
+                    self.transaction.hmd['label_encoders'][target] = enc
+                else:
+                    fit_params['one_hot_enc'] = None
+                    self.transaction.hmd['label_encoders'][target] = None
 
                 adapter = ConformalClassifierAdapter
                 nc_function = MarginErrFunc()  # better than IPS as we'd need the complete distribution over all classes
                 nc_class = ClassifierNc
                 icp_class = IcpClassifier
+
             else:
                 self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
                 adapter = ConformalRegressorAdapter
@@ -201,20 +208,21 @@ class ModelAnalyzer(BaseModule):
             else:
                 self.transaction.hmd['icp'][target] = icp_class(nc)
 
-            X = deepcopy(self.transaction.input_data.train_df)
-            y = X.pop(target)
-            [X.pop(col) for col in output_columns if col != target]
-            self.transaction.hmd['icp'][target].fit(X.values, y.values)
+            if data_subtype != "Tags":
+                X = deepcopy(self.transaction.input_data.train_df)
+                y = X.pop(target)
+                [X.pop(col) for col in output_columns if col != target]
+                self.transaction.hmd['icp'][target].fit(X.values, y.values)
 
-            # calibrate conformal estimator on test set
-            X = deepcopy(self.transaction.input_data.validation_df)
-            y = X.pop(target).values
-            [X.pop(col) for col in output_columns if col != target]
+                # calibrate conformal estimator on test set
+                X = deepcopy(self.transaction.input_data.validation_df)
+                y = X.pop(target).values
+                [X.pop(col) for col in output_columns if col != target]
 
-            if is_classification:
-                if isinstance(enc.categories_[0][0], str):
-                    cats = enc.categories_[0].tolist()
-                    y = np.array([cats.index(i) for i in y])
-                y = y.astype(int)
+                if is_classification:
+                    if isinstance(enc.categories_[0][0], str):
+                        cats = enc.categories_[0].tolist()
+                        y = np.array([cats.index(i) for i in y])
+                    y = y.astype(int)
 
-            self.transaction.hmd['icp'][target].calibrate(X.values, y)
+                self.transaction.hmd['icp'][target].calibrate(X.values, y)

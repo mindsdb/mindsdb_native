@@ -345,18 +345,19 @@ class PredictTransaction(Transaction):
                             output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
 
                 else:
-                    all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s/100) for s in range(1, 100)])
-                    self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+                    if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != 'Tags':
+                        all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s/100) for s in range(1, 100)])
+                        self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
 
-                    for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
-                        sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
-                        for idx in range(sample.shape[1]):
-                            significance = (99 - idx) / 100
-                            if np.sum(sample[:, idx]) == 1:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                break
-                        else:
-                            output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901
+                        for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
+                            sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
+                            for idx in range(sample.shape[1]):
+                                significance = (99 - idx) / 100
+                                if np.sum(sample[:, idx]) == 1:
+                                    output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                                    break
+                            else:
+                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
