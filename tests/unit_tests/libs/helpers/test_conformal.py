@@ -35,28 +35,10 @@ class TestEvaluateAccuracy(unittest.TestCase):
 
         x_te = self._df_from_xy(X_test, Y_test, target)
         r = self.p.predict(when_data=x_te)
+        r = [x.explanation[target] for x in r]
 
-        for y_hat, r in zip(r._data[target], r._transaction.lmd['final_icp_range']):
-            self.assertTrue(r[0] <= y_hat <= r[1])
-
-    def test_classifier(self):
-        """
-        Sanity check. Passes if point class predictions of MindsDB fall within the range
-        of predicted classes by the Inductive Conformal Predictor.
-        """
-        X, y = load_iris(return_X_y=True)
-        X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.1, random_state=5)
-        target = 'target'
-
-        x_tr = self._df_from_xy(X_train, Y_train, target)
-        self.p = Predictor("ConformalTest")
-        self.p.learn(from_data=x_tr, to_predict=target)
-
-        x_te = self._df_from_xy(X_test, Y_test, target)
-        r = self.p.predict(when_data=x_te)
-
-        for y_hat, pr in zip(r._data[target], r._transaction.lmd['final_icp_range']):
-            self.assertTrue(pr[int(y_hat)])
+        for x in r:
+            self.assertTrue(x['confidence_interval'][0] <= x['predicted_value'] <= x['confidence_interval'][1])
 
     def test_home_rentals(self):
         """
@@ -73,9 +55,10 @@ class TestEvaluateAccuracy(unittest.TestCase):
 
         x_te = self._df_from_x(x_te, columns=df.columns)
         r = self.p.predict(when_data=x_te)
+        r = [x.explanation[target] for x in r]
 
-        for y_hat, r in zip(r._data[target], r._transaction.lmd['final_icp_range']):
-            self.assertTrue(r[0] <= y_hat <= r[1])
+        for x in r:
+            self.assertTrue(x['confidence_interval'][0] <= x['predicted_value'] <= x['confidence_interval'][1])
 
 
 if __name__ == '__main__':

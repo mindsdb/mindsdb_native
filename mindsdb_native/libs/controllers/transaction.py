@@ -80,8 +80,9 @@ class Transaction:
         try:
             with open(icp_fn, 'rb') as fp:
                 self.hmd['icp'] = dill.load(fp)
-                # restore MDB predictor in ICP object
-                self.hmd['icp'].nc_function.model.model = self.session.transaction.model_backend.predictor
+                # restore MDB predictors in ICP objects
+                for col in self.lmd['predict_columns']:
+                    self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
         except Exception as e:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb conformal predictor in the file: {icp_fn}')
@@ -119,14 +120,21 @@ class Transaction:
         if 'icp' in self.hmd.keys():
             icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_icp.pickle')
             try:
+                mdb_predictors = {}
                 with open(icp_fn, 'wb') as fp:
                     # clear data cache and predictor (avoids duplicate saving)
-                    mdb_predictor = self.hmd['icp'].nc_function.model.model
-                    self.hmd['icp'].nc_function.model.model = None
-                    self.hmd['icp'].nc_function.model.last_x = None
-                    self.hmd['icp'].nc_function.model.last_y = None
+                    for col in self.hmd['icp'].keys():
+                        mdb_predictors[col] = self.hmd['icp'][col].nc_function.model.model
+                        self.hmd['icp'][col].nc_function.model.model = None
+                        self.hmd['icp'][col].nc_function.model.last_x = None
+                        self.hmd['icp'][col].nc_function.model.last_y = None
+
                     dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
-                    self.hmd['icp'].nc_function.model.model = mdb_predictor  # restore predictor
+
+                    # restore predictor
+                    for col in self.hmd['icp'].keys():
+                        self.hmd['icp'][col].nc_function.model.model = mdb_predictors[col]
+
             except Exception as e:
                 self.log.error(e)
                 self.log.error(f'Could not save mindsdb conformal predictor in the file: {icp_fn}')
@@ -310,18 +318,19 @@ class PredictTransaction(Transaction):
                     output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
 
             # confidence estimation
+            self.lmd['all_conformal_ranges'] = {}
             for predicted_col in self.lmd['predict_columns']:
                 X = deepcopy(self.input_data.data_frame)
                 for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                     X.pop(col)
 
-                if not self.lmd['stats_v2']['is_classification']:
+                if not self.lmd['stats_v2']['is_classification'][predicted_col]:
                     tol_const = 2  # std devs
-                    tolerance = self.lmd['stats_v2']['train_std_dev'] * tol_const
-                    self.lmd['all_conformal_ranges'] = self.hmd['icp'].predict(X.values)
+                    tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+                    self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
 
-                    for sample_idx in range(self.lmd['all_conformal_ranges'].shape[0]):
-                        sample = self.lmd['all_conformal_ranges'][sample_idx, :, :]
+                    for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
+                        sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
                         for idx in range(sample.shape[1]):
                             significance = (99 - idx) / 100
                             diff = sample[1, idx] - sample[0, idx]
@@ -336,24 +345,18 @@ class PredictTransaction(Transaction):
                             output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
 
                 else:
-                    all_ranges = np.array([self.hmd['icp'].predict(X.values, significance=s/100) for s in range(1, 100)])
-                    self.lmd['all_conformal_ranges'] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
-                    # final_ranges = []
+                    all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s/100) for s in range(1, 100)])
+                    self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
 
-                    for sample_idx in range(self.lmd['all_conformal_ranges'].shape[0]):
-                        sample = self.lmd['all_conformal_ranges'][sample_idx, :, :]
+                    for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
+                        sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
                         for idx in range(sample.shape[1]):
                             significance = (99 - idx) / 100
                             if np.sum(sample[:, idx]) == 1:
                                 output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                # final_ranges.append(sample[:, idx])
                                 break
                         else:
                             output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901
-                            # final_ranges.append(sample[:, 0])
-
-                    # for i in range(self.input_data.data_frame[column].shape[0]):
-                        # output_data[f'{predicted_col}_confidence_range'][i] = list(final_ranges[i])
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
