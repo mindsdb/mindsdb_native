@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from mindsdb import Predictor
+from mindsdb_native import Predictor
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_boston, load_iris
 
