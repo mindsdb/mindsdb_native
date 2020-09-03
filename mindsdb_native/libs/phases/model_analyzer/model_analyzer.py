@@ -139,7 +139,8 @@ class ModelAnalyzer(BaseModule):
 
             fit_params = {'target': target,
                           'all_columns': self.transaction.lmd['columns'],
-                          'columns_to_ignore': self.transaction.lmd['columns_to_ignore']}
+                          'columns_to_ignore': self.transaction.lmd['columns_to_ignore'] +
+                                               [col for col in output_columns if col != target]}
 
             if is_classification:
                 all_targets = [elt[1][target].values for elt in inspect.getmembers(self.transaction.input_data)
@@ -170,11 +171,14 @@ class ModelAnalyzer(BaseModule):
 
             X = deepcopy(self.transaction.input_data.train_df)
             y = X.pop(target)
+            [X.pop(col) for col in output_columns if col != target]
             self.transaction.hmd['icp'][target].fit(X.values, y.values)
 
             # calibrate conformal estimator on test set
             X = deepcopy(self.transaction.input_data.validation_df)
             y = X.pop(target).values
+            [X.pop(col) for col in output_columns if col != target]
+
             if is_classification:
                 if isinstance(enc.categories_[0][0], str):
                     cats = enc.categories_[0].tolist()
