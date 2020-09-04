@@ -153,16 +153,17 @@ class TestPredictor:
             to_predict='y',
             ignore_columns=['ignore_this'],
             stop_training_in_x_seconds=1,
-            use_gpu=False
+            use_gpu=False,
+            advanced_args={'force_column_usage': ['do_use']}
         )
         transaction = predictor.transaction
 
         assert 'do_use' in transaction.input_data.train_df.columns
         assert 'ignore_this' not in transaction.input_data.train_df.columns
 
-    def test_ignore_foreign_keys(self):
+    def test_ignore_identifiers(self):
         input_dataframe = pd.DataFrame({
-            'do_use': list(range(100)),
+            'do_use': [*range(99), 123],
             'numeric_id': list(range(100)),
             'y': list(range(100)),
         })
@@ -705,7 +706,8 @@ class TestPredictor:
                     'validation_indexes': [*range(0, 30)],
                     'train_indexes': [*range(30, 60)],
                     'test_indexes': [*range(60, 100)]
-                }
+                },
+                'force_column_usage': ['col_a', 'col_b']
             },
             use_gpu=False
         )
