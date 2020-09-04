@@ -10,6 +10,7 @@ from sklearn.metrics import balanced_accuracy_score, accuracy_score, f1_score
 import os
 import sys
 
+
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.data_types.mindsdb_logger import log
