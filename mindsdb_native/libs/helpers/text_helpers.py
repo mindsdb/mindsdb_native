@@ -176,7 +176,7 @@ def get_identifier_description(data, column_name, data_subtype, other_potential_
 
     if foregin_key_type:
         prev = None
-        for x in map(int, sorted(data)):
+        for x in map(lambda val: int(float(val)), sorted(data)):
             if prev is None:
                 prev = x
             else:
