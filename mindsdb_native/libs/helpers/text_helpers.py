@@ -172,7 +172,9 @@ def isascii(string):
 def get_identifier_description(data, column_name, data_subtype, other_potential_subtypes):
     data = list(data)
 
-    if data_subtype == DATA_SUBTYPES.INT:
+    foregin_key_type = DATA_SUBTYPES.INT in [*other_potential_subtypes, data_subtype]
+
+    if foregin_key_type:
         prev = None
         for x in sorted(data):
             if prev is None:
@@ -184,8 +186,6 @@ def get_identifier_description(data, column_name, data_subtype, other_potential_
                     prev = x
         else:
             return 'Auto-incrementing Indentifier'
-
-    foregin_key_type = DATA_SUBTYPES.INT in [*other_potential_subtypes, data_subtype]
 
     # Detect UUID
     if foregin_key_type:
