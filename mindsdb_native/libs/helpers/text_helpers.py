@@ -185,7 +185,7 @@ def get_identifier_description(data, column_name, data_subtype, other_potential_
                 else:
                     prev = x
         else:
-            return 'Auto-incrementing Indentifier'
+            return 'Auto-incrementing Identifier'
 
     # Detect UUID
     if foregin_key_type:
