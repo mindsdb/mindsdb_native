@@ -457,7 +457,7 @@ class TestPredictor:
             order_by=feature_headers[0],
             # ,window_size_seconds=ts_hours* 3600 * 1.5
             window_size=3,
-            stop_training_in_x_seconds=1,
+            stop_training_in_x_seconds=10,
             use_gpu=False
         )
 
