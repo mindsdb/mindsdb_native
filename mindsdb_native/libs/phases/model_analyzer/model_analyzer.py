@@ -176,7 +176,7 @@ class ModelAnalyzer(BaseModule):
                                                [col for col in output_columns if col != target]}
 
             if is_classification:
-                if data_subtype != 'Tags':
+                if data_subtype != DATA_SUBTYPES.TAGS   :
                     all_targets = [elt[1][target].values for elt in inspect.getmembers(self.transaction.input_data)
                                    if elt[0] in {'test_df', 'train_df', 'validation_df'}]
                     all_classes = np.unique(np.concatenate([np.unique(arr) for arr in all_targets]))
@@ -208,7 +208,7 @@ class ModelAnalyzer(BaseModule):
             else:
                 self.transaction.hmd['icp'][target] = icp_class(nc)
 
-            if data_subtype != "Tags":
+            if data_subtype != DATA_SUBTYPES.TAGS:
                 X = deepcopy(self.transaction.input_data.train_df)
                 y = X.pop(target)
                 [X.pop(col) for col in output_columns if col != target]

@@ -345,7 +345,7 @@ class PredictTransaction(Transaction):
                             output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
 
                 else:
-                    if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != 'Tags':
+                    if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
                         all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s/100) for s in range(1, 100)])
                         self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
 
