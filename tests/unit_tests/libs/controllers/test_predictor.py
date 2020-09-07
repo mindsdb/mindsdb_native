@@ -425,7 +425,6 @@ class TestPredictor:
         assert (a2['existing_credits']['typing'][
                     'data_subtype'] == DATA_SUBTYPES.SINGLE)
 
-    @pytest.mark.skip(reason='Test gets stuck during learn call, need investigation')
     @pytest.mark.slow
     def test_timeseries(self, tmp_path):
         ts_hours = 12
@@ -459,7 +458,7 @@ class TestPredictor:
             order_by=feature_headers[0],
             # ,window_size_seconds=ts_hours* 3600 * 1.5
             window_size=3,
-            stop_training_in_x_seconds=1,
+            stop_training_in_x_seconds=10,
             use_gpu=False
         )
 
