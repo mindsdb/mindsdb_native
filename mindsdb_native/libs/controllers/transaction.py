@@ -324,7 +324,7 @@ class PredictTransaction(Transaction):
                 for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                     X.pop(col)
 
-                if not self.lmd['stats_v2']['is_classification'][predicted_col]:
+                if not self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL:
                     tol_const = 2  # std devs
                     tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
                     self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)

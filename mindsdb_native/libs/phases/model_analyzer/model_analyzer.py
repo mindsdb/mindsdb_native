@@ -159,7 +159,6 @@ class ModelAnalyzer(BaseModule):
         self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr)/len(overall_accuracy_arr)
 
         # conformal prediction confidence estimation
-        self.transaction.lmd['stats_v2']['is_classification'] = {}
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
         self.transaction.hmd['label_encoders'] = {}
         self.transaction.hmd['icp'] = {}
@@ -168,7 +167,6 @@ class ModelAnalyzer(BaseModule):
             data_type = self.transaction.lmd['stats_v2'][target]['typing']['data_type']
             data_subtype = self.transaction.lmd['stats_v2'][target]['typing']['data_subtype']
             is_classification = data_type == DATA_TYPES.CATEGORICAL
-            self.transaction.lmd['stats_v2']['is_classification'][target] = is_classification
 
             fit_params = {'target': target,
                           'all_columns': self.transaction.lmd['columns'],
