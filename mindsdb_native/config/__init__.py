@@ -22,7 +22,10 @@ class Config:
     # LOG Config settings
     DEFAULT_LOG_LEVEL = if_env_else('DEFAULT_LOG_LEVEL', CONST.DEBUG_LOG_LEVEL)
 
-    CHECK_FOR_UPDATES = if_env_else('CHECK_FOR_UPDATES', True)
+    CHECK_FOR_UPDATES = if_env_else(
+        'CHECK_FOR_UPDATES',
+        if_env_else('MINDSDB_CHECK_FOR_UPDATES', True)
+    )
 
     # Default options for unning on sagemaker
     SAGEMAKER = if_env_else('SAGEMAKER', False)
