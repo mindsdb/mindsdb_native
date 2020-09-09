@@ -27,6 +27,9 @@ class Config:
         if_env_else('MINDSDB_CHECK_FOR_UPDATES', True)
     )
 
+    if CHECK_FOR_UPDATES in [0, '0', 'false', 'False']:
+        CHECK_FOR_UPDATES = False
+
     # Default options for unning on sagemaker
     SAGEMAKER = if_env_else('SAGEMAKER', False)
 
