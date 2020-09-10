@@ -202,15 +202,25 @@ class ModelAnalyzer(BaseModule):
                 model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
                 nc = nc_class(model, nc_function)
 
+                X = deepcopy(self.transaction.input_data.train_df)
+                y = X.pop(target)
+
+                # filter out data types that are not (yet) supported
+                for key, value in self.transaction.lmd['stats_v2'].items():
+                    if key in X.columns:
+                        if key in output_columns and key != target:
+                            X.pop(col)
+                        elif value['typing']['data_type'] not in (DATA_TYPES.NUMERIC, DATA_TYPES.CATEGORICAL):
+                            X.pop(col)
+                        elif value['typing']['data_subtype'] == DATA_SUBTYPES.TAGS:
+                            X.pop(col)
+
                 if is_classification:
                     self.transaction.hmd['icp'][target] = icp_class(nc, smoothing=False)
                 else:
                     self.transaction.hmd['icp'][target] = icp_class(nc)
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 
-                X = deepcopy(self.transaction.input_data.train_df)
-                y = X.pop(target)
-                [X.pop(col) for col in output_columns if col != target]
                 self.transaction.hmd['icp'][target].fit(X.values, y.values)
 
                 # calibrate conformal estimator on test set
