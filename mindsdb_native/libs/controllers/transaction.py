@@ -324,7 +324,7 @@ class PredictTransaction(Transaction):
                 for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                     X.pop(col)
 
-                if not self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL:
+                if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.NUMERIC:
                     tol_const = 2  # std devs
                     tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
                     self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
@@ -344,7 +344,7 @@ class PredictTransaction(Transaction):
                             sigma = (bounds[1] - bounds[0])/2
                             output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
 
-                else:
+                elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL:
                     if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
                         all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s/100) for s in range(1, 100)])
                         self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
@@ -357,7 +357,7 @@ class PredictTransaction(Transaction):
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = significance
                                     break
                             else:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901
+                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
