@@ -193,20 +193,21 @@ class ModelAnalyzer(BaseModule):
                 icp_class = IcpClassifier
 
             else:
-                self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
                 adapter = ConformalRegressorAdapter
                 nc_function = AbsErrorErrFunc()
                 nc_class = RegressorNc
                 icp_class = IcpRegressor
 
-            model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
-            nc = nc_class(model, nc_function)
-            if is_classification:
-                self.transaction.hmd['icp'][target] = icp_class(nc, smoothing=False)
-            else:
-                self.transaction.hmd['icp'][target] = icp_class(nc)
+            if data_type == DATA_TYPES.NUMERIC or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
+                model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
+                nc = nc_class(model, nc_function)
 
-            if data_subtype != DATA_SUBTYPES.TAGS:
+                if is_classification:
+                    self.transaction.hmd['icp'][target] = icp_class(nc, smoothing=False)
+                else:
+                    self.transaction.hmd['icp'][target] = icp_class(nc)
+                    self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
+
                 X = deepcopy(self.transaction.input_data.train_df)
                 y = X.pop(target)
                 [X.pop(col) for col in output_columns if col != target]
