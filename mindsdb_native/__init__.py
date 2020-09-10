@@ -36,6 +36,10 @@ try:
 except ImportError:
     print("MSSQL Datasource is not available by default. If you wish to use it, please install 'python-tds' or mindsdb[extra_data_sources]")
 
+try:
+    from mindsdb_native.libs.data_sources.mongodb_ds import MongoDS
+except ImportError:
+    print("MongoDS Datasource is not available by default. If you wish to use it, please install 'pymongo' or mindsdb[extra_data_sources]")
 
 from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
