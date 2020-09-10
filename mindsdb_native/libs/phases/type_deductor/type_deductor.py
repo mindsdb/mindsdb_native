@@ -321,8 +321,10 @@ class TypeDeductor(BaseModule):
                 additional_info['other_potential_subtypes']
             )
 
-            if stats_v2[col_name]['identifier'] is not None and col_name not in self.transaction.lmd['force_column_usage'] and col_name not in self.transaction.lmd['predict_columns']:
-                self.transaction.lmd['columns_to_ignore'].append(col_name)
+            if stats_v2[col_name]['identifier'] is not None:
+                if col_name not in self.transaction.lmd['force_column_usage']:
+                    if col_name not in self.transaction.lmd['predict_columns']:
+                        self.transaction.lmd['columns_to_ignore'].append(col_name)
 
             if data_subtype_dist:
                 self.log.info(f'Data distribution for column "{col_name}" '
