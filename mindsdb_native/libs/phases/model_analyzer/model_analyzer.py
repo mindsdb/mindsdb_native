@@ -209,11 +209,11 @@ class ModelAnalyzer(BaseModule):
                 for key, value in self.transaction.lmd['stats_v2'].items():
                     if key in X.columns:
                         if key in output_columns and key != target:
-                            X.pop(col)
+                            X.pop(key)
                         elif value['typing']['data_type'] not in (DATA_TYPES.NUMERIC, DATA_TYPES.CATEGORICAL):
-                            X.pop(col)
+                            X.pop(key)
                         elif value['typing']['data_subtype'] == DATA_SUBTYPES.TAGS:
-                            X.pop(col)
+                            X.pop(key)
 
                 if is_classification:
                     self.transaction.hmd['icp'][target] = icp_class(nc, smoothing=False)
