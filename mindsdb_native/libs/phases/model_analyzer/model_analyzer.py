@@ -2,7 +2,7 @@ from mindsdb_native.libs.helpers.general_helpers import pickle_obj, disable_cons
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
-from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
+from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter, clean_df
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from sklearn.metrics import balanced_accuracy_score, r2_score
@@ -205,28 +205,18 @@ class ModelAnalyzer(BaseModule):
                 X = deepcopy(self.transaction.input_data.train_df)
                 y = X.pop(target)
 
-                # filter out data types that are not (yet) supported
-                for key, value in self.transaction.lmd['stats_v2'].items():
-                    if key in X.columns:
-                        if key in output_columns and key != target:
-                            X.pop(key)
-                        elif value['typing']['data_type'] not in (DATA_TYPES.NUMERIC, DATA_TYPES.CATEGORICAL):
-                            X.pop(key)
-                        elif value['typing']['data_subtype'] == DATA_SUBTYPES.TAGS:
-                            X.pop(key)
-
                 if is_classification:
                     self.transaction.hmd['icp'][target] = icp_class(nc, smoothing=False)
                 else:
                     self.transaction.hmd['icp'][target] = icp_class(nc)
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 
+                X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns)
                 self.transaction.hmd['icp'][target].fit(X.values, y.values)
 
                 # calibrate conformal estimator on test set
                 X = deepcopy(self.transaction.input_data.validation_df)
                 y = X.pop(target).values
-                [X.pop(col) for col in output_columns if col != target]
 
                 if is_classification:
                     if isinstance(enc.categories_[0][0], str):
@@ -234,4 +224,5 @@ class ModelAnalyzer(BaseModule):
                         y = np.array([cats.index(i) for i in y])
                     y = y.astype(int)
 
+                X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns)
                 self.transaction.hmd['icp'][target].calibrate(X.values, y)
