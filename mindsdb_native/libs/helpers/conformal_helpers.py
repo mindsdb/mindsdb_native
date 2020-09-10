@@ -15,20 +15,12 @@ def _df_from_x(x, columns):
 
 def clean_df(df, stats, output_columns):
     """
-    Removes columns that are not numerical or categorical, not supported as of yet.
-    :param df: dataframe
     :param stats: dict with information about every column
     :param output_columns: to be predicted
-    :return: cleaned dataframe, ready to fit or calibrate the conformal predictor
     """
     for key, value in stats.items():
-        if key in df.columns:
-            if key in output_columns:
-                df.pop(key)
-            elif value['typing']['data_type'] not in (DATA_TYPES.NUMERIC, DATA_TYPES.CATEGORICAL):
-                df.pop(key)
-            elif value['typing']['data_subtype'] == DATA_SUBTYPES.TAGS:
-                df.pop(key)
+        if key in df.columns and key in output_columns:
+            df.pop(key)
     return df
 
 
