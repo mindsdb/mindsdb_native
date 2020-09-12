@@ -68,6 +68,8 @@ def _prepare_timeseries_settings(user_provided_settings):
     if len(user_provided_settings) > 0:
         if 'order_by' not in user_provided_settings or ('window' not in user_provided_settings and 'dynamic_window' not in user_provided_settings):
             raise Exception(f'Invalid timeseries settings: {user_provided_settings}, the timeseries settings must contain an array of order_by columns inside the `order_by` key and specify a window size via the `window` or `dynamic_window` keys!')
+        else:
+            timeseries_settings['is_timeseries'] = True
 
     if 'window' in user_provided_settings and 'dynamic_window' in user_provided_settings:
         raise Exception(f'You must specify either a `window` or a `dynamic_window` in the timeseries settings, not both!')
@@ -77,9 +79,6 @@ def _prepare_timeseries_settings(user_provided_settings):
             timeseries_settings[k] = user_provided_settings[k]
         else:
             raise Exception(f'Invalid timeseries setting: {k}')
-
-    if timeseries_settings['order_by'] is not None and timeseries_settings['window'] is not None:
-        is_timeseries = True
 
     return timeseries_settings
 
@@ -119,9 +118,7 @@ class Predictor:
     def learn(self,
               to_predict,
               from_data,
-              group_by=None,    # @TODO: Move this logic to datasource
-              window_size=None, # @TODO: Move this logic to datasource
-              order_by=None,    # @TODO: Move this logic to datasource
+              timeseries_settings=None,
               ignore_columns=None,
               stop_training_in_x_seconds=None,
               backend='lightwood',
@@ -139,9 +136,7 @@ class Predictor:
         :param from_data: the data that you want to learn from, this can be either a file, a pandas data frame, or url or a mindsdb data source
 
         Optional Time series arguments:
-        :param order_by: this order by defines the time series, it can be a list. By default it sorts each sort by column in ascending manner, if you want to change this pass a touple ('column_name', 'boolean_for_ascending <default=true>')
-        :param group_by: This argument tells the time series that it should learn by grouping rows by a given id
-        :param window_size: The number of samples to learn from in the time series
+        :param timeseries_settings: dictionary of options for handling the data as a timeseries
 
         Optional data transformation arguments:
         :param ignore_columns: mindsdb will ignore this column
@@ -158,28 +153,16 @@ class Predictor:
         :return:
         """
         with MDBLock('exclusive', 'learn_' + self.name):
+            ignore_columns = [] if ignore_columns is None else ignore_columns
+            timeseries_settings = {} if timeseries_settings is None else timeseries_settings
+            advanced_args = {} if advanced_args is None else advanced_args
 
-            if ignore_columns is None:
-                ignore_columns = []
-
-            if group_by is None:
-                group_by = []
-
-            if order_by is None:
-                order_by = []
-
-            # lets turn into lists: predict, ignore, group_by, order_by
             predict_columns = to_predict if isinstance(to_predict, list) else [to_predict]
             ignore_columns = ignore_columns if isinstance(ignore_columns, list) else [ignore_columns]
-            group_by = group_by if isinstance(group_by, list) else [group_by]
-            order_by = order_by if isinstance(order_by, list) else [order_by]
-
-            # lets turn order by into list of tuples if not already
-            # each element ('column_name', 'boolean_for_ascending <default=true>')
-            order_by = [col_name if isinstance(col_name, tuple) else (col_name, True) for col_name in order_by]
-
-            if advanced_args is None:
-                advanced_args = {}
+            if len(predict_columns) == 0:
+                error = 'You need to specify the column[s] you want to predict via the `to_predict` argument!'
+                self.log.error(error)
+                raise ValueError(error)
 
             from_ds = getDS(from_data)
 
@@ -197,15 +180,10 @@ class Predictor:
                 sample_for_training
             )
 
+            timeseries_settings = _prepare_timeseries_settings(timeseries_settings)
+
             self.log.warning(f'Sample for analysis: {sample_for_analysis}')
             self.log.warning(f'Sample for training: {sample_for_training}')
-
-            if len(predict_columns) == 0:
-                error = 'You need to specify a column to predict'
-                self.log.error(error)
-                raise ValueError(error)
-
-            is_time_series = True if len(order_by) > 0 else False
 
             """
             We don't implement "name" as a concept in mindsdbd data sources, this is only available for files,
@@ -228,12 +206,9 @@ class Predictor:
                 data_preparation = {},
                 predict_columns = predict_columns,
                 model_columns_map = from_ds._col_map,
-                model_group_by = group_by,
-                model_order_by = order_by,
-                model_is_time_series = is_time_series,
+                timeseries_settings=timeseries_settings,
                 data_source = data_source_name,
                 type = transaction_type,
-                window_size = window_size,
                 sample_settings = sample_settings,
                 stop_training_in_x_seconds = stop_training_in_x_seconds,
                 rebuild_model = rebuild_model,
