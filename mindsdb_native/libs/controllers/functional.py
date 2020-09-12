@@ -19,16 +19,16 @@ from mindsdb_native.libs.helpers.locking import MDBLock
 def validate(to_predict, from_data, accuracy_score_functions, learn_args=None, test_args=None):
             if learn_args is None: learn_args = {}
             if test_args is None: test_args = {}
-            
+
             name = str(uuid.uuid4()).replace('-','')
             predictor = Predictor(name)
-            
+
             predictor.learn(to_predict, from_data, **learn_args)
             validation_data = predictor.transaction.input_data.validation_df
 
             accuracy = predictor.test(when_data=validation_data, accuracy_score_functions=accuracy_score_functions, **test_args)
 
-            delete_model(name) 
+            delete_model(name)
 
             return accuracy
 
@@ -40,7 +40,7 @@ def cross_validate(to_predict, from_data, accuracy_score_functions, k=5, learn_a
 
         Alternatively we can just add train/test/valid split as advanced args and forgo the data splitter if they are specified (maybe have them be indexes so that the rest of the phases up to the splitter and run normally) + Do the splitting inside this function.
 
-        Same problem with timeseries argument support though. 
+        Same problem with timeseries argument support though.
     '''
     raise NotImplementedError('Cross validation is not implemented yet')
 
@@ -70,9 +70,7 @@ def analyse_dataset(from_data, sample_settings=None):
         model_columns_map = from_ds._col_map,
         type = transaction_type,
         sample_settings = sample_settings,
-        model_is_time_series = False,
-        model_group_by = [],
-        model_order_by = [],
+        tss={'is_timeseries':False},
         columns_to_ignore = [],
         data_preparation = {},
         predict_columns = [],

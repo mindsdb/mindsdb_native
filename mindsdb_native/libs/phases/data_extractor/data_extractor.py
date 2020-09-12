@@ -51,7 +51,7 @@ class DataExtractor(BaseModule):
         """
 
         # apply order by (group_by, order_by)
-        if self.transaction.lmd['model_is_time_series']:
+        if self.transaction.lmd['tss']['is_time_series']:
             asc_values = [order_tuple[ORDER_BY_KEYS.ASCENDING_VALUE] for order_tuple in self.transaction.lmd['model_order_by']]
             sort_by = [order_tuple[ORDER_BY_KEYS.COLUMN] for order_tuple in self.transaction.lmd['model_order_by']]
 
@@ -94,7 +94,7 @@ class DataExtractor(BaseModule):
         df = df.applymap(lambda cell: tuple(cell) if isinstance(cell, list) else cell)
 
         groups = df.columns.to_series().groupby(df.dtypes).groups
-        
+
         # @TODO: Maybe move to data cleaner ? Seems kind of out of place here
         if np.dtype('datetime64[ns]') in groups:
             for colname in groups[np.dtype('datetime64[ns]')]:

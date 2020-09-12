@@ -206,7 +206,7 @@ class Predictor:
                 data_preparation = {},
                 predict_columns = predict_columns,
                 model_columns_map = from_ds._col_map,
-                timeseries_settings=timeseries_settings,
+                tss=timeseries_settings,
                 data_source = data_source_name,
                 type = transaction_type,
                 sample_settings = sample_settings,
