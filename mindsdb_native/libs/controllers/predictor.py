@@ -22,7 +22,7 @@ def _get_memory_optimizations(df):
     total_memory = psutil.virtual_memory().total
 
     mem_usage_ratio = df_memory / total_memory
-    
+
     sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > (3 * pow(10, 4))
     sample_for_training = mem_usage_ratio >= 0.5
     disable_lightwood_transform_cache = mem_usage_ratio >= 0.2
@@ -52,6 +52,36 @@ def _prepare_sample_settings(user_provided_settings,
     sample_settings['sample_function'] = sample_settings['sample_function'].__name__
 
     return sample_settings, sample_function
+
+def _prepare_timeseries_settings(user_provided_settings):
+    timeseries_settings = dict(
+        is_timeseries=False
+        ,group_by=None
+        ,order_by=None
+        ,window=None
+        ,dynamic_window=None
+        ,use_previous_target=True
+        ,keep_order_column=True
+        ,nr_predictions=1
+    )
+
+    if len(user_provided_settings) > 0:
+        if 'order_by' not in user_provided_settings or ('window' not in user_provided_settings and 'dynamic_window' not in user_provided_settings):
+            raise Exception(f'Invalid timeseries settings: {user_provided_settings}, the timeseries settings must contain an array of order_by columns inside the `order_by` key and specify a window size via the `window` or `dynamic_window` keys!')
+
+    if 'window' in user_provided_settings and 'dynamic_window' in user_provided_settings:
+        raise Exception(f'You must specify either a `window` or a `dynamic_window` in the timeseries settings, not both!')
+
+    for k in user_provided_settings:
+        if k in timeseries_settings:
+            timeseries_settings[k] = user_provided_settings[k]
+        else:
+            raise Exception(f'Invalid timeseries setting: {k}')
+
+    if timeseries_settings['order_by'] is not None and timeseries_settings['window'] is not None:
+        is_timeseries = True
+
+    return timeseries_settings
 
 
 class Predictor:
@@ -152,7 +182,7 @@ class Predictor:
                 advanced_args = {}
 
             from_ds = getDS(from_data)
-            
+
             # Set user-provided subtypes
             from_ds.set_subtypes(
                 advanced_args.get('subtypes', {})
