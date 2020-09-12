@@ -2,12 +2,17 @@ from mindsdb_native.libs.helpers.general_helpers import pickle_obj, disable_cons
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
+from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter, clean_df
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from sklearn.metrics import balanced_accuracy_score, r2_score
 
-import pandas as pd
+import inspect
 import numpy as np
+from copy import deepcopy
+from sklearn.preprocessing import OneHotEncoder
+from nonconformist.icp import IcpRegressor, IcpClassifier
+from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, MarginErrFunc
 
 
 class ModelAnalyzer(BaseModule):
@@ -152,3 +157,72 @@ class ModelAnalyzer(BaseModule):
             self.transaction.hmd['probabilistic_validators'][col] = pickle_obj(pval)
 
         self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr)/len(overall_accuracy_arr)
+
+        # conformal prediction confidence estimation
+        self.transaction.lmd['stats_v2']['train_std_dev'] = {}
+        self.transaction.hmd['label_encoders'] = {}
+        self.transaction.hmd['icp'] = {}
+
+        for target in output_columns:
+            data_type = self.transaction.lmd['stats_v2'][target]['typing']['data_type']
+            data_subtype = self.transaction.lmd['stats_v2'][target]['typing']['data_subtype']
+            is_classification = data_type == DATA_TYPES.CATEGORICAL
+
+            fit_params = {'target': target,
+                          'all_columns': self.transaction.lmd['columns'],
+                          'columns_to_ignore': self.transaction.lmd['columns_to_ignore'] +
+                                               [col for col in output_columns if col != target]}
+
+            if is_classification:
+                if data_subtype != DATA_SUBTYPES.TAGS:
+                    all_targets = [elt[1][target].values for elt in inspect.getmembers(self.transaction.input_data)
+                                   if elt[0] in {'test_df', 'train_df', 'validation_df'}]
+                    all_classes = np.unique(np.concatenate([np.unique(arr) for arr in all_targets]))
+
+                    enc = OneHotEncoder(sparse=False)
+                    enc.fit(all_classes.reshape(-1, 1))
+                    fit_params['one_hot_enc'] = enc
+                    self.transaction.hmd['label_encoders'][target] = enc
+                else:
+                    fit_params['one_hot_enc'] = None
+                    self.transaction.hmd['label_encoders'][target] = None
+
+                adapter = ConformalClassifierAdapter
+                nc_function = MarginErrFunc()  # better than IPS as we'd need the complete distribution over all classes
+                nc_class = ClassifierNc
+                icp_class = IcpClassifier
+
+            else:
+                adapter = ConformalRegressorAdapter
+                nc_function = AbsErrorErrFunc()
+                nc_class = RegressorNc
+                icp_class = IcpRegressor
+
+            if data_type == DATA_TYPES.NUMERIC or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
+                model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
+                nc = nc_class(model, nc_function)
+
+                X = deepcopy(self.transaction.input_data.train_df)
+                y = X.pop(target)
+
+                if is_classification:
+                    self.transaction.hmd['icp'][target] = icp_class(nc, smoothing=False)
+                else:
+                    self.transaction.hmd['icp'][target] = icp_class(nc)
+                    self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
+
+                X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns)
+                self.transaction.hmd['icp'][target].fit(X.values, y.values)
+
+                # calibrate conformal estimator on test set
+                X = deepcopy(self.transaction.input_data.validation_df)
+                y = X.pop(target).values
+
+                if is_classification:
+                    if isinstance(enc.categories_[0][0], str):
+                        cats = enc.categories_[0].tolist()
+                        y = np.array([cats.index(i) for i in y])
+                    y = y.astype(int)
+
+                X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns)
+                self.transaction.hmd['icp'][target].calibrate(X.values, y)
