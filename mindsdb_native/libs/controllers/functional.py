@@ -472,7 +472,7 @@ def get_model_data(model_name=None, lmd=None):
             amd['model_analysis'].append(mao)
         else:
             if 'column_importances' in lmd and lmd['column_importances'] is not None:
-                if col not in [x[0] for x in lmd['model_order_by']]:
+                if col not in [x[0] for x in lmd['tss']['order_by']]:
                     icm['importance_score'] = lmd['column_importances'][col]
             amd['data_analysis']['input_columns_metadata'].append(icm)
 
