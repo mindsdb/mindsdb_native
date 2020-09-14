@@ -586,7 +586,7 @@ class TestPredictor:
         for k in ['train', 'test', 'valid']:
             assert isinstance(model_analysis[0][k + '_data_accuracy'], dict)
             assert len(model_analysis[0][k + '_data_accuracy']) == 1
-            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.60
+            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.5
 
         for column, importance in zip(input_importance["x"],
                                       input_importance["y"]):
@@ -594,7 +594,7 @@ class TestPredictor:
             assert (len(column) > 0)
             assert isinstance(importance, (float, int))
             assert (importance >= 0 and importance <= 10)
-            
+
     @pytest.mark.slow
     def test_category_tags_input(self):
         vocab = random.sample(SMALL_VOCAB, 10)
