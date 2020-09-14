@@ -193,7 +193,8 @@ class LearnTransaction(Transaction):
             self._call_phase_module(module_name='DataSplitter')
             self.save_metadata()
 
-            self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
+            self._call_phase_module(module_name='DataTransformer',
+                                    input_data=self.input_data)
             self.lmd['current_phase'] = MODEL_STATUS_TRAINING
             self.save_metadata()
             self._call_phase_module(module_name='ModelInterface', mode='train')
@@ -204,7 +205,6 @@ class LearnTransaction(Transaction):
 
             self.lmd['current_phase'] = MODEL_STATUS_TRAINED
             self.save_metadata()
-            return
 
         except Exception as e:
             self.lmd['is_active'] = False

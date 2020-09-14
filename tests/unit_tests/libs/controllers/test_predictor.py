@@ -47,13 +47,17 @@ class TestPredictor:
         with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
             mock_function):
 
-            predictor.learn(from_data=input_dataframe,
-                            to_predict='y',
-                            backend='lightwood',
-                            sample_settings={'sample_for_training': True,
-                                             'sample_for_analysis': True},
-                            stop_training_in_x_seconds=1,
-                            use_gpu=False)
+            predictor.learn(
+                from_data=input_dataframe,
+                to_predict='y',
+                backend='lightwood',
+                sample_settings={
+                    'sample_for_training': True,
+                    'sample_for_analysis': True
+                },
+                stop_training_in_x_seconds=1,
+                use_gpu=False
+            )
 
             assert mock_function.called
 

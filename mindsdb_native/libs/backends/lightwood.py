@@ -3,6 +3,7 @@ from lightwood.constants.lightwood import ColumnDataTypes
 import numpy as np
 import pandas as pd
 import lightwood
+from lightwood.mixers import NnMixer
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
@@ -151,8 +152,14 @@ class LightwoodBackend():
         config['data_source'] = {}
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
 
-        config['mixer'] = {}
-        config['mixer']['selfaware'] = self.transaction.lmd['use_selfaware_model']
+        
+        config['mixer'] = {
+            'class': NnMixer,
+            'kwargs': {
+                'selfaware': self.transaction.lmd['use_selfaware_model']
+            }
+        }
+        #config['mixer']['selfaware'] = self.transaction.lmd['use_selfaware_model']
 
         return config
 
@@ -183,15 +190,19 @@ class LightwoodBackend():
                 sample_percentage = self.transaction.lmd['sample_settings']['sample_percentage']
                 sample_function = self.transaction.hmd['sample_function']
 
-                train_df = sample_function(self.transaction.input_data.train_df,
-                                       sample_margin_of_error,
-                                       sample_confidence_level,
-                                       sample_percentage)
+                train_df = sample_function(
+                    self.transaction.input_data.train_df,
+                    sample_margin_of_error,
+                    sample_confidence_level,
+                    sample_percentage
+                )
 
-                test_df = sample_function(self.transaction.input_data.test_df,
-                                       sample_margin_of_error,
-                                       sample_confidence_level,
-                                       sample_percentage)
+                test_df = sample_function(
+                    self.transaction.input_data.test_df,
+                    sample_margin_of_error,
+                    sample_confidence_level,
+                    sample_percentage
+                )
 
                 sample_size = len(train_df)
                 population_size = len(self.transaction.input_data.train_df)
@@ -203,11 +214,10 @@ class LightwoodBackend():
 
         lightwood_config = self._create_lightwood_config()
 
-
         self.predictor = lightwood.Predictor(lightwood_config)
 
         # Evaluate less often for larger datasets and vice-versa
-        eval_every_x_epochs = int(round(1 * pow(10,6) * (1/len(train_df))))
+        eval_every_x_epochs = int(round(1 * pow(10, 6) * (1 / len(train_df))))
 
         # Within some limits
         if eval_every_x_epochs > 200:
@@ -215,15 +225,21 @@ class LightwoodBackend():
         if eval_every_x_epochs < 3:
             eval_every_x_epochs = 3
 
+        if lightwood_config['mixer']['class'] == NnMixer:
+            lightwood_config['mixer']['kwargs']['callback_on_iter'] = self.callback_on_iter
+            lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs
+
+            if self.transaction.lmd['stop_training_in_x_seconds'] is not None:
+                lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
+
         logging.getLogger().setLevel(logging.DEBUG)
-        if self.transaction.lmd['stop_training_in_x_seconds'] is None:
-            self.predictor.learn(from_data=train_df, test_data=test_df, callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
-        else:
-            self.predictor.learn(from_data=train_df, test_data=test_df, stop_training_after_seconds=self.transaction.lmd['stop_training_in_x_seconds'], callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
+
+        self.predictor.learn(from_data=train_df, test_data=test_df)
 
         self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
 
         self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_lightwood_data')
+
         self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
 
     def predict(self, mode='predict', ignore_columns=None):
