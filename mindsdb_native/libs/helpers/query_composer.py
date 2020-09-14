@@ -21,13 +21,17 @@ def create_history_query(query, tss, type_map, row):
 
     # append filter
     if ' where ' in query:
-        pass
+        split_query = query.split(' where ')
+        query = split_query[0] + f' WHERE {group_by_filter} AND ' + split_query[1]
     elif ' group by ' in query:
-        pass
+        split_query = query.split(' group by ')
+        query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
     elif ' having ' in query:
-        pass
+        split_query = query.split(' having ')
+        query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
     elif ' order by ' in query:
-        pass
+        split_query = query.split(' order by ')
+        query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
     else:
         query += f' WHERE {group_by_filter}'
 

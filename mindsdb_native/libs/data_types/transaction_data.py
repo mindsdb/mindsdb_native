@@ -6,6 +6,7 @@ class TransactionData:
         self.train_df = None
         self.test_df = None
         self.validation_df = None
+        self.historical_df = None
         self.columns = []
 
         self._sample_df = None
