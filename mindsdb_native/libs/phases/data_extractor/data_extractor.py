@@ -51,7 +51,7 @@ class DataExtractor(BaseModule):
         """
 
         # apply order by (group_by, order_by)
-        if self.transaction.lmd['tss']['is_time_series']:
+        if self.transaction.lmd['tss']['is_timeseries']:
             asc_values = [order_tuple[ORDER_BY_KEYS.ASCENDING_VALUE] for order_tuple in self.transaction.lmd['tss']['order_by']]
             sort_by = [order_tuple[ORDER_BY_KEYS.COLUMN] for order_tuple in self.transaction.lmd['tss']['order_by']]
 
