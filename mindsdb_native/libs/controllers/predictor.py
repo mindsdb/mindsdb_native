@@ -22,7 +22,7 @@ def _get_memory_optimizations(df):
     total_memory = psutil.virtual_memory().total
 
     mem_usage_ratio = df_memory / total_memory
-    
+
     sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > (3 * pow(10, 4))
     sample_for_training = mem_usage_ratio >= 0.5
     disable_lightwood_transform_cache = mem_usage_ratio >= 0.2
@@ -71,6 +71,7 @@ class Predictor:
 
         if CONFIG.CHECK_FOR_UPDATES:
             check_for_updates()
+
 
         if not CONFIG.SAGEMAKER:
             # If storage path is not writable, raise an exception as this can no longer be
@@ -127,6 +128,7 @@ class Predictor:
 
         :return:
         """
+        
         with MDBLock('exclusive', 'learn_' + self.name):
 
             if ignore_columns is None:
@@ -152,7 +154,7 @@ class Predictor:
                 advanced_args = {}
 
             from_ds = getDS(from_data)
-            
+
             # Set user-provided subtypes
             from_ds.set_subtypes(
                 advanced_args.get('subtypes', {})
