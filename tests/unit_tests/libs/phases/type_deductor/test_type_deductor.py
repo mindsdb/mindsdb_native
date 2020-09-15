@@ -115,7 +115,7 @@ class TestTypeDeductor:
         type_deductor.run(input_data)
 
         stats_v2 = lmd['stats_v2']
-        
+
         assert isinstance(stats_v2['numeric_id']['identifier'], str)
         assert isinstance(stats_v2['uuid']['identifier'], str)
 
