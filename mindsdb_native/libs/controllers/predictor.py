@@ -101,6 +101,7 @@ class Predictor:
         if CONFIG.CHECK_FOR_UPDATES:
             check_for_updates()
 
+
         if not CONFIG.SAGEMAKER:
             # If storage path is not writable, raise an exception as this can no longer be
             if not os.access(CONFIG.MINDSDB_STORAGE_PATH, os.W_OK):
@@ -152,6 +153,7 @@ class Predictor:
 
         :return:
         """
+        
         with MDBLock('exclusive', 'learn_' + self.name):
             ignore_columns = [] if ignore_columns is None else ignore_columns
             timeseries_settings = {} if timeseries_settings is None else timeseries_settings
