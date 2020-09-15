@@ -58,7 +58,7 @@ class LightwoodBackend():
 
 
                     numerical_value = float(group_by_ts_map[k][order_col].iloc[i])
-                    arr_val = [numerical_value]
+                    arr_val = [str(numerical_value)]
 
                     group_by_ts_map[k][order_col].iat[i] = arr_val
 
