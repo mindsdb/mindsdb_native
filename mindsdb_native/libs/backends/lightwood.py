@@ -67,12 +67,13 @@ class LightwoodBackend():
                     previous_indexes.reverse()
 
                     for prev_i in previous_indexes:
-                        group_by_ts_map[k].iloc[i][order_col].append(group_by_ts_map[k][order_col].iloc[prev_i][-1])
+                        group_by_ts_map[k].iloc[i][order_col].append(group_by_ts_map[k][order_col].iloc[prev_i].split(' ')[-1])
 
                     while len(group_by_ts_map[k].iloc[i][order_col]) <= nr_samples:
-                        group_by_ts_map[k].iloc[i][order_col].append(0)
+                        group_by_ts_map[k].iloc[i][order_col].append('0')
 
                     group_by_ts_map[k].iloc[i][order_col].reverse()
+                    group_by_ts_map[k][order_col].iat[i] = ' '.join(group_by_ts_map[k].iloc[i][order_col])
 
         combined_df = pd.concat(list(group_by_ts_map.values()))
         return combined_df
@@ -124,7 +125,7 @@ class LightwoodBackend():
                 self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
                 raise Exception('Failed to build data definition for Lightwood model backend')
 
-            if self.transaction.lmd['tss']['is_timeseries'] and col_name in [x[0] for x in self.transaction.lmd['tss']['order_by']]:
+            if self.transaction.lmd['tss']['is_timeseries'] and col_name in self.transaction.lmd['tss']['order_by']:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
 
             col_config = {
