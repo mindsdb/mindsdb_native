@@ -67,13 +67,12 @@ class LightwoodBackend():
                     previous_indexes.reverse()
 
                     for prev_i in previous_indexes:
-                        group_by_ts_map[k].iloc[i][order_col].append(group_by_ts_map[k][order_col].iloc[prev_i].split(' ')[-1])
+                        group_by_ts_map[k].iloc[i][order_col].append(group_by_ts_map[k][order_col].iloc[prev_i][-1])
 
                     while len(group_by_ts_map[k].iloc[i][order_col]) <= nr_samples:
-                        group_by_ts_map[k].iloc[i][order_col].append('0')
+                        group_by_ts_map[k].iloc[i][order_col].append(0)
 
                     group_by_ts_map[k].iloc[i][order_col].reverse()
-                    #group_by_ts_map[k][order_col].iat[i] = ' '.join(group_by_ts_map[k].iloc[i][order_col])
 
         combined_df = pd.concat(list(group_by_ts_map.values()))
         return combined_df
