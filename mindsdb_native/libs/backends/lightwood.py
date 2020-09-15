@@ -22,9 +22,9 @@ class LightwoodBackend():
         return gb_lookup_key
 
     def _create_timeseries_df(self, original_df):
-        group_by = self.transaction.lmd['model_group_by']
-        order_by = [x[0] for x in self.transaction.lmd['model_order_by']]
-        nr_samples = self.transaction.lmd['window_size']
+        group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
+        order_by = self.transaction.lmd['tss']['order_by']
+        nr_samples = self.transaction.lmd['tss']['window']
 
         group_by_ts_map = {}
 
@@ -125,7 +125,7 @@ class LightwoodBackend():
                 self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
                 raise Exception('Failed to build data definition for Lightwood model backend')
 
-            if col_name in [x[0] for x in self.transaction.lmd['model_order_by']]:
+            if self.transaction.lmd['tss']['is_timeseries'] and col_name in self.transaction.lmd['tss']['order_by']:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
 
             col_config = {
@@ -171,7 +171,7 @@ class LightwoodBackend():
         if self.transaction.lmd['use_gpu'] is not None:
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
-        if self.transaction.lmd['model_order_by'] is not None and len(self.transaction.lmd['model_order_by']) > 0:
+        if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
             train_df = self._create_timeseries_df(self.transaction.input_data.train_df)
             test_df = self._create_timeseries_df(self.transaction.input_data.test_df)
@@ -243,7 +243,7 @@ class LightwoodBackend():
         else:
             raise Exception(f'Unknown mode specified: "{mode}"')
 
-        if self.transaction.lmd['model_order_by'] is not None and len(self.transaction.lmd['model_order_by']) > 0:
+        if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
             df = self._create_timeseries_df(df)
 
         if self.predictor is None:

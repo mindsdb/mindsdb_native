@@ -455,9 +455,10 @@ class TestPredictor:
         mdb.learn(
             from_data=train_file_name,
             to_predict=label_headers,
-            order_by=feature_headers[0],
-            # ,window_size_seconds=ts_hours* 3600 * 1.5
-            window_size=3,
+            timeseries_settings={
+                'order_by': [feature_headers[0]]
+                ,'window': 3
+            },
             stop_training_in_x_seconds=10,
             use_gpu=False
         )
@@ -536,7 +537,7 @@ class TestPredictor:
         mdb.learn(to_predict='rental_price',
                   from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
                   backend='lightwood',
-                  stop_training_in_x_seconds=180,
+                  stop_training_in_x_seconds=60,
                   use_gpu=use_gpu)
 
         def assert_prediction_interface(predictions):
@@ -586,7 +587,7 @@ class TestPredictor:
         for k in ['train', 'test', 'valid']:
             assert isinstance(model_analysis[0][k + '_data_accuracy'], dict)
             assert len(model_analysis[0][k + '_data_accuracy']) == 1
-            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.5
+            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.4
 
         for column, importance in zip(input_importance["x"],
                                       input_importance["y"]):
@@ -625,7 +626,7 @@ class TestPredictor:
 
         predictor.learn(from_data=df_train, to_predict='y',
                         advanced_args=dict(deduplicate_data=False),
-                        stop_training_in_x_seconds=60,
+                        stop_training_in_x_seconds=40,
                         use_gpu=False)
 
         model_data = F.get_model_data('test')
@@ -640,7 +641,7 @@ class TestPredictor:
             predicted_y.append(predictions[i]['y'])
 
         score = accuracy_score(test_y, predicted_y)
-        assert score >= 0.3
+        assert score >= 0.2
 
     @pytest.mark.slow
     def test_category_tags_output(self):

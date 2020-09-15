@@ -261,7 +261,7 @@ class PredictTransaction(Transaction):
         if self.input_data.data_frame.shape[0] <= 0:
             self.log.error('No input data provided !')
             return
-        if self.lmd['model_is_time_series']:
+        if self.lmd['tss']['is_timeseries']:
             self._call_phase_module(module_name='DataSplitter')
 
         # @TODO Maybe move to a separate "PredictionAnalysis" phase ?

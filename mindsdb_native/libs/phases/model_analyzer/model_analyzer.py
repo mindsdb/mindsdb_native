@@ -36,16 +36,16 @@ class ModelAnalyzer(BaseModule):
                                             self.transaction.lmd['stats_v2'],
                                             output_columns,
                                             backend=self.transaction.model_backend)
-        
+
         for col in output_columns:
             reals = self.transaction.input_data.validation_df[col]
             preds = normal_predictions[col]
 
             fails = False
-            
+
             data_type = self.transaction.lmd['stats_v2'][col]['typing']['data_type']
             data_subtype = self.transaction.lmd['stats_v2'][col]['typing']['data_subtype']
-            
+
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     encoder = self.transaction.model_backend.predictor._mixer.encoders[col]
@@ -72,7 +72,7 @@ class ModelAnalyzer(BaseModule):
         empty_input_predictions_test = {}
 
         ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH
-                           and x not in [y[0] for y in self.transaction.lmd['model_order_by']]]
+                           and (not self.transaction.lmd['tss']['is_timeseries'] or x not in self.transaction.lmd['tss']['order_by'])]
 
         for col in ignorable_input_columns:
             empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
