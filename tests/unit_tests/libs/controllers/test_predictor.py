@@ -455,9 +455,10 @@ class TestPredictor:
         mdb.learn(
             from_data=train_file_name,
             to_predict=label_headers,
-            order_by=feature_headers[0],
-            # ,window_size_seconds=ts_hours* 3600 * 1.5
-            window_size=3,
+            timeseries_settings={
+                order_by=[feature_headers[0]]
+                ,window=3
+            },
             stop_training_in_x_seconds=10,
             use_gpu=False
         )
@@ -594,7 +595,7 @@ class TestPredictor:
             assert (len(column) > 0)
             assert isinstance(importance, (float, int))
             assert (importance >= 0 and importance <= 10)
-            
+
     @pytest.mark.slow
     def test_category_tags_input(self):
         vocab = random.sample(SMALL_VOCAB, 10)
