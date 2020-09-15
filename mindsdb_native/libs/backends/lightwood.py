@@ -268,7 +268,6 @@ class LightwoodBackend():
         else:
             run_df = df
 
-        print('\n\n\n----------', run_df, '------------\n\n\n')
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}

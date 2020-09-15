@@ -198,7 +198,7 @@ class ModelAnalyzer(BaseModule):
                 nc_class = RegressorNc
                 icp_class = IcpRegressor
 
-            if data_type == DATA_TYPES.NUMERIC or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
+            if (data_type == DATA_TYPES.NUMERIC or (is_classification and data_subtype != DATA_SUBTYPES.TAGS)) and not self.transaction.lmd['tss']['is_timeseries']:
                 model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
                 nc = nc_class(model, nc_function)
 
