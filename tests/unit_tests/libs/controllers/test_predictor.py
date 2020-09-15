@@ -456,8 +456,8 @@ class TestPredictor:
             from_data=train_file_name,
             to_predict=label_headers,
             timeseries_settings={
-                order_by=[feature_headers[0]]
-                ,window=3
+                'order_by': [feature_headers[0]]
+                ,'window': 3
             },
             stop_training_in_x_seconds=10,
             use_gpu=False
