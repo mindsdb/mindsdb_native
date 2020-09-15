@@ -22,7 +22,7 @@ class LightwoodBackend():
         return gb_lookup_key
 
     def _create_timeseries_df(self, original_df):
-        group_by = self.transaction.lmd['tss']['group_by']
+        group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
         order_by = [x[0] for x in self.transaction.lmd['tss']['order_by']]
         nr_samples = self.transaction.lmd['tss']['window']
 
