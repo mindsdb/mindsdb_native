@@ -26,6 +26,13 @@ class LightwoodBackend():
         order_by = self.transaction.lmd['tss']['order_by']
         nr_samples = self.transaction.lmd['tss']['window']
 
+        secondary_type_dict = {}
+        for col in order_by:
+            if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
+                secondary_type_dict[col] = ColumnDataTypes.DATETIME
+            else:
+                secondary_type_dict[col] = ColumnDataTypes.NUMERIC
+
         group_by_ts_map = {}
 
         for _, row in original_df.iterrows():
@@ -41,6 +48,7 @@ class LightwoodBackend():
                 except Exception:
                     try:
                         row[col] = float(row[col].timestamp())
+                        secondary_type_dict[col] = ColumnDataTypes.DATETIME
                     except Exception:
                         error_msg = f'Backend Lightwood does not support ordering by the column: {col} !, Faulty value: {row[col]}'
                         self.transaction.log.error(error_msg)
@@ -76,9 +84,9 @@ class LightwoodBackend():
                     group_by_ts_map[k][order_col].iat[i] = ' '.join(group_by_ts_map[k].iloc[i][order_col])
 
         combined_df = pd.concat(list(group_by_ts_map.values()))
-        return combined_df
+        return combined_df, secondary_type_dict
 
-    def _create_lightwood_config(self):
+    def _create_lightwood_config(self, secondary_type_dict):
         config = {}
 
         config['input_features'] = []
@@ -140,6 +148,9 @@ class LightwoodBackend():
             if col_name in self.transaction.lmd['weight_map']:
                 col_config['weights'] = self.transaction.lmd['weight_map'][col_name]
 
+            if col_name in secondary_type_dict:
+                col_config['secondary_type'] = secondary_type_dict[col_name]
+
             col_config.update(other_keys)
 
             if col_name in self.transaction.lmd['predict_columns']:
@@ -171,10 +182,11 @@ class LightwoodBackend():
         if self.transaction.lmd['use_gpu'] is not None:
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
+        secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
-            train_df = self._create_timeseries_df(self.transaction.input_data.train_df)
-            test_df = self._create_timeseries_df(self.transaction.input_data.test_df)
+            train_df, secondary_type_dict = self._create_timeseries_df(self.transaction.input_data.train_df)
+            test_df, _ = self._create_timeseries_df(self.transaction.input_data.test_df)
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
             if self.transaction.lmd['sample_settings']['sample_for_training']:
@@ -201,7 +213,7 @@ class LightwoodBackend():
                 train_df = self.transaction.input_data.train_df
                 test_df = self.transaction.input_data.test_df
 
-        lightwood_config = self._create_lightwood_config()
+        lightwood_config = self._create_lightwood_config(secondary_type_dict)
 
 
         self.predictor = lightwood.Predictor(lightwood_config)
@@ -244,7 +256,7 @@ class LightwoodBackend():
             raise Exception(f'Unknown mode specified: "{mode}"')
 
         if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
-            df = self._create_timeseries_df(df)
+            df, _ = self._create_timeseries_df(df)
 
         if self.predictor is None:
             self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
