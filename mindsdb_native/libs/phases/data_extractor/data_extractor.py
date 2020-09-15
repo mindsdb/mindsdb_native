@@ -51,13 +51,14 @@ class DataExtractor(BaseModule):
         """
 
         # apply order by (group_by, order_by)
-        if self.transaction.lmd['tss']['is_time_series']:
-            asc_values = [order_tuple[ORDER_BY_KEYS.ASCENDING_VALUE] for order_tuple in self.transaction.lmd['tss']['order_by']]
-            sort_by = [order_tuple[ORDER_BY_KEYS.COLUMN] for order_tuple in self.transaction.lmd['tss']['order_by']]
+        if self.transaction.lmd['tss']['is_timeseries']:
+            asc_values = [True for _ in self.transaction.lmd['tss']['order_by']]
+            sort_by = self.transaction.lmd['tss']['order_by']
 
-            if self.transaction.lmd['tss']['group_by']:
+            if self.transaction.lmd['tss']['group_by'] is not None:
                 sort_by = self.transaction.lmd['tss']['group_by'] + sort_by
-                asc_values = [True for i in self.transaction.lmd['tss']['group_by']] + asc_values
+                asc_values = [True for _ in self.transaction.lmd['tss']['group_by']] + asc_values
+
             df = df.sort_values(sort_by, ascending=asc_values)
 
         # if its not a time series, randomize the input data and we are learning

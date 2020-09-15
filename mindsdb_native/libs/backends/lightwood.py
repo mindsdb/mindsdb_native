@@ -22,8 +22,8 @@ class LightwoodBackend():
         return gb_lookup_key
 
     def _create_timeseries_df(self, original_df):
-        group_by = self.transaction.lmd['tss']['group_by']
-        order_by = [x[0] for x in self.transaction.lmd['tss']['order_by']]
+        group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
+        order_by = self.transaction.lmd['tss']['order_by']
         nr_samples = self.transaction.lmd['tss']['window']
 
         group_by_ts_map = {}
@@ -125,7 +125,7 @@ class LightwoodBackend():
                 self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
                 raise Exception('Failed to build data definition for Lightwood model backend')
 
-            if col_name in [x[0] for x in self.transaction.lmd['tss']['order_by']]:
+            if self.transaction.lmd['tss']['is_timeseries'] and col_name in self.transaction.lmd['tss']['order_by']:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
 
             col_config = {
