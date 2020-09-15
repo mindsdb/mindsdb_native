@@ -171,7 +171,11 @@ class LightwoodBackend():
         if self.transaction.lmd['use_gpu'] is not None:
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
+<<<<<<< HEAD
         if self.transaction.lmd['tss']['is_timeseries']:
+=======
+        if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
+>>>>>>> timely_start
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
             train_df = self._create_timeseries_df(self.transaction.input_data.train_df)
             test_df = self._create_timeseries_df(self.transaction.input_data.test_df)
@@ -243,7 +247,7 @@ class LightwoodBackend():
         else:
             raise Exception(f'Unknown mode specified: "{mode}"')
 
-        if self.transaction.lmd['tss']['order_by'] is not None and len(self.transaction.lmd['tss']['order_by']) > 0:
+        if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
             df = self._create_timeseries_df(df)
 
         if self.predictor is None:
