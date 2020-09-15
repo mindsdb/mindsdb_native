@@ -66,7 +66,7 @@ class LightwoodBackend():
 
 
                     numerical_value = float(group_by_ts_map[k][order_col].iloc[i])
-                    arr_val = [str(numerical_value)]
+                    arr_val = [numerical_value]
 
                     group_by_ts_map[k][order_col].iat[i] = arr_val
 
@@ -75,13 +75,12 @@ class LightwoodBackend():
                     previous_indexes.reverse()
 
                     for prev_i in previous_indexes:
-                        group_by_ts_map[k].iloc[i][order_col].append(group_by_ts_map[k][order_col].iloc[prev_i].split(' ')[-1])
+                        group_by_ts_map[k].iloc[i][order_col].append(group_by_ts_map[k][order_col].iloc[prev_i][-1])
 
                     while len(group_by_ts_map[k].iloc[i][order_col]) <= nr_samples:
-                        group_by_ts_map[k].iloc[i][order_col].append('0')
+                        group_by_ts_map[k].iloc[i][order_col].append(0)
 
                     group_by_ts_map[k].iloc[i][order_col].reverse()
-                    group_by_ts_map[k][order_col].iat[i] = ' '.join(group_by_ts_map[k].iloc[i][order_col])
 
         combined_df = pd.concat(list(group_by_ts_map.values()))
         return combined_df, secondary_type_dict
@@ -269,6 +268,7 @@ class LightwoodBackend():
         else:
             run_df = df
 
+        print('\n\n\n----------', run_df, '------------\n\n\n')
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}
