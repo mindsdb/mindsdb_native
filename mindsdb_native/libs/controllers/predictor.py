@@ -65,10 +65,6 @@ def _prepare_timeseries_settings(user_provided_settings):
         ,nr_predictions=1
     )
 
-
-
-timeseries_settings['is_timeseries'] = True
-
     if len(user_provided_settings) > 0:
         if 'order_by' not in user_provided_settings:
             raise Exception('Invalid timeseries settings, please provide `order_by` key [a list of columns]')
@@ -161,7 +157,7 @@ class Predictor:
 
         :return:
         """
-        
+
         with MDBLock('exclusive', 'learn_' + self.name):
             ignore_columns = [] if ignore_columns is None else ignore_columns
             timeseries_settings = {} if timeseries_settings is None else timeseries_settings
