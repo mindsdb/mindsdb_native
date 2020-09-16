@@ -425,7 +425,7 @@ class TestPredictor:
         assert (a2['existing_credits']['typing'][
                     'data_subtype'] == DATA_SUBTYPES.SINGLE)
 
-    @pytest.mark.slow
+    #@pytest.mark.slow
     def test_timeseries(self, tmp_path):
         ts_hours = 12
         data_len = 120
