@@ -69,9 +69,9 @@ class DataSplitter(BaseModule):
                     valid_b = length
                     validation_indexes[NO_GROUP] = all_indexes[NO_GROUP][valid_a:valid_b]
 
-            self.transaction.input_data.train_df = self.transaction.input_data.data_frame.iloc[train_indexes[NO_GROUP]].copy()
-            self.transaction.input_data.test_df = self.transaction.input_data.data_frame.iloc[test_indexes[NO_GROUP]].copy()
-            self.transaction.input_data.validation_df = self.transaction.input_data.data_frame.iloc[validation_indexes[NO_GROUP]].copy()
+            self.transaction.input_data.train_df = self.transaction.input_data.data_frame.loc[train_indexes[NO_GROUP]].copy()
+            self.transaction.input_data.test_df = self.transaction.input_data.data_frame.loc[test_indexes[NO_GROUP]].copy()
+            self.transaction.input_data.validation_df = self.transaction.input_data.data_frame.loc[validation_indexes[NO_GROUP]].copy()
 
             self.transaction.input_data.data_frame = None
 
