@@ -19,12 +19,12 @@ class ClickhouseDS(DataSource):
             raise Exception(err_msg)
 
         setup_args = {
-                'query' = query
-                'host' = host
-                'user' = user
-                'password' = password
-                'port' = port
-                'protocl' = protocol
+                'query' : query
+                ,'host' : host
+                ,'user' : user
+                ,'password' : password
+                ,'port' : port
+                ,'protocl' : protocol
         }
 
 
