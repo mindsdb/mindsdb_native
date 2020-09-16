@@ -27,7 +27,8 @@ def test_database_history():
                 PARTITION BY col1
         ''',
     ]
-    for value in in values:
+
+    for value in values:
         value_ins_str = str(value).replace('[','').replace(']','')
         queries.append(f"INSERT INTO test.mock VALUES ({value_ins_str})")
 
@@ -35,6 +36,6 @@ def test_database_history():
         r = requests.post(clickhouse_url, data=q)
         assert r.status_code == 200
 
-    clickhouse_ds = ClickhouseDS('SELECT * FROM test.mock, host=HOST, port=PORT)
+    clickhouse_ds = ClickhouseDS('SELECT * FROM test.mock', host=HOST, port=PORT)
 
     ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
