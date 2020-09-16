@@ -41,13 +41,15 @@ def create_history_query(query, tss, type_map, row):
         if len(split_query) > 2:
             raise NotImplementedError('Support for more than one order by not implemented in query parsing !')
 
-        query = split_query[0] + f' ORDER BY {order_by_list}' + split_query[1]
+        query = split_query[0] + f' ORDER BY {order_by_list} DESC' + split_query[1]
     else:
-        query += f' ORDER BY {order_by_list}'
+        query += f' ORDER BY {order_by_list} DESC '
 
     # parse and append limit
     if 'window' in tss:
         limit = tss['window']
-        query += f' LIMIT {limit}'
+        query += f' LIMIT 1,{limit}'
     else:
         raise NotImplementedError('Historical queries not yet supported for `dynamic_window`')
+
+    return query
