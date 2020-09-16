@@ -48,6 +48,7 @@ def create_history_query(query, tss, type_map, row):
     # parse and append limit
     if 'window' in tss:
         limit = tss['window']
+        #query += f' LIMIT 1,{limit}' <--- if we assume the last row is the one we are predicting from
         query += f' LIMIT 1,{limit}'
     else:
         raise NotImplementedError('Historical queries not yet supported for `dynamic_window`')
