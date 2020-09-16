@@ -105,7 +105,6 @@ class Predictor:
         if CONFIG.CHECK_FOR_UPDATES:
             check_for_updates()
 
-
         if not CONFIG.SAGEMAKER:
             # If storage path is not writable, raise an exception as this can no longer be
             if not os.access(CONFIG.MINDSDB_STORAGE_PATH, os.W_OK):
