@@ -11,6 +11,7 @@ class DataCleaner(BaseModule):
                 empty_columns.append(col_name)
                 self.log.warning(f'Column "{col_name}" is empty ! We\'ll go ahead and ignore it, please make sure you gave mindsdb the correct data.')
 
+
         return empty_columns
 
     def _remove_missing_targets(self, df):
