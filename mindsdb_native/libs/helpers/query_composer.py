@@ -1,7 +1,14 @@
-def create_history_query(query, tss, type_map, row):
+from mindsdb_native.libs.constants.mindsdb import *
+
+
+def create_history_query(query, tss, stats, row):
     group_by_filter = []
     for group_column in tss.get('group_by',[]):
-        group_by_filter.append(f'{group_column}=' + str(row[group_column]))
+        if stats[group_column]['data_type'] in [DATA_TYPES.TEXT,DATA_TYPES.CATEGORICAL]:
+            group_by_filter.append(f'{group_column}=' + "'" + str(row[group_column]) + "'")
+        else:
+            group_by_filter.append(f'{group_column}=' + str(row[group_column]))
+
     group_by_filter = ' AND '.join(group_by_filter)
 
     order_by_list = []

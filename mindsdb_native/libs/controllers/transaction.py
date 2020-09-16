@@ -296,11 +296,15 @@ class PredictTransaction(Transaction):
 
             output_data = {col: [] for col in self.lmd['columns']}
 
+            if 'make_predictions' in self.input_data.data_frame.columns:
+                predictions_df = pd.DataFrame(self.input_data.data_frame[self.input_data.data_frame['make_predictions'] == True])
+                del predictions_df['make_predictions']
+
             for column in self.input_data.columns:
                 if column in self.lmd['predict_columns']:
-                    output_data[f'__observed_{column}'] = list(self.input_data.data_frame[column])
+                    output_data[f'__observed_{column}'] = list(predictions_df[column])
                 else:
-                    output_data[column] = list(self.input_data.data_frame[column])
+                    output_data[column] = list(predictions_df[column])
 
             for predicted_col in self.lmd['predict_columns']:
                 output_data[predicted_col] = list(self.hmd['predictions'][predicted_col])
@@ -326,7 +330,7 @@ class PredictTransaction(Transaction):
             # confidence estimation
             self.lmd['all_conformal_ranges'] = {}
             for predicted_col in self.lmd['predict_columns']:
-                X = deepcopy(self.input_data.data_frame)
+                X = deepcopy(predictions_df)
                 for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                     X.pop(col)
 

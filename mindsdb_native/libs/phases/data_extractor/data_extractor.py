@@ -1,9 +1,12 @@
+from copy import deepcopy
+
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.helpers.text_helpers import hashtext
 from mindsdb_native.external_libs.stats import calculate_sample_size
+from mindsdb_native.libs.helpers.query_composer import create_history_query
 
 from pandas.api.types import is_numeric_dtype
 import random
@@ -88,15 +91,22 @@ class DataExtractor(BaseModule):
                 # if no data frame yet, make one
                 df = self._data_from_when()
 
-            if  self.transaction.lmd['type'] == TRANSACTION_PREDICT:
-                if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries']:
-                    if 'make_predictions' not in df.columns:
-                        df['make_predictions'] = [True] * len(df)
+            if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries']:
+                if 'make_predictions' not in df.columns:
+                    df['make_predictions'] = [True] * len(df)
 
-                    historical_ds = self.transaction.hmd['from_data_type'](**self.transaction.lmd['setup_args']).df
-                    historical_df = historical_ds._df
-                    historical_df['make_predictions'] = [False] * len(historical_df)
-                    df = pd.concat(df,historical_df)
+                setup_args = deepcopy(self.transaction.lmd['setup_args'])
+
+                setup_args['query'] = create_history_query(setup_args['query'], self.transaction.lmd['tss'], self.transaction.lmd['stats_v2'], df[col].iloc[0])
+
+                historical_df = self.transaction.hmd['from_data_type'](setup_args)._df
+
+                historical_df['make_predictions'] = [False] * len(historical_df)
+                for col in historical_df.columns:
+                    if df[col].iloc[0] is not None:
+                        historical_df[col] = [type(df[col].iloc[0])(x) for x in historical_df[col]]
+
+                df = pd.concat([df,historical_df])
 
         df = self._apply_sort_conditions_to_df(df)
 
@@ -145,7 +155,7 @@ class DataExtractor(BaseModule):
         # --- Dataset gets randomized or sorted (if timeseries) --- #
 
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
-        self.transaction.input_data.columns = result.columns.values.tolist()
+        self.transaction.input_data.columns = [x for x in result.columns.values.tolist() if x != 'make_predictions']
         self.transaction.lmd['columns'] = self.transaction.input_data.columns
         self.transaction.input_data.data_frame = result
         # --- Some information about the dataset gets transplanted into transaction level variables --- #

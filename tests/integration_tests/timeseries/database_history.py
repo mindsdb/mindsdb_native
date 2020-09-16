@@ -38,16 +38,17 @@ def test_database_history():
         assert r.status_code == 200
 
     clickhouse_ds = ClickhouseDS('SELECT * FROM test.mock', host=HOST, port=PORT)
-
-    ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
-
-    ts_predictor.learn(to_predict='col3', from_data=clickhouse_ds, timeseries_settings={
+    '''
+    mindsdb_native.Predictor(name='query_history_based_ts_predictor').learn(to_predict='col3', from_data=clickhouse_ds, timeseries_settings={
         'order_by': ['col2']
         ,'window': 6
     }, stop_training_in_x_seconds=5)
+    '''
 
     ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
     ts_predictor.predict(when_data={
         'col2': 200
         ,'col1': '2'
     })
+
+test_database_history()

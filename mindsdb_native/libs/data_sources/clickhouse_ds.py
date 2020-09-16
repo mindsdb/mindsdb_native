@@ -18,13 +18,13 @@ class ClickhouseDS(DataSource):
             log.error(err_msg)
             raise Exception(err_msg)
 
-        setup_args = {
+        self.setup_args = {
                 'query' : query
                 ,'host' : host
                 ,'user' : user
                 ,'password' : password
                 ,'port' : port
-                ,'protocl' : protocol
+                ,'protocol' : protocol
         }
 
 

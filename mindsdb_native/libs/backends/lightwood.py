@@ -88,6 +88,7 @@ class LightwoodBackend():
 
         if 'make_predictions' in combined_df.columns:
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'] == True])
+            del combined_df['make_predictions']
 
         return combined_df, secondary_type_dict
 
@@ -261,9 +262,7 @@ class LightwoodBackend():
             raise Exception(f'Unknown mode specified: "{mode}"')
 
         if self.transaction.lmd['tss']['is_timeseries']:
-            print(1, df)
             df, _ = self._create_timeseries_df(df)
-            print(2, df)
 
         if self.predictor is None:
             self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
