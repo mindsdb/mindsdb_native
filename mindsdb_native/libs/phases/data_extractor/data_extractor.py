@@ -88,6 +88,16 @@ class DataExtractor(BaseModule):
                 # if no data frame yet, make one
                 df = self._data_from_when()
 
+            if  self.transaction.lmd['type'] == TRANSACTION_PREDICT:
+                if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries']:
+                    if 'make_predictions' not in df.columns:
+                        df['make_predictions'] = [True] * len(df)
+
+                    historical_ds = self.transaction.hmd['from_data_type'](**self.transaction.lmd['setup_args']).df
+                    historical_df = historical_ds._df
+                    historical_df['make_predictions'] = [False] * len(historical_df)
+                    df = pd.concat(df,historical_df)
+
         df = self._apply_sort_conditions_to_df(df)
 
         # Mutable lists -> immutable tuples
@@ -139,11 +149,6 @@ class DataExtractor(BaseModule):
         self.transaction.lmd['columns'] = self.transaction.input_data.columns
         self.transaction.input_data.data_frame = result
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
-
-        if  self.transaction.lmd['type'] == TRANSACTION_PREDICT:
-            if self.transaction.lmd['setup_args'] is not None:
-                historical_ds = self.transaction.hmd['from_data_type'](**self.transaction.lmd['setup_args']).df
-                self.transaction.input_data.historical_df = historical_ds._df
 
         self._set_user_data_subtypes()
 

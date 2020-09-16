@@ -21,7 +21,7 @@ class LightwoodBackend():
             gb_lookup_key += f'{column}_{row[column]}_!!@@!!'
         return gb_lookup_key
 
-    def _create_timeseries_df(self, original_df, historical_df=None):
+    def _create_timeseries_df(self, original_df):
         group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
         order_by = self.transaction.lmd['tss']['order_by']
         nr_samples = self.transaction.lmd['tss']['window']
@@ -77,12 +77,6 @@ class LightwoodBackend():
                     for prev_i in previous_indexes:
                         group_by_ts_map[k].iloc[i][order_col].append(group_by_ts_map[k][order_col].iloc[prev_i][-1])
 
-                    if historical_df is not None:
-                        i = 0
-                        while len(group_by_ts_map[k].iloc[i][order_col]) <= nr_samples and i < len(historical_df):
-                            group_by_ts_map[k].iloc[i][order_col] = historical_df.iloc[i][order_col]
-                            i += 1
-
                     # Zeor pad
                     # @TODO: Remove since RNN encoder can do without (???)
                     while len(group_by_ts_map[k].iloc[i][order_col]) <= nr_samples:
@@ -91,6 +85,10 @@ class LightwoodBackend():
                     group_by_ts_map[k].iloc[i][order_col].reverse()
 
         combined_df = pd.concat(list(group_by_ts_map.values()))
+
+        if 'make_predictions' in combined_df.columns:
+            combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'] == True])
+
         return combined_df, secondary_type_dict
 
     def _create_lightwood_config(self, secondary_type_dict):
@@ -264,7 +262,7 @@ class LightwoodBackend():
 
         if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
             if self.transaction.input_data.historical_df is not None:
-                df, _ = self._create_timeseries_df(df, self.transaction.input_data.historical_df)
+                df, _ = self._create_timeseries_df(df)
 
         if self.predictor is None:
             self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
@@ -277,6 +275,7 @@ class LightwoodBackend():
         else:
             run_df = df
 
+        print(run_df)
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}

@@ -1,7 +1,8 @@
 import pytest
+import requests
 import mindsdb_native
 
-@pytest.mark.integration
+
 def test_database_history():
     from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
@@ -12,7 +13,7 @@ def test_database_history():
 
     values = []
     for i in range(200):
-        values.append([str(i%6),i,i*2])
+        values.append([str(i%6),i,pow(i,2)])
 
     queries = [
         'CREATE DATABASE IF NOT EXISTS test',
@@ -39,3 +40,14 @@ def test_database_history():
     clickhouse_ds = ClickhouseDS('SELECT * FROM test.mock', host=HOST, port=PORT)
 
     ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
+
+    ts_predictor.learn(to_predict='col3', from_data=clickhouse_ds, timeseries_settings={
+        'order_by': ['col2']
+        ,'window': 6
+    }, stop_training_in_x_seconds=10)
+
+    ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
+    ts_predictor.predict(when_data={
+        'col2': 200
+        ,'col1': '2'
+    })
