@@ -97,9 +97,9 @@ class DataExtractor(BaseModule):
 
                 setup_args = deepcopy(self.transaction.lmd['setup_args'])
 
-                setup_args['query'] = create_history_query(setup_args['query'], self.transaction.lmd['tss'], self.transaction.lmd['stats_v2'], df[col].iloc[0])
-
-                historical_df = self.transaction.hmd['from_data_type'](setup_args)._df
+                setup_args['query'] = create_history_query(setup_args['query'], self.transaction.lmd['tss'], self.transaction.lmd['stats_v2'], df.iloc[0])
+                
+                historical_df = self.transaction.hmd['from_data_type'](**setup_args)._df
 
                 historical_df['make_predictions'] = [False] * len(historical_df)
                 for col in historical_df.columns:

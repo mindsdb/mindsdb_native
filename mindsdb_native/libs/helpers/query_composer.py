@@ -3,8 +3,9 @@ from mindsdb_native.libs.constants.mindsdb import *
 
 def create_history_query(query, tss, stats, row):
     group_by_filter = []
-    for group_column in tss.get('group_by',[]):
-        if stats[group_column]['data_type'] in [DATA_TYPES.TEXT,DATA_TYPES.CATEGORICAL]:
+    group_by_arr = tss['group_by'] if tss['group_by'] is not None else []
+    for group_column in group_by_arr:
+        if stats[group_column]['typing']['data_type'] in [DATA_TYPES.TEXT,DATA_TYPES.CATEGORICAL]:
             group_by_filter.append(f'{group_column}=' + "'" + str(row[group_column]) + "'")
         else:
             group_by_filter.append(f'{group_column}=' + str(row[group_column]))
@@ -27,20 +28,21 @@ def create_history_query(query, tss, stats, row):
                 query = ' limit '.join(split_query[:-1])
 
     # append filter
-    if ' where ' in query:
-        split_query = query.split(' where ')
-        query = split_query[0] + f' WHERE {group_by_filter} AND ' + split_query[1]
-    elif ' group by ' in query:
-        split_query = query.split(' group by ')
-        query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
-    elif ' having ' in query:
-        split_query = query.split(' having ')
-        query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
-    elif ' order by ' in query:
-        split_query = query.split(' order by ')
-        query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
-    else:
-        query += f' WHERE {group_by_filter}'
+    if len(group_by_filter) > 0:
+        if ' where ' in query:
+            split_query = query.split(' where ')
+            query = split_query[0] + f' WHERE {group_by_filter} AND ' + split_query[1]
+        elif ' group by ' in query:
+            split_query = query.split(' group by ')
+            query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
+        elif ' having ' in query:
+            split_query = query.split(' having ')
+            query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
+        elif ' order by ' in query:
+            split_query = query.split(' order by ')
+            query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
+        else:
+            query += f' WHERE {group_by_filter}'
 
     # append order
     if ' order by ' in query:
@@ -56,7 +58,7 @@ def create_history_query(query, tss, stats, row):
     if 'window' in tss:
         limit = tss['window']
         #query += f' LIMIT 1,{limit}' <--- if we assume the last row is the one we are predicting from
-        query += f' LIMIT 1,{limit}'
+        query += f' LIMIT {limit}'
     else:
         raise NotImplementedError('Historical queries not yet supported for `dynamic_window`')
 
