@@ -161,7 +161,7 @@ class ModelAnalyzer(BaseModule):
         # conformal prediction confidence estimation
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
         self.transaction.hmd['label_encoders'] = {}
-        self.transaction.hmd['icp'] = {}
+        self.transaction.hmd['icp'] = {'active': False}
 
         for target in output_columns:
             data_type = self.transaction.lmd['stats_v2'][target]['typing']['data_type']
@@ -213,6 +213,7 @@ class ModelAnalyzer(BaseModule):
 
                 X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns)
                 self.transaction.hmd['icp'][target].fit(X.values, y.values)
+                self.transaction.hmd['icp']['active'] = True
 
                 # calibrate conformal estimator on test set
                 X = deepcopy(self.transaction.input_data.validation_df)
