@@ -51,13 +51,14 @@ class DataExtractor(BaseModule):
         """
 
         # apply order by (group_by, order_by)
-        if self.transaction.lmd['model_is_time_series']:
-            asc_values = [order_tuple[ORDER_BY_KEYS.ASCENDING_VALUE] for order_tuple in self.transaction.lmd['model_order_by']]
-            sort_by = [order_tuple[ORDER_BY_KEYS.COLUMN] for order_tuple in self.transaction.lmd['model_order_by']]
+        if self.transaction.lmd['tss']['is_timeseries']:
+            asc_values = [True for _ in self.transaction.lmd['tss']['order_by']]
+            sort_by = self.transaction.lmd['tss']['order_by']
 
-            if self.transaction.lmd['model_group_by']:
-                sort_by = self.transaction.lmd['model_group_by'] + sort_by
-                asc_values = [True for i in self.transaction.lmd['model_group_by']] + asc_values
+            if self.transaction.lmd['tss']['group_by'] is not None:
+                sort_by = self.transaction.lmd['tss']['group_by'] + sort_by
+                asc_values = [True for _ in self.transaction.lmd['tss']['group_by']] + asc_values
+
             df = df.sort_values(sort_by, ascending=asc_values)
 
         # if its not a time series, randomize the input data and we are learning
@@ -94,7 +95,7 @@ class DataExtractor(BaseModule):
         df = df.applymap(lambda cell: tuple(cell) if isinstance(cell, list) else cell)
 
         groups = df.columns.to_series().groupby(df.dtypes).groups
-        
+
         # @TODO: Maybe move to data cleaner ? Seems kind of out of place here
         if np.dtype('datetime64[ns]') in groups:
             for colname in groups[np.dtype('datetime64[ns]')]:

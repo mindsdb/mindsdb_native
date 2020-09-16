@@ -6,7 +6,7 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 class DataSplitter(BaseModule):
     def run(self):
-        group_by = self.transaction.lmd['model_group_by']
+        group_by = self.transaction.lmd['tss']['group_by']
         if group_by is None or len(group_by) == 0:
             group_by = []
             # @TODO: Group by seems not to work on certain datasets and the values get split complete unevenly between train/test/validation
@@ -15,7 +15,7 @@ class DataSplitter(BaseModule):
                     self.transaction.input_data.data_frame = self.transaction.input_data.data_frame.sort_values(group_by)
                 except Exception:
                     # If categories can't be sroted because of various issues, that's fine, no need for the prediction logic to fail
-                    if len(self.transaction.lmd['model_group_by']) == 0:
+                    if len(self.transaction.lmd['tss']['group_by']) == 0:
                         group_by = []
                     else:
                         raise
