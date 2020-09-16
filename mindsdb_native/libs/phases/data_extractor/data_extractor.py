@@ -140,6 +140,11 @@ class DataExtractor(BaseModule):
         self.transaction.input_data.data_frame = result
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
 
+        if  self.transaction.lmd['type'] == TRANSACTION_PREDICT:
+            if self.transaction.lmd['setup_args'] is not None:
+                historical_ds = self.transaction.hmd['from_data_type'](**self.transaction.lmd['setup_args']).df
+                self.transaction.input_data.historical_df = historical_ds._df
+
         self._set_user_data_subtypes()
 
         # --- Some preliminary dataset integrity checks --- #

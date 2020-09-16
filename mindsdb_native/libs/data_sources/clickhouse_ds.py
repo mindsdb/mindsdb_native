@@ -18,7 +18,15 @@ class ClickhouseDS(DataSource):
             log.error(err_msg)
             raise Exception(err_msg)
 
-        self.original_query = query
+        setup_args = {
+                'query' = query
+                'host' = host
+                'user' = user
+                'password' = password
+                'port' = port
+                'protocl' = protocol
+        }
+
 
         query = '{} FORMAT JSON'.format(query.rstrip(" ;\n"))
         log.info(f'Getting data via the query: "{query}"')
