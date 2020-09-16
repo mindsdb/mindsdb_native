@@ -260,9 +260,10 @@ class LightwoodBackend():
         else:
             raise Exception(f'Unknown mode specified: "{mode}"')
 
-        if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
-            if self.transaction.input_data.historical_df is not None:
-                df, _ = self._create_timeseries_df(df)
+        if self.transaction.lmd['tss']['is_timeseries']:
+            print(1, df)
+            df, _ = self._create_timeseries_df(df)
+            print(2, df)
 
         if self.predictor is None:
             self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])

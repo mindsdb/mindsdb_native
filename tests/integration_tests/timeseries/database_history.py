@@ -44,7 +44,7 @@ def test_database_history():
     ts_predictor.learn(to_predict='col3', from_data=clickhouse_ds, timeseries_settings={
         'order_by': ['col2']
         ,'window': 6
-    }, stop_training_in_x_seconds=10)
+    }, stop_training_in_x_seconds=5)
 
     ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
     ts_predictor.predict(when_data={
