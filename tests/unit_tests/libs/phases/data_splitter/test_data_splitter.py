@@ -16,6 +16,7 @@ class TestDataSplitter:
         lmd['tss']['order_by'] = 'ob'
         lmd['tss']['group_by'] = ['gb_1', 'gb_2']
         lmd['type'] = TRANSACTION_LEARN
+        lmd['data_preparation'] = {}
         return lmd
 
     def test_groups(self, transaction, lmd):
@@ -37,7 +38,7 @@ class TestDataSplitter:
         input_data.data_frame = input_dataframe
 
         data_splitter.transaction.input_data = input_data
-        all_indexes, train_indexes, test_indexes, validation_indexes = data_splitter.run(test_train_ratio=0.25)
+        all_indexes, *_ = data_splitter.run(test_train_ratio=0.25)
 
         assert len(all_indexes[(1, 1)]) == 25
         assert len(all_indexes[(1, 2)]) == 25

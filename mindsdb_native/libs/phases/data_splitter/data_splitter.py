@@ -8,7 +8,7 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 class DataSplitter(BaseModule):
     def run(self, test_train_ratio=CONFIG.TEST_TRAIN_RATIO):
-        group_by = self.transaction.lmd['tss']['group_by']
+        group_by = self.transaction.lmd['tss']['group_by'] or []
 
         NO_GROUP = tuple()
 
@@ -55,8 +55,18 @@ class DataSplitter(BaseModule):
                         validation_indexes[NO_GROUP].extend(validation_indexes[group])
                 else:
                     # make sure that the last in the time series are also the subset used for test
+                    length = len(all_indexes[NO_GROUP])
+
+                    train_a = 0
+                    train_b = round(length - length * test_train_ratio)
                     train_indexes[NO_GROUP] = all_indexes[NO_GROUP][train_a:train_b]
+
+                    test_a = train_b
+                    test_b = train_b + round(length * test_train_ratio / 2)
                     test_indexes[NO_GROUP] = all_indexes[NO_GROUP][test_a:test_b]
+                    
+                    valid_a = test_b
+                    valid_b = length
                     validation_indexes[NO_GROUP] = all_indexes[NO_GROUP][valid_a:valid_b]
 
             self.transaction.input_data.train_df = self.transaction.input_data.data_frame.iloc[train_indexes[NO_GROUP]].copy()
@@ -65,9 +75,9 @@ class DataSplitter(BaseModule):
 
             self.transaction.input_data.data_frame = None
 
-            # self.transaction.lmd['data_preparation']['test_row_count'] = len(self.transaction.input_data.test_df)
-            # self.transaction.lmd['data_preparation']['train_row_count'] = len(self.transaction.input_data.train_df)
-            # self.transaction.lmd['data_preparation']['validation_row_count'] = len(self.transaction.input_data.validation_df)
+            self.transaction.lmd['data_preparation']['test_row_count'] = len(self.transaction.input_data.test_df)
+            self.transaction.lmd['data_preparation']['train_row_count'] = len(self.transaction.input_data.train_df)
+            self.transaction.lmd['data_preparation']['validation_row_count'] = len(self.transaction.input_data.validation_df)
 
             data = {
                 'subsets': [
