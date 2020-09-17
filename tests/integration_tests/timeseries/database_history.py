@@ -2,7 +2,7 @@ import pytest
 import requests
 import mindsdb_native
 
-
+@pytest.mark.integration
 def test_database_history():
     from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
@@ -38,7 +38,7 @@ def test_database_history():
         assert r.status_code == 200
 
     clickhouse_ds = ClickhouseDS('SELECT * FROM test.mock', host=HOST, port=PORT)
-    
+
     mindsdb_native.Predictor(name='query_history_based_ts_predictor').learn(to_predict='col3', from_data=clickhouse_ds, timeseries_settings={
         'order_by': ['col2']
         ,'window': 6
@@ -51,5 +51,3 @@ def test_database_history():
         'col2': 200
         ,'col1': '2'
     })
-
-test_database_history()
