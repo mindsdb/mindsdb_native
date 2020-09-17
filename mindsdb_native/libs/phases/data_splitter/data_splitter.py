@@ -73,6 +73,20 @@ class DataSplitter(BaseModule):
             self.transaction.input_data.test_df = self.transaction.input_data.data_frame.loc[test_indexes[NO_GROUP]].copy()
             self.transaction.input_data.validation_df = self.transaction.input_data.data_frame.loc[validation_indexes[NO_GROUP]].copy()
 
+            if self.transaction.lmd['tss']['is_timeseries']:
+                historical_train = pd.DataFrame(self.transaction.input_data.train_df)
+                historical_train['make_predictions'] = [False] * len(historical_train)
+
+                historical_test = pd.DataFrame(self.transaction.input_data.test_df)
+                historical_test['make_predictions'] = [False] * len(historical_test)
+
+                self.transaction.input_data.test_df['make_predictions'] = [True] * self.transaction.input_data.test_df
+                self.transaction.input_data.test_df = pd.concat([self.transaction.input_data.test_df,historical_train])
+
+                self.transaction.input_data.validation_df['make_predictions'] = [True] * self.transaction.input_data.validation_df
+                self.transaction.input_data.validation_df = pd.concat([self.transaction.input_data.validation_df,historical_test,historical_train])
+
+
             self.transaction.input_data.data_frame = None
 
             self.transaction.lmd['data_preparation']['test_row_count'] = len(self.transaction.input_data.test_df)
