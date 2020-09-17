@@ -157,7 +157,6 @@ class LightwoodBackend():
             else:
                 config['input_features'].append(col_config)
 
-
         config['data_source'] = {}
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
 
@@ -167,14 +166,14 @@ class LightwoodBackend():
         return config
 
     def callback_on_iter(self, epoch, mix_error, test_error, delta_mean, accuracy):
-        test_error_rounded = round(test_error,4)
+        test_error_rounded = round(test_error, 4)
         for col in accuracy:
             value = accuracy[col]['value']
             if accuracy[col]['function'] == 'r2_score':
-                value_rounded = round(value,3)
+                value_rounded = round(value, 3)
                 self.transaction.log.debug(f'We\'ve reached training epoch nr {epoch} with an r2 score of {value_rounded} on the testing dataset')
             else:
-                value_pct = round(value * 100,2)
+                value_pct = round(value * 100, 2)
                 self.transaction.log.debug(f'We\'ve reached training epoch nr {epoch} with an accuracy of {value_pct}% on the testing dataset')
 
     def train(self):
@@ -194,15 +193,19 @@ class LightwoodBackend():
                 sample_percentage = self.transaction.lmd['sample_settings']['sample_percentage']
                 sample_function = self.transaction.hmd['sample_function']
 
-                train_df = sample_function(self.transaction.input_data.train_df,
-                                       sample_margin_of_error,
-                                       sample_confidence_level,
-                                       sample_percentage)
+                train_df = sample_function(
+                    self.transaction.input_data.train_df,
+                    sample_margin_of_error,
+                    sample_confidence_level,
+                    sample_percentage
+                )
 
-                test_df = sample_function(self.transaction.input_data.test_df,
-                                       sample_margin_of_error,
-                                       sample_confidence_level,
-                                       sample_percentage)
+                test_df = sample_function(
+                    self.transaction.input_data.test_df,
+                    sample_margin_of_error,
+                    sample_confidence_level,
+                    sample_percentage
+                )
 
                 sample_size = len(train_df)
                 population_size = len(self.transaction.input_data.train_df)
