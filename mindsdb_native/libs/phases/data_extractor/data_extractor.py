@@ -97,9 +97,29 @@ class DataExtractor(BaseModule):
 
                 setup_args = deepcopy(self.transaction.lmd['setup_args'])
 
-                setup_args['query'] = create_history_query(setup_args['query'], self.transaction.lmd['tss'], self.transaction.lmd['stats_v2'], df.iloc[0])
-                
-                historical_df = self.transaction.hmd['from_data_type'](**setup_args)._df
+
+                if len(df) > 1 and self.transaction.lmd['tss']['group_by'] is not None:
+                    encountered_set = set()
+                    unique_group_by_rows = []
+                    for i in range(en(df)):
+                        val_str = ''
+                        for group_col in self.transaction.lmd['tss']['group_by']:
+                            val_str += '###-------------###' + str(df.iloc[i][group_col])
+                            if val_str not in encountered_set:
+                                encountered_set.add(val_str)
+                                unique_group_by_rows.append(df.iloc[i])
+                else:
+                    unique_group_by_rows = [df.iloc[0]]
+
+                historical_df = None
+
+                for row in unique_group_by_rows:
+                    setup_args['query'] = create_history_query(setup_args['query'], self.transaction.lmd['tss'], self.transaction.lmd['stats_v2'], row)
+
+                    if historical_df is None:
+                        historical_df = self.transaction.hmd['from_data_type'](**setup_args)._df
+                    else:
+                        historical_df = pd.concat(historical_df,self.transaction.hmd['from_data_type'](**setup_args)._df)
 
                 historical_df['make_predictions'] = [False] * len(historical_df)
                 for col in historical_df.columns:
