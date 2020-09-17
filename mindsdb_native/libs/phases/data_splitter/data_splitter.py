@@ -54,20 +54,20 @@ class DataSplitter(BaseModule):
                         test_indexes[NO_GROUP].extend(test_indexes[group])
                         validation_indexes[NO_GROUP].extend(validation_indexes[group])
                 else:
-                    # make sure that the last in the time series are also the subset used for test
                     length = len(all_indexes[NO_GROUP])
 
+                    # make sure that the last in the time series are also the subset used for test
                     train_a = 0
-                    train_b = round(length - length * test_train_ratio)
+                    train_b = int(length * (1 - 2 * CONFIG.TEST_TRAIN_RATIO))
                     train_indexes[NO_GROUP] = all_indexes[NO_GROUP][train_a:train_b]
 
-                    test_a = train_b
-                    test_b = train_b + round(length * test_train_ratio / 2)
-                    test_indexes[NO_GROUP] = all_indexes[NO_GROUP][test_a:test_b]
-                    
-                    valid_a = test_b
-                    valid_b = length
+                    valid_a = train_b
+                    valid_b = train_b + int(length * CONFIG.TEST_TRAIN_RATIO)
                     validation_indexes[NO_GROUP] = all_indexes[NO_GROUP][valid_a:valid_b]
+
+                    test_a = valid_b
+                    test_b = length
+                    test_indexes[NO_GROUP] = all_indexes[NO_GROUP][test_a:test_b]
 
             self.transaction.input_data.train_df = self.transaction.input_data.data_frame.loc[train_indexes[NO_GROUP]].copy()
             self.transaction.input_data.test_df = self.transaction.input_data.data_frame.loc[test_indexes[NO_GROUP]].copy()
