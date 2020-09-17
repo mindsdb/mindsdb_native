@@ -533,7 +533,8 @@ class TestPredictor:
         Tests whole pipeline from downloading the dataset to making predictions and explanations.
         """
         # Create & Learn
-        mdb = Predictor(name='home_rentals_price')
+        name = 'home_rentals_price'
+        mdb = Predictor(name=name)
         mdb.learn(to_predict='rental_price',
                   from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
                   backend='lightwood',
@@ -556,7 +557,7 @@ class TestPredictor:
         predictions = mdb.predict(when_data={'sqft': 300}, use_gpu=use_gpu)
         assert_prediction_interface(predictions)
 
-        amd = F.get_model_data('home_rentals_price')
+        amd = F.get_model_data(name)
         assert isinstance(json.dumps(amd), str)
 
         for k in ['status', 'name', 'version', 'data_source', 'current_phase',
@@ -595,6 +596,14 @@ class TestPredictor:
             assert (len(column) > 0)
             assert isinstance(importance, (float, int))
             assert (importance >= 0 and importance <= 10)
+
+        # Test confidence estimation after save -> load
+        p = None
+        F.export_predictor(name)
+        F.import_model(f"{name}.zip")
+        p = Predictor(name=name)
+        predictions = p.predict(when_data={'sqft': 1000}, use_gpu=use_gpu, run_confidence_variation_analysis=True)
+        assert_prediction_interface(predictions)
 
     @pytest.mark.slow
     def test_category_tags_input(self):
@@ -715,18 +724,3 @@ class TestPredictor:
         assert set(predictor.transaction.input_data.train_df['col_a'].tolist()) == set(range(30, 60))
         assert set(predictor.transaction.input_data.test_df['col_a'].tolist()) == set(range(60, 100))
         assert set(predictor.transaction.input_data.validation_df['col_a'].tolist()) == set(range(0, 30))
-
-    def test_save_load_model(self):
-        name = 'saveLoadTest'
-        p = Predictor(name=name)
-        p.learn(from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-                to_predict='rental_price',
-                stop_training_in_x_seconds=3,
-                advanced_args={'force_predict': True})
-
-        p = None
-        F.export_predictor(name)
-        F.import_model(f"{name}.zip")
-
-        p = Predictor(name=name)
-        predictions = p.predict(when_data={'sqft': 1000}, run_confidence_variation_analysis=True)

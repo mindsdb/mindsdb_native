@@ -347,12 +347,12 @@ class PredictTransaction(Transaction):
                             else:
                                 output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
                                 bounds = sample[:, 0]
-                                sigma = (bounds[1] - bounds[0])/2
+                                sigma = (bounds[1] - bounds[0]) / 2
                                 output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
 
                     elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL and not self.lmd['tss']['is_timeseries']:
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                            all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s/100) for s in range(1, 100)])
+                            all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100) for s in range(1, 100)])
                             self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
                             for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
                                 sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
