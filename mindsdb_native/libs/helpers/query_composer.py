@@ -18,6 +18,8 @@ def create_history_query(query, tss, stats, row):
     order_by_list = ', '.join(order_by_list)
 
     query = query.lower()
+    query = query.rstrip(' ')
+    query = query.rstrip(';')
     # If the initial training query had a limit we must remove it
     if ' limit ' in query:
         split_query = query.split(' limit ')
@@ -50,9 +52,9 @@ def create_history_query(query, tss, stats, row):
         if len(split_query) > 2:
             raise NotImplementedError('Support for more than one order by not implemented in query parsing !')
 
-        query = split_query[0] + f' ORDER BY {order_by_list} DESC' + split_query[1]
+        query = split_query[0] + f' ORDER BY {order_by_list} DESC'
     else:
-        query += f' ORDER BY {order_by_list} DESC '
+        query += f' ORDER BY {order_by_list} DESC'
 
     # parse and append limit
     if 'window' in tss:
