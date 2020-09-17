@@ -1,5 +1,10 @@
 from mindsdb_native.libs.constants.mindsdb import *
+import re
 
+i_gb = re.compile(re.escape(' group by '), re.IGNORECASE)
+i_ob = re.compile(re.escape(' order by '), re.IGNORECASE)
+i_wh = re.compile(re.escape(' where '), re.IGNORECASE)
+i_li = re.compile(re.escape(' limit '), re.IGNORECASE)
 
 def create_history_query(query, tss, stats, row):
     group_by_filter = []
@@ -17,9 +22,12 @@ def create_history_query(query, tss, stats, row):
         order_by_list.append(order_column)
     order_by_list = ', '.join(order_by_list)
 
-    query = query.lower()
     query = query.rstrip(' ')
     query = query.rstrip(';')
+    query = i_gb.sub(' group by ', query)
+    query = i_ob.sub(' order by ', query)
+    query = i_wh.sub(' where ', query)
+    query = i_li.sub(' limit ', query)
     # If the initial training query had a limit we must remove it
     if ' limit ' in query:
         split_query = query.split(' limit ')
