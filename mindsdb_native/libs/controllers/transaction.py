@@ -299,6 +299,8 @@ class PredictTransaction(Transaction):
             if 'make_predictions' in self.input_data.data_frame.columns:
                 predictions_df = pd.DataFrame(self.input_data.data_frame[self.input_data.data_frame['make_predictions'] == True])
                 del predictions_df['make_predictions']
+            else:
+                predictions_df = self.input_data.data_frame
 
             for column in self.input_data.columns:
                 if column in self.lmd['predict_columns']:
@@ -328,37 +330,17 @@ class PredictTransaction(Transaction):
                     output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
 
             # confidence estimation
-            self.lmd['all_conformal_ranges'] = {}
-            for predicted_col in self.lmd['predict_columns']:
-                X = deepcopy(predictions_df)
-                for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
-                    X.pop(col)
+            if self.hmd['icp']['active']:
+                self.lmd['all_conformal_ranges'] = {}
+                for predicted_col in self.lmd['predict_columns']:
+                    X = deepcopy(predictions_df)
+                    for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
+                        X.pop(col)
 
-                if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.NUMERIC and not self.lmd['tss']['is_timeseries']:
-                    tol_const = 2  # std devs
-                    tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
-                    self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
-
-                    for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
-                        sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
-                        for idx in range(sample.shape[1]):
-                            significance = (99 - idx) / 100
-                            diff = sample[1, idx] - sample[0, idx]
-                            if diff <= tolerance:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
-                                break
-                        else:
-                            output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
-                            bounds = sample[:, 0]
-                            sigma = (bounds[1] - bounds[0])/2
-                            output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
-
-                elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL and not self.lmd['tss']['is_timeseries']:
-                    if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                        all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s/100) for s in range(1, 100)])
-                        self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
-
+                    if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.NUMERIC and not self.lmd['tss']['is_timeseries']:
+                        tol_const = 2  # std devs
+                        tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+                        self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
                             sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
                             for idx in range(sample.shape[1]):
@@ -371,14 +353,13 @@ class PredictTransaction(Transaction):
                             else:
                                 output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
                                 bounds = sample[:, 0]
-                                sigma = (bounds[1] - bounds[0])/2
+                                sigma = (bounds[1] - bounds[0]) / 2
                                 output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
 
-                    elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL:
+                    elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL and not self.lmd['tss']['is_timeseries']:
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                            all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s/100) for s in range(1, 100)])
+                            all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100) for s in range(1, 100)])
                             self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
-
                             for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
                                 sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
                                 for idx in range(sample.shape[1]):
