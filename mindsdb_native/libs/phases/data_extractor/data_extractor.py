@@ -102,11 +102,11 @@ class DataExtractor(BaseModule):
                     encountered_set = set()
                     unique_group_by_rows = []
                     for i in range(en(df)):
-                        val_str = ''
+                        val_tuple = tuple()
                         for group_col in self.transaction.lmd['tss']['group_by']:
-                            val_str += '###-------------###' + str(df.iloc[i][group_col])
-                            if val_str not in encountered_set:
-                                encountered_set.add(val_str)
+                            val_tuple.append([*val_tuple,df.iloc[i][group_col]])
+                            if val_tuple not in encountered_set:
+                                encountered_set.add(val_tuple)
                                 unique_group_by_rows.append(df.iloc[i])
                 else:
                     unique_group_by_rows = [df.iloc[0]]
