@@ -38,7 +38,7 @@ class ModelAnalyzer(BaseModule):
                                             backend=self.transaction.model_backend)
 
         for col in output_columns:
-            if self.lmd.transaction['tss']['is_timeseries']:
+            if self.transaction.lmd['tss']['is_timeseries']:
                 reals = list(self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True][col])
             else:
                 reals = self.transaction.input_data.validation_df[col]
