@@ -60,7 +60,7 @@ class Transaction:
         except Exception:
             pass
 
-        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'] + '_light_model_metadata.pickle')
+        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'], 'light_model_metadata.pickle')
         try:
             with open(fn, 'rb') as fp:
                 self.lmd = pickle.load(fp)
@@ -68,7 +68,7 @@ class Transaction:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb light metadata from the file: {fn}')
 
-        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_heavy_model_metadata.pickle')
+        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'heavy_model_metadata.pickle')
         try:
             with open(fn, 'rb') as fp:
                 self.hmd = pickle.load(fp)
@@ -76,7 +76,7 @@ class Transaction:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb heavy metadata in the file: {fn}')
 
-        icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_icp.pickle')
+        icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'icp.pickle')
         try:
             with open(icp_fn, 'rb') as fp:
                 self.hmd['icp'] = dill.load(fp)
@@ -91,7 +91,7 @@ class Transaction:
             self.log.error(f'Could not load mindsdb conformal predictor in the file: {icp_fn}')
 
     def save_metadata(self):
-        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'] + '_light_model_metadata.pickle')
+        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'], 'light_model_metadata.pickle')
         self.lmd['updated_at'] = str(datetime.datetime.now())
         try:
             with open(fn, 'wb') as fp:
@@ -100,7 +100,7 @@ class Transaction:
             self.log.error(e)
             self.log.error(f'Could not save mindsdb light metadata in the file: {fn}')
 
-        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_heavy_model_metadata.pickle')
+        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'heavy_model_metadata.pickle')
         save_hmd = {}
         null_out_fields = ['from_data', 'icp']
         for k in null_out_fields:
@@ -121,7 +121,7 @@ class Transaction:
             self.log.error(f'Could not save mindsdb heavy metadata in the file: {fn}')
 
         if 'icp' in self.hmd.keys() and self.hmd['icp']['active']:
-            icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_icp.pickle')
+            icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'icp.pickle')
             try:
                 mdb_predictors = {}
                 with open(icp_fn, 'wb') as fp:

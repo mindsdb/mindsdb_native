@@ -431,7 +431,7 @@ class LudwigBackend():
                 # The resulting train_stats are "None"... wonderful -_-
             '''
 
-        ludwig_model_savepath = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_ludwig_data')
+        ludwig_model_savepath = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'ludwig_data')
         if ludwig_save_is_working:
             model.save(ludwig_model_savepath)
             model.close()
