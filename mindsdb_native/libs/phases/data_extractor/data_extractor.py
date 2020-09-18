@@ -101,7 +101,7 @@ class DataExtractor(BaseModule):
                 if len(df) > 1 and self.transaction.lmd['tss']['group_by'] is not None:
                     encountered_set = set()
                     unique_group_by_rows = []
-                    for i in range(en(df)):
+                    for i in range(len(df)):
                         val_tuple = tuple()
                         for group_col in self.transaction.lmd['tss']['group_by']:
                             val_tuple = tuple([*val_tuple,df.iloc[i][group_col]])
