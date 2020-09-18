@@ -62,16 +62,14 @@ class Transaction:
 
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'], 'light_model_metadata.pickle')
         try:
-            with open(fn, 'rb') as fp:
-                self.lmd = pickle.load(fp)
+            self.lmd = load_lmd(fn)
         except Exception as e:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb light metadata from the file: {fn}')
 
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'heavy_model_metadata.pickle')
         try:
-            with open(fn, 'rb') as fp:
-                self.hmd = pickle.load(fp)
+            self.hmd = load_hmd(fn)
         except Exception as e:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb heavy metadata in the file: {fn}')

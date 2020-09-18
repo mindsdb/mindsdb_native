@@ -12,7 +12,7 @@ from mindsdb_native.libs.controllers.transaction import (
     LearnTransaction, PredictTransaction
 )
 from mindsdb_native.libs.constants.mindsdb import *
-from mindsdb_native.libs.helpers.general_helpers import check_for_updates
+from mindsdb_native.libs.helpers.general_helpers import check_for_updates, load_lmd, load_hmd
 from mindsdb_native.libs.helpers.locking import MDBLock
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
@@ -257,11 +257,17 @@ class Predictor:
                 old_hmd = {}
                 for k in heavy_transaction_metadata: old_hmd[k] = heavy_transaction_metadata[k]
 
-                with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, light_transaction_metadata['name'], 'light_model_metadata.pickle'), 'rb') as fp:
-                    light_transaction_metadata = pickle.load(fp)
+                light_transaction_metadata = load_lmd(os.path.join(
+                    CONFIG.MINDSDB_STORAGE_PATH,
+                    light_transaction_metadata['name'],
+                    'light_model_metadata.pickle'
+                ))
 
-                with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, heavy_transaction_metadata['name'], 'heavy_model_metadata.pickle'), 'rb') as fp:
-                    heavy_transaction_metadata= pickle.load(fp)
+                heavy_transaction_metadata = load_hmd(os.path.join(
+                    CONFIG.MINDSDB_STORAGE_PATH,
+                    heavy_transaction_metadata['name'],
+                    'heavy_model_metadata.pickle'
+                ))
 
                 for k in ['data_preparation', 'rebuild_model', 'data_source', 'type', 'columns_to_ignore', 'sample_margin_of_error', 'sample_confidence_level', 'stop_training_in_x_seconds']:
                     if old_lmd[k] is not None: light_transaction_metadata[k] = old_lmd[k]
@@ -292,8 +298,7 @@ class Predictor:
 
             predictions = self.predict(when_data=when_data, **predict_args)
 
-            with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.name, 'light_model_metadata.pickle'), 'rb') as fp:
-                lmd = pickle.load(fp)
+            lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.name, 'light_model_metadata.pickle'))
 
             accuracy_dict = {}
             for col in lmd['predict_columns']:

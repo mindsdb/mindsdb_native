@@ -13,6 +13,7 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import AnalyseTransaction
 from mindsdb_native.libs.controllers.predictor import _get_memory_optimizations, _prepare_sample_settings, Predictor
 from mindsdb_native.libs.helpers.multi_data_source import getDS
+from mindsdb_native.libs.helpers.general_helpers import load_lmd, load_hmd
 from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    MODEL_STATUS_ERROR,
                                                    TRANSACTION_ANALYSE)
@@ -162,15 +163,8 @@ def rename_model(old_model_name, new_model_name):
         if not moved_a_backend:
             return False
 
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            old_model_name, 'light_model_metadata.pickle'),
-                'rb') as fp:
-            lmd = pickle.load(fp)
-
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            old_model_name, 'heavy_model_metadata.pickle'),
-                'rb') as fp:
-            hmd = pickle.load(fp)
+        lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, 'light_model_metadata.pickle'))
+        hmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, 'heavy_model_metadata.pickle'))
 
         lmd['name'] = new_model_name
         hmd['name'] = new_model_name
@@ -218,18 +212,17 @@ def delete_model(model_name):
     :return: bool (True/False) True if model was deleted
     """
     with MDBLock('exclusive', 'delete_' + model_name):
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'), 'rb') as fp:
-            lmd = pickle.load(fp)
+        lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'))
 
-            try:
-                os.remove(lmd['lightwood_data']['save_path'])
-            except Exception:
-                pass
+        try:
+            os.remove(lmd['lightwood_data']['save_path'])
+        except Exception:
+            pass
 
-            try:
-                shutil.rmtree(lmd['ludwig_data']['ludwig_save_path'])
-            except Exception:
-                pass
+        try:
+            shutil.rmtree(lmd['ludwig_data']['ludwig_save_path'])
+        except Exception:
+            pass
 
         shutil.rmtree(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name))
 
@@ -245,8 +238,7 @@ def import_model(model_archive_path):
     shutil.unpack_archive(model_archive_path, extract_dir=extract_dir)
 
     try:
-        with open(os.path.join(extract_dir, 'light_model_metadata.pickle'), 'rb') as fp:
-            lmd = pickle.load(fp)
+        lmd = load_lmd(os.path.join(extract_dir, 'light_model_metadata.pickle'))
     except Exception:
         shutil.rmtree(extract_dir)
         raise
@@ -328,8 +320,7 @@ def get_model_data(model_name=None, lmd=None):
         pass
     elif model_name is not None:
         with MDBLock('shared', 'get_data_' + model_name):
-            with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'), 'rb') as fp:
-                lmd = pickle.load(fp)
+            lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'))
 
     # ADAPTOR CODE
     amd = {}
