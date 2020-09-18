@@ -105,7 +105,6 @@ class Predictor:
         if CONFIG.CHECK_FOR_UPDATES:
             check_for_updates()
 
-
         if not CONFIG.SAGEMAKER:
             # If storage path is not writable, raise an exception as this can no longer be
             if not os.access(CONFIG.MINDSDB_STORAGE_PATH, os.W_OK):
@@ -203,7 +202,8 @@ class Predictor:
                 from_data=from_ds,
                 predictions= None,
                 model_backend= backend,
-                sample_function=sample_function
+                sample_function=sample_function,
+                from_data_type=type(from_ds)
             )
 
             light_transaction_metadata = dict(
@@ -246,7 +246,8 @@ class Predictor:
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
                 force_predict = advanced_args.get('force_predict', False),
 
-                breakpoint=self.breakpoint
+                breakpoint = self.breakpoint,
+                setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None
             )
 
             if rebuild_model is False:

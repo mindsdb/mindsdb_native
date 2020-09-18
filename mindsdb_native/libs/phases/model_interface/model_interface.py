@@ -8,7 +8,7 @@ class ModelInterface(BaseModule):
     def run(self, mode='train'):
         try:
             from mindsdb_native.libs.backends.ludwig import LudwigBackend
-        except ImportError as e:
+        except ImportError:
             # Ludwig is optional, so this is fine
             pass
 

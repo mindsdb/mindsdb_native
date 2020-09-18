@@ -77,12 +77,19 @@ class LightwoodBackend():
                     for prev_i in previous_indexes:
                         group_by_ts_map[k].iloc[i][order_col].append(group_by_ts_map[k][order_col].iloc[prev_i][-1])
 
+                    # Zeor pad
+                    # @TODO: Remove since RNN encoder can do without (???)
                     while len(group_by_ts_map[k].iloc[i][order_col]) <= nr_samples:
                         group_by_ts_map[k].iloc[i][order_col].append(0)
 
                     group_by_ts_map[k].iloc[i][order_col].reverse()
 
         combined_df = pd.concat(list(group_by_ts_map.values()))
+
+        if 'make_predictions' in combined_df.columns:
+            combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'] == True])
+            del combined_df['make_predictions']
+
         return combined_df, secondary_type_dict
 
     def _create_lightwood_config(self, secondary_type_dict):
@@ -157,7 +164,6 @@ class LightwoodBackend():
             else:
                 config['input_features'].append(col_config)
 
-
         config['data_source'] = {}
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
 
@@ -167,14 +173,14 @@ class LightwoodBackend():
         return config
 
     def callback_on_iter(self, epoch, mix_error, test_error, delta_mean, accuracy):
-        test_error_rounded = round(test_error,4)
+        test_error_rounded = round(test_error, 4)
         for col in accuracy:
             value = accuracy[col]['value']
             if accuracy[col]['function'] == 'r2_score':
-                value_rounded = round(value,3)
+                value_rounded = round(value, 3)
                 self.transaction.log.debug(f'We\'ve reached training epoch nr {epoch} with an r2 score of {value_rounded} on the testing dataset')
             else:
-                value_pct = round(value * 100,2)
+                value_pct = round(value * 100, 2)
                 self.transaction.log.debug(f'We\'ve reached training epoch nr {epoch} with an accuracy of {value_pct}% on the testing dataset')
 
     def train(self):
@@ -182,7 +188,7 @@ class LightwoodBackend():
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
         secondary_type_dict = {}
-        if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
+        if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
             train_df, secondary_type_dict = self._create_timeseries_df(self.transaction.input_data.train_df)
             test_df, _ = self._create_timeseries_df(self.transaction.input_data.test_df)
@@ -194,15 +200,19 @@ class LightwoodBackend():
                 sample_percentage = self.transaction.lmd['sample_settings']['sample_percentage']
                 sample_function = self.transaction.hmd['sample_function']
 
-                train_df = sample_function(self.transaction.input_data.train_df,
-                                       sample_margin_of_error,
-                                       sample_confidence_level,
-                                       sample_percentage)
+                train_df = sample_function(
+                    self.transaction.input_data.train_df,
+                    sample_margin_of_error,
+                    sample_confidence_level,
+                    sample_percentage
+                )
 
-                test_df = sample_function(self.transaction.input_data.test_df,
-                                       sample_margin_of_error,
-                                       sample_confidence_level,
-                                       sample_percentage)
+                test_df = sample_function(
+                    self.transaction.input_data.test_df,
+                    sample_margin_of_error,
+                    sample_confidence_level,
+                    sample_percentage
+                )
 
                 sample_size = len(train_df)
                 population_size = len(self.transaction.input_data.train_df)
@@ -254,7 +264,7 @@ class LightwoodBackend():
         else:
             raise Exception(f'Unknown mode specified: "{mode}"')
 
-        if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
+        if self.transaction.lmd['tss']['is_timeseries']:
             df, _ = self._create_timeseries_df(df)
 
         if self.predictor is None:
@@ -268,6 +278,7 @@ class LightwoodBackend():
         else:
             run_df = df
 
+        print(run_df)
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}
