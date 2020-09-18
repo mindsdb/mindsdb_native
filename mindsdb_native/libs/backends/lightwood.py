@@ -85,10 +85,13 @@ class LightwoodBackend():
                     group_by_ts_map[k].iloc[i][order_col].reverse()
 
         for target_column in target_column_arr:
-            previous_target_values = list(group_by_ts_map[k][target_column])
-            del previous_target_values[-1]
-            previous_target_values = [None] + previous_target_values
-            group_by_ts_map[k]['target_column'] = previous_target_values
+            for k in group_by_ts_map:
+                previous_target_values = list(group_by_ts_map[k][target_column])
+                print('Undeleted: ', previous_target_values)
+                del previous_target_values[-1]
+                previous_target_values = [None] + previous_target_values
+                print('Deleted: ', previous_target_values)
+                group_by_ts_map[k]['previous_' + target_column] = previous_target_values
 
         combined_df = pd.concat(list(group_by_ts_map.values()))
 
