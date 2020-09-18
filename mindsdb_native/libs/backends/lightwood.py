@@ -21,7 +21,7 @@ class LightwoodBackend():
             gb_lookup_key += f'{column}_{row[column]}_!!@@!!'
         return gb_lookup_key
 
-    def _create_timeseries_df(self, original_df):
+    def _create_timeseries_df(self, original_df, target_column_arr):
         group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
         order_by = self.transaction.lmd['tss']['order_by']
         nr_samples = self.transaction.lmd['tss']['window']
@@ -84,12 +84,19 @@ class LightwoodBackend():
 
                     group_by_ts_map[k].iloc[i][order_col].reverse()
 
+        for target_column in target_column_arr:
+            previous_target_values = list(group_by_ts_map[k][target_column])
+            del previous_target_values[-1]
+            previous_target_values = [None] + previous_target_values
+            group_by_ts_map[k]['target_column'] = previous_target_values
+
         combined_df = pd.concat(list(group_by_ts_map.values()))
 
         if 'make_predictions' in combined_df.columns:
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'] == True])
             del combined_df['make_predictions']
 
+        print(combined_df)
         return combined_df, secondary_type_dict
 
     def _create_lightwood_config(self, secondary_type_dict):
@@ -190,8 +197,8 @@ class LightwoodBackend():
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
-            train_df, secondary_type_dict = self._create_timeseries_df(self.transaction.input_data.train_df)
-            test_df, _ = self._create_timeseries_df(self.transaction.input_data.test_df)
+            train_df, secondary_type_dict = self._create_timeseries_df(self.transaction.input_data.train_df, self.transaction.lmd['predict_columns'])
+            test_df, _ = self._create_timeseries_df(self.transaction.input_data.test_df, self.transaction.lmd['predict_columns'])
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
             if self.transaction.lmd['sample_settings']['sample_for_training']:
@@ -265,7 +272,7 @@ class LightwoodBackend():
             raise Exception(f'Unknown mode specified: "{mode}"')
 
         if self.transaction.lmd['tss']['is_timeseries']:
-            df, _ = self._create_timeseries_df(df)
+            df, _ = self._create_timeseries_df(df, self.transaction.lmd['predict_columns'])
 
         if self.predictor is None:
             self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
