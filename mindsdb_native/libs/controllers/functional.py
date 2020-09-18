@@ -227,7 +227,7 @@ def delete_model(model_name):
         shutil.rmtree(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name))
 
 
-def import_model(model_archive_path):
+def import_model(model_archive_path, new_name=None):
     """
     Import a mindsdb instance storage from an archive file.
 
@@ -243,7 +243,9 @@ def import_model(model_archive_path):
         shutil.rmtree(extract_dir)
         raise
 
-    if lmd['name'] is None:
+    if new_name is not None:
+        lmd['name'] = new_name
+    elif lmd['name'] is None:
         lmd['name'] = extract_dir
     
     if lmd['name'] in previous_models:
