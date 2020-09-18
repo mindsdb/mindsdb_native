@@ -330,6 +330,13 @@ def get_model_data(model_name=None, lmd=None):
     # ADAPTOR CODE
     amd = {}
 
+    if 'tss' in lmd:
+        if lmd['tss']['is_timeseries']:
+            amd['timeseries'] = {}
+            amd['timeseries']['user_settings'] = lmd['tss']
+        else:
+            amd['timeseries'] = None
+
     if 'stats_v2' in lmd:
         amd['data_analysis_v2'] = lmd['stats_v2']
 
