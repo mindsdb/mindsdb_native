@@ -15,6 +15,7 @@ class TestDataSplitter:
         lmd['tss'] = {}
         lmd['tss']['order_by'] = 'ob'
         lmd['tss']['group_by'] = ['gb_1', 'gb_2']
+        lmd['tss']['is_timeseries'] = True
         lmd['type'] = TRANSACTION_LEARN
         lmd['data_preparation'] = {}
         return lmd
