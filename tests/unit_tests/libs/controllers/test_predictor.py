@@ -460,7 +460,8 @@ class TestPredictor:
                 ,'window': 3
             },
             stop_training_in_x_seconds=10,
-            use_gpu=False
+            use_gpu=False,
+            advanced_args={'force_predict': True}
         )
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
