@@ -87,10 +87,8 @@ class LightwoodBackend():
         for target_column in target_column_arr:
             for k in group_by_ts_map:
                 previous_target_values = list(group_by_ts_map[k][target_column])
-                print('Undeleted: ', previous_target_values)
                 del previous_target_values[-1]
                 previous_target_values = [None] + previous_target_values
-                print('Deleted: ', previous_target_values)
                 group_by_ts_map[k]['previous_' + target_column] = previous_target_values
 
         combined_df = pd.concat(list(group_by_ts_map.values()))
@@ -99,7 +97,6 @@ class LightwoodBackend():
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'] == True])
             del combined_df['make_predictions']
 
-        print(combined_df)
         return combined_df, secondary_type_dict
 
     def _create_lightwood_config(self, secondary_type_dict):
@@ -288,7 +285,6 @@ class LightwoodBackend():
         else:
             run_df = df
 
-        print(run_df)
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}
