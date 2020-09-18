@@ -38,7 +38,7 @@ class ModelAnalyzer(BaseModule):
                                             backend=self.transaction.model_backend)
 
         for col in output_columns:
-            reals = self.transaction.input_data.validation_df[col]
+            reals = list(self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True][col])
             preds = normal_predictions[col]
 
             fails = False
