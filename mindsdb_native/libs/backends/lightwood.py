@@ -49,50 +49,51 @@ class LightwoodBackend():
         # an exception when len(group_by) is equal to 0 
         # (when no ['tss']['group_by'] is provided)
         # Make groups
-        group_by_ts_map = defaultdict(list)
+        ts_groups = defaultdict(list)
         for _, row in original_df.iterrows():
-            group_by_ts_map[tuple(row[group_by])].append(row)
+            ts_groups[tuple(row[group_by])].append(row)
 
         # Convert each group to pandas.DataFrame
-        for group in group_by_ts_map:
-            group_by_ts_map[group] = pd.DataFrame.from_records(
-                group_by_ts_map[group],
+        for group in ts_groups:
+            ts_groups[group] = pd.DataFrame.from_records(
+                ts_groups[group],
                 columns=original_df.columns
             )
         
         # Sort each group by order_by columns
-        for group in group_by_ts_map:
-            group_by_ts_map[group].sort_values(by=order_by, inplace=True)
+        for group in ts_groups:
+            ts_groups[group].sort_values(by=order_by, inplace=True)
 
         # Make type `object` so that dataframe cells can be python lists
-        for group in group_by_ts_map:
-            group_by_ts_map[group] = group_by_ts_map[group].astype(object)
+        for group in ts_groups:
+            ts_groups[group] = ts_groups[group].astype(object)
 
         # Make all order column cells lists
-        for group in group_by_ts_map:
+        for group in ts_groups:
             for order_col in order_by:
-                for i in range(len(group_by_ts_map[group])):
-                    group_by_ts_map[group][order_col].iloc[i] = [
-                        group_by_ts_map[group][order_col].iloc[i]
+                for i in range(len(ts_groups[group])):
+                    ts_groups[group][order_col].iloc[i] = [
+                        ts_groups[group][order_col].iloc[i]
                     ]
 
         # Add previous rows
-        for group in group_by_ts_map:
+        for group in ts_groups:
             for order_col in order_by:
-                for i in range(len(group_by_ts_map[group])):
+                for i in range(len(ts_groups[group])):
                     previous_indexes = [*range(max(0, i - window), i)]
-                    for prev_i in reversed(previous_indexes):
-                        group_by_ts_map[group][order_col].iloc[i].append(
-                            group_by_ts_map[group][order_col].iloc[prev_i][-1]
-                        )
 
-                    group_by_ts_map[group].iloc[i][order_col].extend(
-                        [0] * (1 + window - len(group_by_ts_map[group].iloc[i][order_col]))
+                    for prev_i in reversed(previous_indexes):
+                        ts_groups[group][order_col].iloc[i].append(
+                            ts_groups[group][order_col].iloc[prev_i][-1]
+                        )
+       
+                    ts_groups[group].iloc[i][order_col].extend(
+                        [0] * (1 + window - len(ts_groups[group].iloc[i][order_col]))
                     )
 
-                    group_by_ts_map[group].iloc[i][order_col].reverse()
+                    ts_groups[group].iloc[i][order_col].reverse()
 
-        combined_df = pd.concat(list(group_by_ts_map.values()))
+        combined_df = pd.concat(list(ts_groups.values()))
 
         return combined_df, secondary_type_dict
 
