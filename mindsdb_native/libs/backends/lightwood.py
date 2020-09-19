@@ -67,7 +67,8 @@ class LightwoodBackend():
         # Make type `object` so that dataframe cells can be python lists
         for group in group_by_ts_map:
             group_by_ts_map[group] = group_by_ts_map[group].astype(object)
-        
+
+        # Make all order column cells lists
         for group in group_by_ts_map:
             for order_col in order_by:
                 for i in range(len(group_by_ts_map[group])):
@@ -75,11 +76,13 @@ class LightwoodBackend():
                         group_by_ts_map[group][order_col].iloc[i]
                     ]
 
+        # Add previous rows
+        for group in group_by_ts_map:
+            for order_col in order_by:
+                for i in range(len(group_by_ts_map[group])):
                     previous_indexes = [*range(max(0, i - window), i)]
-                    previous_indexes.reverse()
-
-                    for prev_i in previous_indexes:
-                        group_by_ts_map[group].iloc[i][order_col].append(
+                    for prev_i in reversed(previous_indexes):
+                        group_by_ts_map[group][order_col].iloc[i].append(
                             group_by_ts_map[group][order_col].iloc[prev_i][-1]
                         )
 
