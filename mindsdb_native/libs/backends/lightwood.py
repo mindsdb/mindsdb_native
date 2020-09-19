@@ -86,7 +86,9 @@ class LightwoodBackend():
                         ts_groups[group][order_col].iloc[i].append(
                             ts_groups[group][order_col].iloc[prev_i][-1]
                         )
-       
+
+                    # Zeor pad
+                    # @TODO: Remove since RNN encoder can do without (???)
                     ts_groups[group].iloc[i][order_col].extend(
                         [0] * (1 + window - len(ts_groups[group].iloc[i][order_col]))
                     )
@@ -94,6 +96,10 @@ class LightwoodBackend():
                     ts_groups[group].iloc[i][order_col].reverse()
 
         combined_df = pd.concat(list(ts_groups.values()))
+
+        if 'make_predictions' in combined_df.columns:
+            combined_df = pd.DataFrame(combined_df[combined_df['make_predictions']])
+            del combined_df['make_predictions']
 
         return combined_df, secondary_type_dict
 
@@ -193,7 +199,7 @@ class LightwoodBackend():
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
         secondary_type_dict = {}
-        if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
+        if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
             train_df, secondary_type_dict = self._create_timeseries_df(self.transaction.input_data.train_df)
             test_df, _ = self._create_timeseries_df(self.transaction.input_data.test_df)
@@ -269,7 +275,7 @@ class LightwoodBackend():
         else:
             raise Exception(f'Unknown mode specified: "{mode}"')
 
-        if self.transaction.lmd['tss']['is_timeseries'] and len(self.transaction.lmd['tss']['order_by']) > 0:
+        if self.transaction.lmd['tss']['is_timeseries']:
             df, _ = self._create_timeseries_df(df)
 
         if self.predictor is None:
@@ -283,6 +289,7 @@ class LightwoodBackend():
         else:
             run_df = df
 
+        print(run_df)
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}
