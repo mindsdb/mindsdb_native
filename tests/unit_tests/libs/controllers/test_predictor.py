@@ -600,8 +600,8 @@ class TestPredictor:
         # Test confidence estimation after save -> load
         p = None
         F.export_predictor(name)
-        F.import_model(f"{name}.zip")
-        p = Predictor(name=name)
+        F.import_model(f"{name}.zip", f"{name}-new")
+        p = Predictor(name=f'{name}-new')
         predictions = p.predict(when_data={'sqft': 1000}, use_gpu=use_gpu, run_confidence_variation_analysis=True)
         assert_prediction_interface(predictions)
 
