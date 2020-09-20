@@ -84,6 +84,14 @@ class LightwoodBackend():
 
                     group_by_ts_map[k].iloc[i][order_col].reverse()
 
+        if self.transaction.lmd['tss']['use_previous_target']:
+            for target_column in self.transaction.lmd['predict_columns']:
+                for k in group_by_ts_map:
+                    previous_target_values = list(group_by_ts_map[k][target_column])
+                    del previous_target_values[-1]
+                    previous_target_values = [None] + previous_target_values
+                    group_by_ts_map[k]['previous_' + target_column] = previous_target_values
+
         combined_df = pd.concat(list(group_by_ts_map.values()))
 
         if 'make_predictions' in combined_df.columns:
@@ -278,7 +286,6 @@ class LightwoodBackend():
         else:
             run_df = df
 
-        print(run_df)
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}

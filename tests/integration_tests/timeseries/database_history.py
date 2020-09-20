@@ -12,8 +12,8 @@ def test_database_history():
     clickhouse_url = f'http://{HOST}:{PORT}'
 
     values = []
-    for i in range(200):
-        values.append([str(i%6),i,pow(i,2)])
+    for i in range(500):
+        values.append([str(i%4),i,i*2])
 
     queries = [
         'CREATE DATABASE IF NOT EXISTS test',
@@ -48,6 +48,6 @@ def test_database_history():
 
     ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
     ts_predictor.predict(when_data={
-        'col2': 200
+        'col2': 800
         ,'col1': '2'
     })
