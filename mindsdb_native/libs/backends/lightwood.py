@@ -30,7 +30,7 @@ class LightwoodBackend():
                 secondary_type_dict[col] = ColumnDataTypes.DATETIME
             else:
                 secondary_type_dict[col] = ColumnDataTypes.NUMERIC
-        
+
         # Convert order_by columns to numbers
         for _, row in original_df.iterrows():
             for col in order_by:
@@ -46,9 +46,9 @@ class LightwoodBackend():
                         error_msg = f'Backend Lightwood does not support ordering by the column: {col} !, Faulty value: {row[col]}'
                         self.transaction.log.error(error_msg)
                         raise ValueError(error_msg)
-        
+
         # TODO: use pandas.DataFrame.groupby, the issue is that it raises
-        # an exception when len(group_by) is equal to 0 
+        # an exception when len(group_by) is equal to 0
         # (when no ['tss']['group_by'] is provided)
         # Make groups
         ts_groups = defaultdict(list)
@@ -61,7 +61,7 @@ class LightwoodBackend():
                 ts_groups[group],
                 columns=original_df.columns
             )
-        
+
         # Sort each group by order_by columns
         for group in ts_groups:
             ts_groups[group].sort_values(by=order_by, inplace=True)
@@ -292,7 +292,6 @@ class LightwoodBackend():
         else:
             run_df = df
 
-        print(run_df)
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}

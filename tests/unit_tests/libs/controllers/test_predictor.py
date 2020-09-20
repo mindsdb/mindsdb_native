@@ -302,7 +302,8 @@ class TestPredictor:
             advanced_args={'force_predict': True}
         )
 
-        result = mdb.predict(when_data={"numeric_x": 10, 'categorical_x': 1})
+        # Test predicting using a data frame
+        result = mdb.predict(when_data=pd.DataFrame([{"numeric_x": 10, 'categorical_x': 1}]))
         explanation_new = result[0].explanation['numeric_y']
         assert isinstance(explanation_new['predicted_value'], int)
         assert isinstance(explanation_new['confidence_interval'],list)
