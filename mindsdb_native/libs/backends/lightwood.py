@@ -1,4 +1,6 @@
+from pathlib import Path
 from collections import defaultdict
+from lightwood.constants.lightwood import ColumnDataTypes
 
 import numpy as np
 import pandas as pd
@@ -255,7 +257,8 @@ class LightwoodBackend():
 
         self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
 
-        self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_lightwood_data')
+        self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
+        Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.transaction.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
         self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
 
     def predict(self, mode='predict', ignore_columns=None):
