@@ -45,11 +45,10 @@ def get_file_subtype_if_exists(path):
 
 def get_number_subtype(string):
     """ Returns the subtype inferred from a number string, or False if its not a number"""
-    string = str(string)
-    python_type = type(cast_string_to_python_type(string))
-    if python_type is float:
+    pytype = cast_string_to_python_type(str(string))
+    if isinstance(pytype, float):
         return DATA_SUBTYPES.FLOAT
-    elif python_type is int:
+    elif isinstance(pytype, int):
         return DATA_SUBTYPES.INT
     else:
         return None
