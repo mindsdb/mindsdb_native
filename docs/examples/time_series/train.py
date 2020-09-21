@@ -7,8 +7,10 @@ Predictor(name='fuel').learn(
 
     # Time series arguments:
 
-    order_by='Time',
-    group_by='id',
-    window_size=24, # just 24 hours
+    timeseries_settings={
+        order_by='Time',
+        group_by='id',
+        window=24, # just 24 hours
+    }
 
 )

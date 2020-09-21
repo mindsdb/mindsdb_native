@@ -60,35 +60,36 @@ class Transaction:
         except Exception:
             pass
 
-        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'] + '_light_model_metadata.pickle')
+        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'], 'light_model_metadata.pickle')
         try:
-            with open(fn, 'rb') as fp:
-                self.lmd = pickle.load(fp)
+            self.lmd = load_lmd(fn)
         except Exception as e:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb light metadata from the file: {fn}')
 
-        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_heavy_model_metadata.pickle')
+        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'heavy_model_metadata.pickle')
         try:
-            with open(fn, 'rb') as fp:
-                self.hmd = pickle.load(fp)
+            self.hmd = load_hmd(fn)
         except Exception as e:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb heavy metadata in the file: {fn}')
 
-        icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_icp.pickle')
+        icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'icp.pickle')
         try:
             with open(icp_fn, 'rb') as fp:
                 self.hmd['icp'] = dill.load(fp)
                 # restore MDB predictors in ICP objects
-                for col in self.lmd['predict_columns']:
-                    self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
+                # for col in self.lmd['predict_columns']:
+                #     self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
+        except FileNotFoundError as e:
+            self.hmd['icp'] = {'active': False}
+            self.log.warning(f'Could not find mindsdb conformal predictor.')
         except Exception as e:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb conformal predictor in the file: {icp_fn}')
 
     def save_metadata(self):
-        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'] + '_light_model_metadata.pickle')
+        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'], 'light_model_metadata.pickle')
         self.lmd['updated_at'] = str(datetime.datetime.now())
         try:
             with open(fn, 'wb') as fp:
@@ -97,7 +98,7 @@ class Transaction:
             self.log.error(e)
             self.log.error(f'Could not save mindsdb light metadata in the file: {fn}')
 
-        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_heavy_model_metadata.pickle')
+        fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'heavy_model_metadata.pickle')
         save_hmd = {}
         null_out_fields = ['from_data', 'icp']
         for k in null_out_fields:
@@ -117,23 +118,26 @@ class Transaction:
             self.log.error(e)
             self.log.error(f'Could not save mindsdb heavy metadata in the file: {fn}')
 
-        if 'icp' in self.hmd.keys():
-            icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'] + '_icp.pickle')
+        if 'icp' in self.hmd.keys() and self.hmd['icp']['active']:
+            icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'icp.pickle')
             try:
                 mdb_predictors = {}
                 with open(icp_fn, 'wb') as fp:
-                    # clear data cache and predictor (avoids duplicate saving)
-                    for col in self.hmd['icp'].keys():
-                        mdb_predictors[col] = self.hmd['icp'][col].nc_function.model.model
-                        self.hmd['icp'][col].nc_function.model.model = None
-                        self.hmd['icp'][col].nc_function.model.last_x = None
-                        self.hmd['icp'][col].nc_function.model.last_y = None
+                    # clear data cache
+                    # TODO: restore model clearing as soon as we can access a loaded predictor from a session
+                    for key in self.hmd['icp'].keys():
+                        if key != 'active':
+                            # mdb_predictors[key] = self.hmd['icp'][key].nc_function.model.model
+                            # self.hmd['icp'][key].nc_function.model.model = None
+                            self.hmd['icp'][key].nc_function.model.last_x = None
+                            self.hmd['icp'][key].nc_function.model.last_y = None
 
                     dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
 
                     # restore predictor
-                    for col in self.hmd['icp'].keys():
-                        self.hmd['icp'][col].nc_function.model.model = mdb_predictors[col]
+                    # for key in self.hmd['icp'].keys():
+                    #     if key != 'active':
+                    #         self.hmd['icp'][key].nc_function.model.model = mdb_predictors[key]
 
             except Exception as e:
                 self.log.error(e)
@@ -261,7 +265,7 @@ class PredictTransaction(Transaction):
         if self.input_data.data_frame.shape[0] <= 0:
             self.log.error('No input data provided !')
             return
-        if self.lmd['model_is_time_series']:
+        if self.lmd['tss']['is_timeseries']:
             self._call_phase_module(module_name='DataSplitter')
 
         # @TODO Maybe move to a separate "PredictionAnalysis" phase ?
@@ -290,11 +294,17 @@ class PredictTransaction(Transaction):
 
             output_data = {col: [] for col in self.lmd['columns']}
 
+            if 'make_predictions' in self.input_data.data_frame.columns:
+                predictions_df = pd.DataFrame(self.input_data.data_frame[self.input_data.data_frame['make_predictions'] == True])
+                del predictions_df['make_predictions']
+            else:
+                predictions_df = self.input_data.data_frame
+
             for column in self.input_data.columns:
                 if column in self.lmd['predict_columns']:
-                    output_data[f'__observed_{column}'] = list(self.input_data.data_frame[column])
+                    output_data[f'__observed_{column}'] = list(predictions_df[column])
                 else:
-                    output_data[column] = list(self.input_data.data_frame[column])
+                    output_data[column] = list(predictions_df[column])
 
             for predicted_col in self.lmd['predict_columns']:
                 output_data[predicted_col] = list(self.hmd['predictions'][predicted_col])
@@ -318,46 +328,45 @@ class PredictTransaction(Transaction):
                     output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
 
             # confidence estimation
-            self.lmd['all_conformal_ranges'] = {}
-            for predicted_col in self.lmd['predict_columns']:
-                X = deepcopy(self.input_data.data_frame)
-                for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
-                    X.pop(col)
+            if self.hmd['icp']['active']:
+                self.lmd['all_conformal_ranges'] = {}
+                for predicted_col in self.lmd['predict_columns']:
+                    X = deepcopy(predictions_df)
+                    for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
+                        X.pop(col)
 
-                if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.NUMERIC:
-                    tol_const = 2  # std devs
-                    tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
-                    self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
-
-                    for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
-                        sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
-                        for idx in range(sample.shape[1]):
-                            significance = (99 - idx) / 100
-                            diff = sample[1, idx] - sample[0, idx]
-                            if diff <= tolerance:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
-                                break
-                        else:
-                            output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
-                            bounds = sample[:, 0]
-                            sigma = (bounds[1] - bounds[0])/2
-                            output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
-
-                elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL:
-                    if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                        all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s/100) for s in range(1, 100)])
-                        self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
-
+                    if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.NUMERIC and not self.lmd['tss']['is_timeseries']:
+                        tol_const = 2  # std devs
+                        tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+                        self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
                             sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
                             for idx in range(sample.shape[1]):
                                 significance = (99 - idx) / 100
-                                if np.sum(sample[:, idx]) == 1:
+                                diff = sample[1, idx] - sample[0, idx]
+                                if diff <= tolerance:
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                                    output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
                                     break
                             else:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
+                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
+                                bounds = sample[:, 0]
+                                sigma = (bounds[1] - bounds[0]) / 2
+                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
+
+                    elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL and not self.lmd['tss']['is_timeseries']:
+                        if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
+                            all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100) for s in range(1, 100)])
+                            self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+                            for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
+                                sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
+                                for idx in range(sample.shape[1]):
+                                    significance = (99 - idx) / 100
+                                    if np.sum(sample[:, idx]) == 1:
+                                        output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                                        break
+                                else:
+                                    output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)

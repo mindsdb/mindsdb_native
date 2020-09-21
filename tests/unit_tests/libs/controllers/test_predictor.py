@@ -306,7 +306,8 @@ class TestPredictor:
             advanced_args={'force_predict': True}
         )
 
-        result = mdb.predict(when_data={"numeric_x": 10, 'categorical_x': 1})
+        # Test predicting using a data frame
+        result = mdb.predict(when_data=pd.DataFrame([{"numeric_x": 10, 'categorical_x': 1}]))
         explanation_new = result[0].explanation['numeric_y']
         assert isinstance(explanation_new['predicted_value'], int)
         assert isinstance(explanation_new['confidence_interval'],list)
@@ -429,7 +430,7 @@ class TestPredictor:
         assert (a2['existing_credits']['typing'][
                     'data_subtype'] == DATA_SUBTYPES.SINGLE)
 
-    @pytest.mark.slow
+    #@pytest.mark.slow
     def test_timeseries(self, tmp_path):
         ts_hours = 12
         data_len = 120
@@ -459,11 +460,13 @@ class TestPredictor:
         mdb.learn(
             from_data=train_file_name,
             to_predict=label_headers,
-            order_by=feature_headers[0],
-            # ,window_size_seconds=ts_hours* 3600 * 1.5
-            window_size=3,
+            timeseries_settings={
+                'order_by': [feature_headers[0]]
+                ,'window': 3
+            },
             stop_training_in_x_seconds=10,
-            use_gpu=False
+            use_gpu=False,
+            advanced_args={'force_predict': True}
         )
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
@@ -536,11 +539,12 @@ class TestPredictor:
         Tests whole pipeline from downloading the dataset to making predictions and explanations.
         """
         # Create & Learn
-        mdb = Predictor(name='home_rentals_price')
+        name = 'home_rentals_price'
+        mdb = Predictor(name=name)
         mdb.learn(to_predict='rental_price',
                   from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
                   backend='lightwood',
-                  stop_training_in_x_seconds=180,
+                  stop_training_in_x_seconds=60,
                   use_gpu=use_gpu)
 
         def assert_prediction_interface(predictions):
@@ -559,7 +563,7 @@ class TestPredictor:
         predictions = mdb.predict(when_data={'sqft': 300}, use_gpu=use_gpu)
         assert_prediction_interface(predictions)
 
-        amd = F.get_model_data('home_rentals_price')
+        amd = F.get_model_data(name)
         assert isinstance(json.dumps(amd), str)
 
         for k in ['status', 'name', 'version', 'data_source', 'current_phase',
@@ -590,7 +594,7 @@ class TestPredictor:
         for k in ['train', 'test', 'valid']:
             assert isinstance(model_analysis[0][k + '_data_accuracy'], dict)
             assert len(model_analysis[0][k + '_data_accuracy']) == 1
-            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.60
+            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.4
 
         for column, importance in zip(input_importance["x"],
                                       input_importance["y"]):
@@ -598,7 +602,15 @@ class TestPredictor:
             assert (len(column) > 0)
             assert isinstance(importance, (float, int))
             assert (importance >= 0 and importance <= 10)
-            
+
+        # Test confidence estimation after save -> load
+        p = None
+        F.export_predictor(name)
+        F.import_model(f"{name}.zip", f"{name}-new")
+        p = Predictor(name=f'{name}-new')
+        predictions = p.predict(when_data={'sqft': 1000}, use_gpu=use_gpu, run_confidence_variation_analysis=True)
+        assert_prediction_interface(predictions)
+
     @pytest.mark.slow
     def test_category_tags_input(self):
         vocab = random.sample(SMALL_VOCAB, 10)
@@ -629,7 +641,7 @@ class TestPredictor:
 
         predictor.learn(from_data=df_train, to_predict='y',
                         advanced_args=dict(deduplicate_data=False),
-                        stop_training_in_x_seconds=60,
+                        stop_training_in_x_seconds=40,
                         use_gpu=False)
 
         model_data = F.get_model_data('test')
@@ -644,7 +656,7 @@ class TestPredictor:
             predicted_y.append(predictions[i]['y'])
 
         score = accuracy_score(test_y, predicted_y)
-        assert score >= 0.3
+        assert score >= 0.2
 
     @pytest.mark.slow
     def test_category_tags_output(self):

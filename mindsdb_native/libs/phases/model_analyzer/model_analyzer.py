@@ -36,16 +36,19 @@ class ModelAnalyzer(BaseModule):
                                             self.transaction.lmd['stats_v2'],
                                             output_columns,
                                             backend=self.transaction.model_backend)
-        
+
         for col in output_columns:
-            reals = self.transaction.input_data.validation_df[col]
+            if self.transaction.lmd['tss']['is_timeseries']:
+                reals = list(self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True][col])
+            else:
+                reals = self.transaction.input_data.validation_df[col]
             preds = normal_predictions[col]
 
             fails = False
-            
+
             data_type = self.transaction.lmd['stats_v2'][col]['typing']['data_type']
             data_subtype = self.transaction.lmd['stats_v2'][col]['typing']['data_subtype']
-            
+
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     encoder = self.transaction.model_backend.predictor._mixer.encoders[col]
@@ -72,7 +75,7 @@ class ModelAnalyzer(BaseModule):
         empty_input_predictions_test = {}
 
         ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH
-                           and x not in [y[0] for y in self.transaction.lmd['model_order_by']]]
+                           and (not self.transaction.lmd['tss']['is_timeseries'] or x not in self.transaction.lmd['tss']['order_by'])]
 
         for col in ignorable_input_columns:
             empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
@@ -161,7 +164,7 @@ class ModelAnalyzer(BaseModule):
         # conformal prediction confidence estimation
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
         self.transaction.hmd['label_encoders'] = {}
-        self.transaction.hmd['icp'] = {}
+        self.transaction.hmd['icp'] = {'active': False}
 
         for target in output_columns:
             data_type = self.transaction.lmd['stats_v2'][target]['typing']['data_type']
@@ -179,7 +182,7 @@ class ModelAnalyzer(BaseModule):
                                    if elt[0] in {'test_df', 'train_df', 'validation_df'}]
                     all_classes = np.unique(np.concatenate([np.unique(arr) for arr in all_targets]))
 
-                    enc = OneHotEncoder(sparse=False)
+                    enc = OneHotEncoder(sparse=False, handle_unknown='ignore')
                     enc.fit(all_classes.reshape(-1, 1))
                     fit_params['one_hot_enc'] = enc
                     self.transaction.hmd['label_encoders'][target] = enc
@@ -198,7 +201,7 @@ class ModelAnalyzer(BaseModule):
                 nc_class = RegressorNc
                 icp_class = IcpRegressor
 
-            if data_type == DATA_TYPES.NUMERIC or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
+            if (data_type == DATA_TYPES.NUMERIC or (is_classification and data_subtype != DATA_SUBTYPES.TAGS)) and not self.transaction.lmd['tss']['is_timeseries']:
                 model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
                 nc = nc_class(model, nc_function)
 
@@ -213,6 +216,7 @@ class ModelAnalyzer(BaseModule):
 
                 X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns)
                 self.transaction.hmd['icp'][target].fit(X.values, y.values)
+                self.transaction.hmd['icp']['active'] = True
 
                 # calibrate conformal estimator on test set
                 X = deepcopy(self.transaction.input_data.validation_df)
