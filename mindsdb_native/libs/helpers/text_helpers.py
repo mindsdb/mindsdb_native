@@ -94,7 +94,7 @@ def clean_float(val):
     if isinstance(val, (int, float)):
         return float(val)
 
-    if isinstance(val, np.float64):
+    if isinstance(val, np.float):
         return val
 
     val = str(val).strip(' ')
@@ -119,15 +119,16 @@ def gen_chars(length, character):
 
 def cast_string_to_python_type(string):
     """ Returns None, an integer, float or a string from a string"""
-    try:
-        if string is None or string == '':
-            return None
+    if string is None or string == '':
+        return None
+
+    if string.isnumeric():
         return int(string)
-    except:
-        try:
-            return clean_float(string)
-        except:
-            return string
+
+    try:
+        return clean_float(string)
+    except Exception:
+        return string
 
 
 def splitRecursive(word, tokens):

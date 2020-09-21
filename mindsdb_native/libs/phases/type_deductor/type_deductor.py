@@ -45,11 +45,10 @@ def get_file_subtype_if_exists(path):
 
 def get_number_subtype(string):
     """ Returns the subtype inferred from a number string, or False if its not a number"""
-    string = str(string)
-    python_type = type(cast_string_to_python_type(string))
-    if python_type is float:
+    pytype = cast_string_to_python_type(str(string))
+    if isinstance(pytype, float):
         return DATA_SUBTYPES.FLOAT
-    elif python_type is int:
+    elif isinstance(pytype, int):
         return DATA_SUBTYPES.INT
     else:
         return None
@@ -198,7 +197,7 @@ class TypeDeductor(BaseModule):
             possible_subtype_counts = [(k, v) for k, v in subtype_dist.items()
                                     if k in DATA_TYPES_SUBTYPES[curr_data_type]]
             curr_data_subtype, _ = max(possible_subtype_counts,
-                                    key=lambda pair: pair[0])
+                                    key=lambda pair: pair[1])
         else:
             curr_data_type, curr_data_subtype = None, None
 
