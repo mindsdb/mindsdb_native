@@ -108,7 +108,7 @@ class LightwoodBackend():
         combined_df = pd.concat(list(ts_groups.values()))
 
         if 'make_predictions' in combined_df.columns:
-            combined_df = pd.DataFrame(combined_df[combined_df['make_predictions']])
+            combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
             del combined_df['make_predictions']
 
         return combined_df, secondary_type_dict
