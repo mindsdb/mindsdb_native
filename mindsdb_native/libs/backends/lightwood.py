@@ -266,9 +266,7 @@ class LightwoodBackend():
         if lightwood_config['mixer']['class'] == NnMixer:
             lightwood_config['mixer']['kwargs']['callback_on_iter'] = self.callback_on_iter
             lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs
-
-            if self.transaction.lmd['stop_training_in_x_seconds'] is not None:
-                lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
+            lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
 
         logging.getLogger().setLevel(logging.DEBUG)
 
