@@ -197,7 +197,7 @@ class TypeDeductor(BaseModule):
             possible_subtype_counts = [(k, v) for k, v in subtype_dist.items()
                                     if k in DATA_TYPES_SUBTYPES[curr_data_type]]
             curr_data_subtype, _ = max(possible_subtype_counts,
-                                    key=lambda pair: pair[0])
+                                    key=lambda pair: pair[1])
         else:
             curr_data_type, curr_data_subtype = None, None
 
