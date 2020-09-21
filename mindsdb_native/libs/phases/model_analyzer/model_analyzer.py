@@ -182,7 +182,7 @@ class ModelAnalyzer(BaseModule):
                                    if elt[0] in {'test_df', 'train_df', 'validation_df'}]
                     all_classes = np.unique(np.concatenate([np.unique(arr) for arr in all_targets]))
 
-                    enc = OneHotEncoder(sparse=False)
+                    enc = OneHotEncoder(sparse=False, handle_unknown='ignore')
                     enc.fit(all_classes.reshape(-1, 1))
                     fit_params['one_hot_enc'] = enc
                     self.transaction.hmd['label_encoders'][target] = enc
