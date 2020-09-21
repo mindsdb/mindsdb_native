@@ -302,7 +302,8 @@ class TestPredictor:
             advanced_args={'force_predict': True}
         )
 
-        result = mdb.predict(when_data={"numeric_x": 10, 'categorical_x': 1})
+        # Test predicting using a data frame
+        result = mdb.predict(when_data=pd.DataFrame([{"numeric_x": 10, 'categorical_x': 1}]))
         explanation_new = result[0].explanation['numeric_y']
         assert isinstance(explanation_new['predicted_value'], int)
         assert isinstance(explanation_new['confidence_interval'],list)
@@ -460,7 +461,8 @@ class TestPredictor:
                 ,'window': 3
             },
             stop_training_in_x_seconds=10,
-            use_gpu=False
+            use_gpu=False,
+            advanced_args={'force_predict': True}
         )
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
@@ -600,8 +602,8 @@ class TestPredictor:
         # Test confidence estimation after save -> load
         p = None
         F.export_predictor(name)
-        F.import_model(f"{name}.zip")
-        p = Predictor(name=name)
+        F.import_model(f"{name}.zip", f"{name}-new")
+        p = Predictor(name=f'{name}-new')
         predictions = p.predict(when_data={'sqft': 1000}, use_gpu=use_gpu, run_confidence_variation_analysis=True)
         assert_prediction_interface(predictions)
 

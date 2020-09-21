@@ -1,9 +1,11 @@
 import os
+from pathlib import Path
 import pickle
 import shutil
 import zipfile
 import traceback
 import uuid
+import tempfile
 
 from mindsdb_native.config import CONFIG
 from mindsdb_native.__about__ import __version__
@@ -11,6 +13,7 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import AnalyseTransaction
 from mindsdb_native.libs.controllers.predictor import _get_memory_optimizations, _prepare_sample_settings, Predictor
 from mindsdb_native.libs.helpers.multi_data_source import getDS
+from mindsdb_native.libs.helpers.general_helpers import load_lmd, load_hmd
 from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    MODEL_STATUS_ERROR,
                                                    TRANSACTION_ANALYSE)
@@ -114,16 +117,15 @@ def export_predictor(model_name):
     with MDBLock('shared', 'predict_' + model_name):
         storage_file = model_name + '.zip'
         with zipfile.ZipFile(storage_file, 'w') as zip_fp:
-            for file_name in [model_name + '_heavy_model_metadata.pickle',
-                            model_name + '_light_model_metadata.pickle',
-                            model_name + '_lightwood_data']:
-                full_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name)
+            for file_name in ['heavy_model_metadata.pickle',
+                              'light_model_metadata.pickle',
+                              'lightwood_data']:
+                full_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, file_name)
                 zip_fp.write(full_path, os.path.basename(full_path))
 
             # If the backend is ludwig, save the ludwig files
             try:
-                ludwig_model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                                model_name + '_ludwig_data')
+                ludwig_model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'ludwig_data')
                 for root, dirs, files in os.walk(ludwig_model_path):
                     for file in files:
                         full_path = os.path.join(root, file)
@@ -151,25 +153,18 @@ def rename_model(old_model_name, new_model_name):
             return True
 
         moved_a_backend = False
-        for extension in ['_lightwood_data', '_ludwig_data']:
-            shutil.move(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                    old_model_name + extension),
-                        os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                                    new_model_name + extension))
+        for extension in ['lightwood_data', 'ludwig_data']:
+            shutil.move(
+                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, extension),
+                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, new_model_name, extension)
+            )
             moved_a_backend = True
 
         if not moved_a_backend:
             return False
 
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            old_model_name + '_light_model_metadata.pickle'),
-                'rb') as fp:
-            lmd = pickle.load(fp)
-
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            old_model_name + '_heavy_model_metadata.pickle'),
-                'rb') as fp:
-            hmd = pickle.load(fp)
+        lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, 'light_model_metadata.pickle'))
+        hmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, 'heavy_model_metadata.pickle'))
 
         lmd['name'] = new_model_name
         hmd['name'] = new_model_name
@@ -193,19 +188,19 @@ def rename_model(old_model_name, new_model_name):
             return False
 
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            new_model_name + '_light_model_metadata.pickle'),
+                            new_model_name, 'light_model_metadata.pickle'),
                 'wb') as fp:
             pickle.dump(lmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            new_model_name + '_heavy_model_metadata.pickle'),
+                            new_model_name, 'heavy_model_metadata.pickle'),
                 'wb') as fp:
             pickle.dump(hmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
         os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            old_model_name + '_light_model_metadata.pickle'))
+                            old_model_name, 'light_model_metadata.pickle'))
         os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            old_model_name + '_heavy_model_metadata.pickle'))
+                            old_model_name, 'heavy_model_metadata.pickle'))
         return True
 
 
@@ -217,57 +212,60 @@ def delete_model(model_name):
     :return: bool (True/False) True if model was deleted
     """
     with MDBLock('exclusive', 'delete_' + model_name):
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
-            lmd = pickle.load(fp)
+        lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'))
 
-            try:
-                os.remove(lmd['lightwood_data']['save_path'])
-            except Exception:
-                pass
+        try:
+            os.remove(lmd['lightwood_data']['save_path'])
+        except Exception:
+            pass
 
-            try:
-                shutil.rmtree(lmd['ludwig_data']['ludwig_save_path'])
-            except Exception:
-                pass
+        try:
+            shutil.rmtree(lmd['ludwig_data']['ludwig_save_path'])
+        except Exception:
+            pass
 
-        for file_name in [model_name + '_heavy_model_metadata.pickle',
-                        model_name + '_light_model_metadata.pickle']:
-            os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, file_name))
+        shutil.rmtree(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name))
 
 
-def _import_model_by_name(model_name):
-    with MDBLock('exclusive', 'detele_' + model_name):
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'rb') as fp:
-            lmd = pickle.load(fp)
-
-        if 'ludwig_data' in lmd and 'ludwig_save_path' in lmd['ludwig_data']:
-            lmd['ludwig_data']['ludwig_save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['ludwig_data']['ludwig_save_path'])))
-
-        if 'lightwood_data' in lmd and 'save_path' in lmd['lightwood_data']:
-            lmd['lightwood_data']['save_path'] = str(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,os.path.basename(lmd['lightwood_data']['save_path'])))
-
-        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name + '_light_model_metadata.pickle'), 'wb') as fp:
-            pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
-
-
-def import_model(model_archive_path):
+def import_model(model_archive_path, new_name=None):
     """
     Import a mindsdb instance storage from an archive file.
 
     :param mindsdb_storage_dir: full_path that contains your mindsdb predictor zip file
     """
-    previous_models = os.listdir(CONFIG.MINDSDB_STORAGE_PATH)
-    shutil.unpack_archive(model_archive_path, extract_dir=CONFIG.MINDSDB_STORAGE_PATH)
+    previous_models = [str(p.name) for p in Path(CONFIG.MINDSDB_STORAGE_PATH).iterdir() if p.is_dir()]
+    extract_dir = tempfile.mkdtemp(dir=CONFIG.MINDSDB_STORAGE_PATH)
+    shutil.unpack_archive(model_archive_path, extract_dir=extract_dir)
 
-    new_model_files = set(os.listdir(CONFIG.MINDSDB_STORAGE_PATH)) - set(previous_models)
-    model_names = []
-    for file in new_model_files:
-        if '_light_model_metadata.pickle' in file:
-            model_name = file.replace('_light_model_metadata.pickle', '')
-            model_names.append(model_name)
+    try:
+        lmd = load_lmd(os.path.join(extract_dir, 'light_model_metadata.pickle'))
+    except Exception:
+        shutil.rmtree(extract_dir)
+        raise
 
-    for model_name in model_names:
-        _import_model_by_name(model_name)
+    if new_name is not None:
+        lmd['name'] = new_name
+    elif lmd['name'] is None:
+        lmd['name'] = extract_dir
+    
+    if lmd['name'] in previous_models:
+        shutil.rmtree(extract_dir)
+        raise Exception(f"Model with name '{lmd['name']}' already exists.")
+
+    shutil.move(
+        extract_dir,
+        os.path.join(CONFIG.MINDSDB_STORAGE_PATH, lmd['name'])
+    )
+
+    with MDBLock('exclusive', 'detele_' + lmd['name']):
+        if 'ludwig_data' in lmd and 'ludwig_save_path' in lmd['ludwig_data']:
+            lmd['ludwig_data']['ludwig_save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, lmd['name'], 'ludwig_data')
+
+        if 'lightwood_data' in lmd and 'save_path' in lmd['lightwood_data']:
+            lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, lmd['name'], 'lightwood_data')
+
+        with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, lmd['name'], 'light_model_metadata.pickle'), 'wb') as fp:
+            pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
 
     print('Model files loaded')
 
@@ -324,8 +322,7 @@ def get_model_data(model_name=None, lmd=None):
         pass
     elif model_name is not None:
         with MDBLock('shared', 'get_data_' + model_name):
-            with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{model_name}_light_model_metadata.pickle'), 'rb') as fp:
-                lmd = pickle.load(fp)
+            lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'))
 
     # ADAPTOR CODE
     amd = {}
@@ -405,8 +402,6 @@ def get_model_data(model_name=None, lmd=None):
                 accuracy_samples = lmd['accuracy_samples'][col]
             else:
                 accuracy_samples = None
-
-
 
             # Model analysis building for each of the predict columns
             mao = {
@@ -488,22 +483,21 @@ def get_model_data(model_name=None, lmd=None):
 
 def get_models():
     models = []
-    for fn in os.listdir(CONFIG.MINDSDB_STORAGE_PATH):
-        if '_light_model_metadata.pickle' in fn:
-            model_name = fn.replace('_light_model_metadata.pickle','')
-            try:
-                amd = get_model_data(model_name)
-                model = {}
-                for k in ['name', 'version', 'is_active', 'data_source', 'predict',
-                'status', 'train_end_at', 'updated_at', 'created_at','current_phase', 'accuracy']:
-                    if k in amd:
-                        model[k] = amd[k]
-                    else:
-                        model[k] = None
+    for p in [x for x in Path(CONFIG.MINDSDB_STORAGE_PATH).iterdir() if x.is_dir()]:
+        model_name = p.name
+        try:
+            amd = get_model_data(model_name)
+            model = {}
+            for k in ['name', 'version', 'is_active', 'data_source', 'predict',
+            'status', 'train_end_at', 'updated_at', 'created_at','current_phase', 'accuracy']:
+                if k in amd:
+                    model[k] = amd[k]
+                else:
+                    model[k] = None
 
-                models.append(model)
-            except Exception as e:
-                print(f"Can't adapt metadata for model: '{model_name}' when calling `get_models()`")
-                raise
+            models.append(model)
+        except Exception:
+            print(f"Can't adapt metadata for model: '{model_name}' when calling `get_models()`")
+            raise
 
     return models

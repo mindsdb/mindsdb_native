@@ -2,6 +2,7 @@ from dateutil.parser import parse as parse_datetime
 import os, sys
 import shutil
 import subprocess
+from pathlib import Path
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
@@ -431,7 +432,8 @@ class LudwigBackend():
                 # The resulting train_stats are "None"... wonderful -_-
             '''
 
-        ludwig_model_savepath = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_ludwig_data')
+        ludwig_model_savepath = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'ludwig_data')
+        Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.transaction.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
         if ludwig_save_is_working:
             model.save(ludwig_model_savepath)
             model.close()
