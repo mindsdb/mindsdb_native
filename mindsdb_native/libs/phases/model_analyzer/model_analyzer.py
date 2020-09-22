@@ -6,7 +6,10 @@ from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAda
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from sklearn.metrics import balanced_accuracy_score, r2_score
+from mindsdb_native.config import CONFIG
 
+from pathlib import Path
+import os
 import inspect
 import numpy as np
 from copy import deepcopy
@@ -16,26 +19,53 @@ from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, MarginE
 
 
 class ModelAnalyzer(BaseModule):
+    def _fails(self, reals, preds, data_type, data_subtype, lightwood_predictor):
+        if data_type == DATA_TYPES.CATEGORICAL:
+            if data_subtype == DATA_SUBTYPES.TAGS:
+                encoder = lightwood_predictor._mixer.encoders[col]
+                if balanced_accuracy_score(encoder.encode(reals).argmax(axis=1), encoder.encode(preds).argmax(axis=1)) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
+                    return True
+            else:
+                if balanced_accuracy_score(reals, preds) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
+                    return True
+        elif data_type == DATA_TYPES.NUMERIC:
+            if r2_score(reals, preds) < 0:
+                return True
+        else:
+            return False
 
     def run(self):
         np.seterr(divide='warn', invalid='warn')
         """
         # Runs the model on the validation set in order to fit a probabilistic model that will evaluate the accuracy of future predictions
         """
-
         output_columns = self.transaction.lmd['predict_columns']
         input_columns = [col for col in self.transaction.lmd['columns'] if col not in output_columns and col not in self.transaction.lmd['columns_to_ignore']]
 
         # Make predictions on the validation dataset normally and with various columns missing
-        normal_predictions = self.transaction.model_backend.predict('validate')
+        accuracies = []
+        for predictor, normal_predictions in self.transaction.model_backend.predict('validate'):
+            print(normal_predictions)
+            accuracy = evaluate_accuracy(
+                normal_predictions,
+                self.transaction.input_data.validation_df,
+                self.transaction.lmd['stats_v2'],
+                output_columns,
+                lightwood_predictor=predictor
+            )
+            accuracies.append((predictor, normal_predictions, accuracy))
 
+        best_predictor, normal_predictions, normal_accuracy = max(
+            accuracies,
+            key=lambda x: x[-1]
+        )
 
-        normal_predictions_test = self.transaction.model_backend.predict('test')
-        normal_accuracy = evaluate_accuracy(normal_predictions,
-                                            self.transaction.input_data.validation_df,
-                                            self.transaction.lmd['stats_v2'],
-                                            output_columns,
-                                            backend=self.transaction.model_backend)
+        normal_predictions_test = self.transaction.model_backend.predict('test', predictor=best_predictor)
+
+        # save best predictor
+        self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
+        Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.transaction.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
+        best_predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
 
         for col in output_columns:
             if self.transaction.lmd['tss']['is_timeseries']:
@@ -44,29 +74,13 @@ class ModelAnalyzer(BaseModule):
                 reals = self.transaction.input_data.validation_df[col]
             preds = normal_predictions[col]
 
-            fails = False
-
             data_type = self.transaction.lmd['stats_v2'][col]['typing']['data_type']
             data_subtype = self.transaction.lmd['stats_v2'][col]['typing']['data_subtype']
 
-            if data_type == DATA_TYPES.CATEGORICAL:
-                if data_subtype == DATA_SUBTYPES.TAGS:
-                    encoder = self.transaction.model_backend.predictor._mixer.encoders[col]
-                    if balanced_accuracy_score(encoder.encode(reals).argmax(axis=1), encoder.encode(preds).argmax(axis=1)) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
-                        fails = True
-                else:
-                    if balanced_accuracy_score(reals, preds) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
-                        fails = True
-            elif data_type == DATA_TYPES.NUMERIC:
-                if r2_score(reals, preds) < 0:
-                    fails = True
-            else:
-                pass
-
-            if fails:
+            if self._fails(reals, preds, data_type, data_subtype, lightwood_predictor=best_predictor):
                 if not self.transaction.lmd['force_predict']:
                     def predict_wrapper(*args, **kwargs):
-                        raise Exception('Failed to train model')
+                        raise Exception('Failed to train a model (accuracy is worse than random)')
                     self.session.predict = predict_wrapper
                 log.error('Failed to train model to predict {}'.format(col))
 
@@ -78,13 +92,23 @@ class ModelAnalyzer(BaseModule):
                            and (not self.transaction.lmd['tss']['is_timeseries'] or x not in self.transaction.lmd['tss']['order_by'])]
 
         for col in ignorable_input_columns:
-            empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
-            empty_input_predictions_test[col] = self.transaction.model_backend.predict('test', ignore_columns=[col])
-            empty_input_accuracy[col] = evaluate_accuracy(empty_input_predictions[col],
-                                                          self.transaction.input_data.validation_df,
-                                                          self.transaction.lmd['stats_v2'],
-                                                          output_columns,
-                                                          backend=self.transaction.model_backend)
+            empty_input_predictions[col] = self.transaction.model_backend.predict(
+                'validate',
+                ignore_columns=[col],
+                predictor=best_predictor
+            )
+            empty_input_predictions_test[col] = self.transaction.model_backend.predict(
+                'test',
+                ignore_columns=[col],
+                predictor=best_predictor
+            )
+            empty_input_accuracy[col] = evaluate_accuracy(
+                empty_input_predictions[col],
+                self.transaction.input_data.validation_df,
+                self.transaction.lmd['stats_v2'],
+                output_columns,
+                lightwood_predictor=best_predictor
+            )
 
         # Get some information about the importance of each column
         self.transaction.lmd['column_importances'] = {}
@@ -110,40 +134,43 @@ class ModelAnalyzer(BaseModule):
             # Training data accuracy
             predictions = self.transaction.model_backend.predict(
                 'predict_on_train_data',
-                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
+                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore'],
+                predictor=best_predictor
             )
             self.transaction.lmd['train_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
                 self.transaction.input_data.train_df,
                 self.transaction.lmd['stats_v2'],
                 [col],
-                backend=self.transaction.model_backend
+                lightwood_predictor=best_predictor
             )
 
             # Testing data accuracy
             predictions = self.transaction.model_backend.predict(
                 'test',
-                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
+                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore'],
+                predictor=best_predictor
             )
             self.transaction.lmd['test_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
                 self.transaction.input_data.test_df,
                 self.transaction.lmd['stats_v2'],
                 [col],
-                backend=self.transaction.model_backend
+                lightwood_predictor=best_predictor
             )
 
             # Validation data accuracy
             predictions = self.transaction.model_backend.predict(
                 'validate',
-                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
+                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore'],
+                predictor=best_predictor
             )
             self.transaction.lmd['valid_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
                 self.transaction.input_data.validation_df,
                 self.transaction.lmd['stats_v2'],
                 [col],
-                backend=self.transaction.model_backend
+                lightwood_predictor=best_predictor
             )
 
         for col in output_columns:
@@ -171,10 +198,13 @@ class ModelAnalyzer(BaseModule):
             data_subtype = self.transaction.lmd['stats_v2'][target]['typing']['data_subtype']
             is_classification = data_type == DATA_TYPES.CATEGORICAL
 
-            fit_params = {'target': target,
-                          'all_columns': self.transaction.lmd['columns'],
-                          'columns_to_ignore': self.transaction.lmd['columns_to_ignore'] +
-                                               [col for col in output_columns if col != target]}
+            fit_params = {
+                'target': target,
+                'all_columns': self.transaction.lmd['columns'],
+                'columns_to_ignore': []
+            }
+            fit_params['columns_to_ignore'].extend(self.transaction.lmd['columns_to_ignore'])
+            fit_params['columns_to_ignore'].extend([col for col in output_columns if col != target])
 
             if is_classification:
                 if data_subtype != DATA_SUBTYPES.TAGS:
@@ -202,7 +232,7 @@ class ModelAnalyzer(BaseModule):
                 icp_class = IcpRegressor
 
             if (data_type == DATA_TYPES.NUMERIC or (is_classification and data_subtype != DATA_SUBTYPES.TAGS)) and not self.transaction.lmd['tss']['is_timeseries']:
-                model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
+                model = adapter(best_predictor, fit_params=fit_params)
                 nc = nc_class(model, nc_function)
 
                 X = deepcopy(self.transaction.input_data.train_df)

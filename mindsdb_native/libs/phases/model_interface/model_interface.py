@@ -31,4 +31,4 @@ class ModelInterface(BaseModule):
             self.transaction.model_backend.train()
             self.transaction.lmd['train_end_at'] = str(datetime.datetime.now())
         elif mode == 'predict':
-            self.transaction.hmd['predictions'] = self.transaction.model_backend.predict()
+            self.transaction.hmd['predictions'] = self.transaction.model_backend.predict(self.transaction.hmd['best_predictor'])

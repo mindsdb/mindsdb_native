@@ -136,7 +136,7 @@ def get_value_bucket(value, buckets, col_stats, hmd=None):
     return bucket
 
 
-def evaluate_regression_accuracy(column, predictions, true_values, backend):
+def evaluate_regression_accuracy(column, predictions, true_values, lightwood_predictor=None):
     pred_confidence_intervals = predictions[f'{column}_confidence_range']
 
     within_interval = 0
@@ -146,24 +146,24 @@ def evaluate_regression_accuracy(column, predictions, true_values, backend):
     return within_interval/len(true_values)
 
 
-def evaluate_classification_accuracy(column, predictions, true_values, backend):
+def evaluate_classification_accuracy(column, predictions, true_values, lightwood_predictor=None):
     pred_values = predictions[column]
     return balanced_accuracy_score(true_values, pred_values)
 
 
-def evaluate_multilabel_accuracy(column, predictions, true_values, backend):
-    encoder = backend.predictor._mixer.encoders[column]
+def evaluate_multilabel_accuracy(column, predictions, true_values, lightwood_predictor):
+    encoder = lightwood_predictor._mixer.encoders[column]
     pred_values = encoder.encode(predictions[column])
     true_values = encoder.encode(true_values)
     return f1_score(true_values, pred_values, average='weighted')
 
 
-def evaluate_generic_accuracy(column, predictions, true_values, backend):
+def evaluate_generic_accuracy(column, predictions, true_values, lightwood_predictor=None):
     pred_values = predictions[column]
     return accuracy_score(true_values, pred_values)
 
 
-def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backend=None, hmd=None):
+def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, lightwood_predictor, hmd=None):
     column_scores = []
     for column in output_columns:
         col_type = col_stats[column]['typing']['data_type']
@@ -177,7 +177,7 @@ def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backen
                 evaluator = evaluate_classification_accuracy
         else:
             evaluator = evaluate_generic_accuracy
-        column_score = evaluator(column, predictions, data_frame[column], backend)
+        column_score = evaluator(column, predictions, data_frame[column], lightwood_predictor)
         column_scores.append(column_score)
 
     score = sum(column_scores)/len(column_scores) if column_scores else 0.

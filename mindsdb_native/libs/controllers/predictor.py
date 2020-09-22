@@ -198,12 +198,12 @@ class Predictor:
             data_source_name = from_ds.name()
 
             heavy_transaction_metadata = dict(
-                name=self.name,
-                from_data=from_ds,
-                predictions= None,
-                model_backend= backend,
-                sample_function=sample_function,
-                from_data_type=type(from_ds)
+                name = self.name,
+                from_data = from_ds,
+                predictions = None,
+                model_backend = backend,
+                sample_function = sample_function,
+                from_data_type = type(from_ds)
             )
 
             light_transaction_metadata = dict(
@@ -245,6 +245,8 @@ class Predictor:
                 data_split_indexes = advanced_args.get('data_split_indexes', None),
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
                 force_predict = advanced_args.get('force_predict', False),
+
+                mixer = advanced_args.get('mixer', None), # this is ignored for now
 
                 breakpoint = self.breakpoint,
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None

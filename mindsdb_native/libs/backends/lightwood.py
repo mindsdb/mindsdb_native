@@ -5,7 +5,8 @@ from lightwood.constants.lightwood import ColumnDataTypes
 import numpy as np
 import pandas as pd
 import lightwood
-from lightwood.mixers import NnMixer
+from lightwood.mixers import NnMixer, BoostMixer, BaseMixer
+from lightwood.api.data_source import DataSource as LightwoodDS
 
 from lightwood.constants.lightwood import ColumnDataTypes
 
@@ -15,10 +16,9 @@ from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class LightwoodBackend():
-
     def __init__(self, transaction):
         self.transaction = transaction
-        self.predictor = None
+        self.predictors = []
 
     def _create_timeseries_df(self, original_df):
         group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
@@ -172,7 +172,6 @@ class LightwoodBackend():
             if data_subtype == DATA_SUBTYPES.SHORT:
                 col_config['encoder_class'] = lightwood.encoders.text.short.ShortTextEncoder
 
-
             if col_name in self.transaction.lmd['weight_map']:
                 col_config['weights'] = self.transaction.lmd['weight_map'][col_name]
 
@@ -188,15 +187,6 @@ class LightwoodBackend():
 
         config['data_source'] = {}
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
-
-        
-        config['mixer'] = {
-            'class': NnMixer,
-            'kwargs': {
-                'selfaware': self.transaction.lmd['use_selfaware_model']
-            }
-        }
-        #config['mixer']['selfaware'] = self.transaction.lmd['use_selfaware_model']
 
         return config
 
@@ -252,33 +242,58 @@ class LightwoodBackend():
 
         lightwood_config = self._create_lightwood_config(secondary_type_dict)
 
-        self.predictor = lightwood.Predictor(lightwood_config)
+        train_lightwood_ds = LightwoodDS(train_df, lightwood_config)
+        test_lightwood_ds = train_lightwood_ds.make_child(test_df)
 
-        # Evaluate less often for larger datasets and vice-versa
-        eval_every_x_epochs = int(round(1 * pow(10, 6) * (1 / len(train_df))))
+        for mixer in BaseMixer.__subclasses__():
+            mixer_kwargs = {} # TODO: allow providing kwargs through advanced_args
 
-        # Within some limits
-        if eval_every_x_epochs > 200:
-            eval_every_x_epochs = 200
-        if eval_every_x_epochs < 3:
-            eval_every_x_epochs = 3
+            lightwood_config['mixer'] = {
+                'class': mixer,
+                'kwargs': mixer_kwargs
+            }
 
-        if lightwood_config['mixer']['class'] == NnMixer:
-            lightwood_config['mixer']['kwargs']['callback_on_iter'] = self.callback_on_iter
-            lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs
-            lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
+            self.predictors.append(
+                lightwood.Predictor(lightwood_config)
+            )
 
-        logging.getLogger().setLevel(logging.DEBUG)
+            if lightwood_config['mixer']['class'] == NnMixer:
+                # Evaluate less often for larger datasets and vice-versa
+                eval_every_x_epochs = int(round(1 * pow(10, 6) * (1 / len(train_df))))
 
-        self.predictor.learn(from_data=train_df, test_data=test_df)
+                # Within some limits
+                if eval_every_x_epochs > 200:
+                    eval_every_x_epochs = 200
+                if eval_every_x_epochs < 3:
+                    eval_every_x_epochs = 3
 
-        self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
+                lightwood_config['mixer']['kwargs']['callback_on_iter'] = self.callback_on_iter
+                lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs
+                lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
 
-        self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
-        Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.transaction.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
-        self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
+            logging.getLogger().setLevel(logging.DEBUG)
 
-    def predict(self, mode='predict', ignore_columns=None):
+            self.predictors[-1].learn(
+                from_data=train_lightwood_ds,
+                test_data=test_lightwood_ds
+            )
+
+            self.transaction.log.info('[{}] Training accuracy of: {}'.format(
+                self.predictors[-1].__class__.__name__,
+                self.predictors[-1].train_accuracy
+            ))
+
+    def predict(self, mode='predict', ignore_columns=None, predictor=None):
+        if predictor is not None:
+            return self._predict(predictor, mode, ignore_columns)
+        else:
+            if len(self.predictors) == 0:
+                self.predictors.append(
+                    lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
+                )
+            return [(predictor, self._predict(predictor, mode, ignore_columns)) for predictor in self.predictors]
+
+    def _predict(self, predictor, mode='predict', ignore_columns=None):
         if ignore_columns is None:
             ignore_columns = []
         if self.transaction.lmd['use_gpu'] is not None:
@@ -298,9 +313,6 @@ class LightwoodBackend():
         if self.transaction.lmd['tss']['is_timeseries']:
             df, _ = self._create_timeseries_df(df)
 
-        if self.predictor is None:
-            self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
-
         # not the most efficient but least prone to bug and should be fast enough
         if len(ignore_columns) > 0:
             run_df = df.copy(deep=True)
@@ -309,7 +321,7 @@ class LightwoodBackend():
         else:
             run_df = df
 
-        predictions = self.predictor.predict(when_data=run_df)
+        predictions = predictor.predict(when_data=run_df)
 
         formated_predictions = {}
         for k in predictions:

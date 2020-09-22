@@ -16,8 +16,12 @@ class TestEvaluateAccuracy:
         }
 
         col_stats = {
-            'y': {'typing': {'data_type': DATA_TYPES.NUMERIC,
-                             'data_subtype': DATA_SUBTYPES.INT}}
+            'y': {
+                'typing': {
+                    'data_type': DATA_TYPES.NUMERIC,
+                    'data_subtype': DATA_SUBTYPES.INT
+                }
+            }
         }
 
         output_columns = ['y']

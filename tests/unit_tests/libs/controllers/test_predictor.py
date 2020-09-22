@@ -499,14 +499,20 @@ class TestPredictor:
             map(lambda col: col[1:int(len(col) * 3 / 4)], features))
         columns_train.extend(
             list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
-        columns_to_file(columns_train, train_file_name,
-                        headers=[*feature_headers, *label_headers])
+        columns_to_file(
+            columns_train,
+            train_file_name,
+            headers=[*feature_headers, *label_headers]
+        )
 
         # Create the testing dataset and save it to a file
         columns_test = list(
             map(lambda col: col[int(len(col) * 3 / 4):], features))
-        columns_to_file(columns_test, test_file_name,
-                        headers=feature_headers)
+        columns_to_file(
+            columns_test,
+            test_file_name,
+            headers=feature_headers
+        )
 
         mdb = Predictor(name='test_multilabel_prediction')
         mdb.learn(
