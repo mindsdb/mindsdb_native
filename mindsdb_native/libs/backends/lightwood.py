@@ -189,6 +189,10 @@ class LightwoodBackend():
             col_config.update(other_keys)
 
             if col_name in self.transaction.lmd['predict_columns']:
+                if self.transaction.lmd['tss']['is_timeseries']:
+                    col_config['additional_info'] = {
+                        'nr_predictions': self.transaction.lmd['tss']['nr_predictions']
+                    }
                 config['output_features'].append(col_config)
             else:
                 config['input_features'].append(col_config)
@@ -277,8 +281,7 @@ class LightwoodBackend():
                 lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
 
         logging.getLogger().setLevel(logging.DEBUG)
-        print(train_df, test_df)
-        exit()
+
         self.predictor.learn(from_data=train_df, test_data=test_df)
 
         self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
