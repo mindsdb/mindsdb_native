@@ -95,6 +95,7 @@ class Transaction:
             with open(fn, 'wb') as fp:
                 pickle.dump(self.lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as e:
+            self.log.error(traceback.print_exc())
             self.log.error(e)
             self.log.error(f'Could not save mindsdb light metadata in the file: {fn}')
 
@@ -116,6 +117,7 @@ class Transaction:
                 pickle.dump(save_hmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as e:
             self.log.error(e)
+            self.log.error(traceback.print_exc())
             self.log.error(f'Could not save mindsdb heavy metadata in the file: {fn}')
 
         if 'icp' in self.hmd.keys() and self.hmd['icp']['active']:
@@ -141,6 +143,7 @@ class Transaction:
 
             except Exception as e:
                 self.log.error(e)
+                self.log.error(traceback.print_exc())
                 self.log.error(f'Could not save mindsdb conformal predictor in the file: {icp_fn}')
 
     def _call_phase_module(self, module_name, **kwargs):
