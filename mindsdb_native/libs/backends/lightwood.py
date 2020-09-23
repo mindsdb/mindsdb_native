@@ -184,7 +184,7 @@ class LightwoodBackend():
                 if self.transaction.lmd['tss']['is_timeseries']:
                     col_config['additional_info'] = {
                         'nr_predictions': self.transaction.lmd['tss']['nr_predictions']
-                    }``
+                    }
                 config['output_features'].append(col_config)
             else:
                 config['input_features'].append(col_config)
