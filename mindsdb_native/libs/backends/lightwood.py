@@ -261,7 +261,13 @@ class LightwoodBackend():
         logging.getLogger().setLevel(logging.DEBUG)
 
         predictors_and_accuracies = []
-        for mixer_class in lightwood.mixers.BaseMixer.__subclasses__():
+
+        if self.transaction.lmd['mixer_class'] is not None:
+            mixer_classes = [self.transaction.lmd['mixer_class']]
+        else:
+            mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+
+        for mixer_class in mixer_classes:
             lightwood_config['mixer']['kwargs'] = {}
             lightwood_config['mixer']['class'] = mixer_class
 
@@ -281,7 +287,7 @@ class LightwoodBackend():
                 kwargs['eval_every_x_epochs'] = eval_every_x_epochs
                 kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
 
-            self.predictor = lightwood.Predictor(lightwood_config)
+            self.predictor = lightwood.Predictor(lightwood_config.copy())
 
             self.predictor.learn(
                 from_data=lightwood_train_ds,
@@ -307,8 +313,24 @@ class LightwoodBackend():
                 validation_accuracy
             ))
 
-        # Select best predictor
-        self.predictor = max(predictors_and_accuracies, key=lambda x: x[1])[0]
+        best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
+
+        # Find predictor with NnMixer
+        for predictor, accuracy in predictors_and_accuracies:
+            if isinstance(predictor._mixer, lightwood.mixers.NnMixer):
+                nn_mixer_predictor, nn_mixer_predictor_accuracy = predictor, accuracy
+                break
+        else:
+            nn_mixer_predictor, nn_mixer_predictor_accuracy = None, None
+
+        self.predictor = best_predictor
+
+        # If difference between accuracies of best predictor and NnMixer predictor
+        # is small, then use NnMixer predictor
+        if nn_mixer_predictor is not None:
+            SMALL_ACCURACY_DIFFERENCE = 0.05
+            if (best_accuracy - nn_mixer_predictor_accuracy) < SMALL_ACCURACY_DIFFERENCE:
+                self.predictor = nn_mixer_predictor
 
         self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
 
