@@ -189,7 +189,7 @@ class LightwoodBackend():
                     p_col_config['name'] = f"previous_{p_col_config['name']}"
                     p_col_config['type'] = ColumnDataTypes.TIME_SERIES
 
-                    if col_config['secondary_type']:
+                    if 'secondary_type' in col_config:
                         p_col_config['secondary_type'] = col_config['secondary_type']
 
                     config['input_features'].append(p_col_config)
