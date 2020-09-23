@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 from collections import defaultdict
 from lightwood.constants.lightwood import ColumnDataTypes
@@ -182,6 +183,12 @@ class LightwoodBackend():
 
             if col_name in self.transaction.lmd['predict_columns']:
                 config['output_features'].append(col_config)
+
+                if self.transaction.lmd['tss']['use_previous_target']:
+                    p_col_config = copy.deepcopy(col_config)
+                    p_col_config['name'] = f"previous_{p_col_config['name']}"
+                    config['input_features'].append(p_col_config)
+
             else:
                 config['input_features'].append(col_config)
 
