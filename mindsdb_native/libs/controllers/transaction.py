@@ -89,6 +89,7 @@ class Transaction:
             self.log.error(f'Could not load mindsdb conformal predictor in the file: {icp_fn}')
 
     def save_metadata(self):
+        Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'], 'light_model_metadata.pickle')
         self.lmd['updated_at'] = str(datetime.datetime.now())
         try:
