@@ -3,7 +3,7 @@ import pytest
 import random
 import string
 
-from mindsdb_native.libs.constants.mindsdb import DATA_SUBTYPES
+from mindsdb_native.libs.constants.mindsdb import DATA_SUBTYPES, DATA_TYPES
 from mindsdb_native.libs.helpers.text_helpers import (
     get_language_dist,
     analyze_sentences
@@ -42,9 +42,9 @@ def test_identifiers():
     N = 50
 
     hash_like_data = [''.join(random.choices(string.ascii_letters, k=8)) for _ in range(N)]
-    incrementing_data_1 = range(0, N)    
-    incrementing_data_2 = range(10000, 10000 + N)    
+    incrementing_data_1 = range(0, N)
+    incrementing_data_2 = range(10000, 10000 + N)
 
-    assert get_identifier_description(hash_like_data, 'col', DATA_SUBTYPES.MULTIPLE, []) is not None
-    assert get_identifier_description(incrementing_data_1, 'col', DATA_SUBTYPES.INT, []) is not None
-    assert get_identifier_description(incrementing_data_2, 'col', DATA_SUBTYPES.INT, []) is not None
+    assert get_identifier_description(hash_like_data, 'col', DATA_SUBTYPES.MULTIPLE, DATA_TYPES.CATEGORICAl, []) is not None
+    assert get_identifier_description(incrementing_data_1, 'col', DATA_SUBTYPES.INT, DATA_TYPES.NUMERIC, []) is not None
+    assert get_identifier_description(incrementing_data_2, 'col', DATA_SUBTYPES.INT, DATA_TYPES.NUMERIC, []) is not None

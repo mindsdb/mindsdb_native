@@ -167,8 +167,9 @@ class TestPredictor:
 
     def test_ignore_identifiers(self):
         input_dataframe = pd.DataFrame({
-            'do_use': [*range(99), 123],
+            'do_use': [*range(60), *range(40)],
             'numeric_id': list(range(100)),
+            'malicious_naming': list(range(100)),
             'y': list(range(100)),
         })
 
@@ -186,6 +187,8 @@ class TestPredictor:
         # Foreign key is ignored and removed from data frames
         assert 'numeric_id' not in transaction.input_data.train_df.columns
         assert 'numeric_id' in transaction.lmd['columns_to_ignore']
+        assert 'malicious_naming' not in transaction.input_data.train_df.columns
+        assert 'malicious_naming' in transaction.lmd['columns_to_ignore']
 
         predictor = Predictor(name='test')
         predictor.learn(
