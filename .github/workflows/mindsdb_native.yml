@@ -8,11 +8,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: [3.6, 3.7, 3.8]
-        include:
-          - os: macos-latest
-            python-version: 3.7
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: [3.6,3.7,3.8]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -24,6 +21,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install --no-cache-dir .
         pip install -r optional_requirements_extra_data_sources.txt
+    - name: Install lightwood/staging if it's not mindsdb_native/stable
+      if: github.ref != 'refs/heads/stable'
+      run: |
+          pip install git+https://github.com/mindsdb/lightwood.git@staging --upgrade --no-cache-dir
     - name: Run unit tests
       run: |
           pytest --run-slow --durations=20 tests/unit_tests
@@ -31,7 +32,7 @@ jobs:
     - name: Run integration tests
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
-          docker-compose up -d 
+          docker-compose up -d
           sleep 20
           pytest --run-integration tests/integration_tests
           docker-compose down
