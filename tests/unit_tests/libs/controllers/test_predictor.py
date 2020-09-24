@@ -169,7 +169,7 @@ class TestPredictor:
         input_dataframe = pd.DataFrame({
             'do_use': [*range(60), *range(40)],
             'numeric_id': list(range(100)),
-            'malicious_naming': list(range(100)),
+            'malicious_naming': list(range(99),200),
             'y': list(range(100)),
         })
 
