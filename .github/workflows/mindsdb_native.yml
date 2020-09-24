@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6,3.7,3.8]
         include:
           - os: macos-latest
             python-version: 3.7
@@ -27,7 +27,7 @@ jobs:
     - name: Install lightwood/staging if it's not mindsdb_native/stable
       if: github.ref != 'refs/heads/stable'
       run: |
-          pip install git+https://github.com/mindsdb/lightwood.git@staging --upgrade --no-cache-dir
+          pip install git+https://github.com/mindsdb/lightwood.git@fix_dill --upgrade --no-cache-dir
     - name: Run unit tests
       run: |
           pytest --run-slow --durations=20 tests/unit_tests
