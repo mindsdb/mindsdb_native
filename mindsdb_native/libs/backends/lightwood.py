@@ -103,7 +103,15 @@ class LightwoodBackend():
                     previous_target_values = list(ts_groups[k][target_column])
                     del previous_target_values[-1]
                     previous_target_values = [None] + previous_target_values
-                    ts_groups[k]['previous_' + target_column] = previous_target_values
+
+                    previous_target_values_ts = []
+                    for i in range(len(previous_target_values)):
+                        arr = previous_target_values[max(i-window,0):i+1]
+                        while len(arr) <= window:
+                            arr = [None] + arr
+                        previous_target_values_ts.append(arr)
+
+                    ts_groups[k]['previous_' + target_column] = previous_target_values_ts
 
         combined_df = pd.concat(list(ts_groups.values()))
 
