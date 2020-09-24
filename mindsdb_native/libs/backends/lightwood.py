@@ -2,6 +2,7 @@ from pathlib import Path
 from collections import defaultdict
 from lightwood.constants.lightwood import ColumnDataTypes
 
+
 import numpy as np
 import pandas as pd
 import lightwood
