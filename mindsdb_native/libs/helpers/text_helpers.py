@@ -174,10 +174,13 @@ def get_pct_auto_increment(data):
     increase_by_one = 0
     for point in data:
         if prev is not None and point is not None:
-            diff = int(point) - int(prev)
-            if diff == 1:
-                increase_by_one += 1
-
+            try:
+                diff = int(point) - int(prev)
+                if diff == 1:
+                    increase_by_one += 1
+            except:
+                pass
+            
         prev = point
     return increase_by_one/(len(data) - 1)
 
