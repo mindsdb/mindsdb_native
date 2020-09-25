@@ -45,6 +45,6 @@ def test_identifiers():
     incrementing_data_1 = range(0, N)
     incrementing_data_2 = range(10000, 10000 + N)
 
-    assert get_identifier_description(hash_like_data, 'col', DATA_SUBTYPES.MULTIPLE, DATA_TYPES.CATEGORICAl, []) is not None
+    assert get_identifier_description(hash_like_data, 'col', DATA_SUBTYPES.MULTIPLE, DATA_TYPES.CATEGORICAL, []) is not None
     assert get_identifier_description(incrementing_data_1, 'col', DATA_SUBTYPES.INT, DATA_TYPES.NUMERIC, []) is not None
     assert get_identifier_description(incrementing_data_2, 'col', DATA_SUBTYPES.INT, DATA_TYPES.NUMERIC, []) is not None
