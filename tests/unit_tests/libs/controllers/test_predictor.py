@@ -169,7 +169,7 @@ class TestPredictor:
         input_dataframe = pd.DataFrame({
             'do_use': [*range(60), *range(40)],
             'numeric_id': list(range(100)),
-            'malicious_naming': list(range(99),200),
+            'malicious_naming': list(range(99)) + [200],
             'y': list(range(100)),
         })
 
@@ -547,7 +547,7 @@ class TestPredictor:
         mdb.learn(to_predict='rental_price',
                   from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
                   backend='lightwood',
-                  stop_training_in_x_seconds=60,
+                  stop_training_in_x_seconds=80,
                   use_gpu=use_gpu)
 
         def assert_prediction_interface(predictions):
