@@ -73,7 +73,7 @@ class LightwoodBackend():
 
         # Make all order column cells lists
         for group in ts_groups:
-            for order_col in order_by:
+            for order_col in order_by + self.transaction.lmd['tss']['historical_columns']:
                 for i in range(len(ts_groups[group])):
                     ts_groups[group][order_col].iloc[i] = [
                         ts_groups[group][order_col].iloc[i]
@@ -81,7 +81,7 @@ class LightwoodBackend():
 
         # Add previous rows
         for group in ts_groups:
-            for order_col in order_by:
+            for order_col in order_by + self.transaction.lmd['tss']['historical_columns']:
                 for i in range(len(ts_groups[group])):
                     previous_indexes = [*range(max(0, i - window), i)]
 
@@ -207,6 +207,11 @@ class LightwoodBackend():
                     config['input_features'].append(p_col_config)
 
             else:
+                if self.transaction.lmd['tss']['historical_columns']:
+                    if 'secondary_type' in col_config:
+                        col_config['secondary_type'] = col_config['secondary_type']
+                    col_config['type'] = ColumnDataTypes.TIME_SERIES
+
                 config['input_features'].append(col_config)
 
         config['data_source'] = {}
