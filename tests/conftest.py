@@ -14,7 +14,6 @@ pytest_plugins = ("plugin",)
 
 @pytest.fixture(autouse=True)
 def config(tmp_path):
-    CONFIG.CHECK_FOR_UPDATES = False
     CONFIG.MINDSDB_STORAGE_PATH = str(tmp_path)
     yield CONFIG
     shutil.rmtree(CONFIG.MINDSDB_STORAGE_PATH)
