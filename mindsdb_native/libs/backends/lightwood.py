@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 from collections import defaultdict
 from lightwood.constants.lightwood import ColumnDataTypes
@@ -194,6 +195,17 @@ class LightwoodBackend():
                         'nr_predictions': self.transaction.lmd['tss']['nr_predictions']
                     }
                 config['output_features'].append(col_config)
+
+                if self.transaction.lmd['tss']['use_previous_target']:
+                    p_col_config = copy.deepcopy(col_config)
+                    p_col_config['name'] = f"previous_{p_col_config['name']}"
+                    p_col_config['type'] = ColumnDataTypes.TIME_SERIES
+
+                    if 'secondary_type' in col_config:
+                        p_col_config['secondary_type'] = col_config['secondary_type']
+
+                    config['input_features'].append(p_col_config)
+
             else:
                 config['input_features'].append(col_config)
 
