@@ -181,7 +181,7 @@ def get_pct_auto_increment(data):
                 diff = int(point) - int(prev)
                 if diff == 1:
                     increase_by_one += 1
-            except:
+            except Exception:
                 pass
 
         prev = point
