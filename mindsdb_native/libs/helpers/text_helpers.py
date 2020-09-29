@@ -149,9 +149,12 @@ def hashtext(cell):
 
 def _is_foreign_key_name(name):
     for endings in ['id', 'ID', 'Id']:
-        for add in ['-','_', ' ', '']:
+        for add in ['-','_', ' ']:
             if name.endswith(add + endings):
                 return True
+    for endings in ['ID', 'Id']:
+        if name.endswith(endings):
+            return True
     return False
 
 def _is_identifier_name(name):
