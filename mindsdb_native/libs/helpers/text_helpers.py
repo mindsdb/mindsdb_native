@@ -181,13 +181,13 @@ def get_pct_auto_increment(data):
         digits = extract_digits(point)
         if prev is not None and digits is not None:
             try:
-                diff = int(digits) - int(digits)
+                diff = int(digits) - int(prev)
                 if diff == 1:
                     increase_by_one += 1
             except Exception:
                 pass
 
-        prev = point
+        prev = digits
     return increase_by_one/(len(data) - 1)
 
 def get_identifier_description(data, column_name, data_type, data_subtype, other_potential_subtypes):
