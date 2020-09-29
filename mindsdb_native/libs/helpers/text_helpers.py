@@ -171,7 +171,7 @@ def isascii(string):
     return all(ord(c) < 128 for c in string)
 
 def extract_digits(point):
-    return int([char if char.isdigit() for char in str(point)])
+    return ''.join([char for char in str(point) if char.isdigit()])
 
 def get_pct_auto_increment(data):
     data = sorted(data)
