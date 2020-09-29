@@ -170,15 +170,18 @@ def isascii(string):
     """
     return all(ord(c) < 128 for c in string)
 
+def extract_digits(point):
+    return int([char if char.isdigit() for char in str(point)])
 
 def get_pct_auto_increment(data):
     data = sorted(data)
     prev = None
     increase_by_one = 0
     for point in data:
-        if prev is not None and point is not None:
+        digits = extract_digits(point)
+        if prev is not None and digits is not None:
             try:
-                diff = int(point) - int(prev)
+                diff = int(digits) - int(digits)
                 if diff == 1:
                     increase_by_one += 1
             except Exception:
