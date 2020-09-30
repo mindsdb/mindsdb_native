@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 from collections import defaultdict
 from lightwood.constants.lightwood import ColumnDataTypes
@@ -7,11 +8,11 @@ import pandas as pd
 import lightwood
 
 from lightwood.constants.lightwood import ColumnDataTypes
+from lightwood.mixers import NnMixer
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
-
 
 class LightwoodBackend():
 
@@ -72,7 +73,7 @@ class LightwoodBackend():
 
         # Make all order column cells lists
         for group in ts_groups:
-            for order_col in order_by:
+            for order_col in order_by + self.transaction.lmd['tss']['historical_columns']:
                 for i in range(len(ts_groups[group])):
                     ts_groups[group][order_col].iloc[i] = [
                         ts_groups[group][order_col].iloc[i]
@@ -80,7 +81,7 @@ class LightwoodBackend():
 
         # Add previous rows
         for group in ts_groups:
-            for order_col in order_by:
+            for order_col in order_by + self.transaction.lmd['tss']['historical_columns']:
                 for i in range(len(ts_groups[group])):
                     previous_indexes = [*range(max(0, i - window), i)]
 
@@ -103,12 +104,20 @@ class LightwoodBackend():
                     previous_target_values = list(ts_groups[k][target_column])
                     del previous_target_values[-1]
                     previous_target_values = [None] + previous_target_values
-                    ts_groups[k]['previous_' + target_column] = previous_target_values
+
+                    previous_target_values_ts = []
+                    for i in range(len(previous_target_values)):
+                        arr = previous_target_values[max(i-window,0):i+1]
+                        while len(arr) <= window:
+                            arr = [None] + arr
+                        previous_target_values_ts.append(arr)
+
+                    ts_groups[k]['previous_' + target_column] = previous_target_values_ts
 
         combined_df = pd.concat(list(ts_groups.values()))
 
         if 'make_predictions' in combined_df.columns:
-            combined_df = pd.DataFrame(combined_df[combined_df['make_predictions']])
+            combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
             del combined_df['make_predictions']
 
         return combined_df, secondary_type_dict
@@ -181,15 +190,39 @@ class LightwoodBackend():
             col_config.update(other_keys)
 
             if col_name in self.transaction.lmd['predict_columns']:
+                if self.transaction.lmd['tss']['is_timeseries']:
+                    col_config['additional_info'] = {
+                        'nr_predictions': self.transaction.lmd['tss']['nr_predictions']
+                    }
                 config['output_features'].append(col_config)
+
+                if self.transaction.lmd['tss']['use_previous_target']:
+                    p_col_config = copy.deepcopy(col_config)
+                    p_col_config['name'] = f"previous_{p_col_config['name']}"
+                    p_col_config['type'] = ColumnDataTypes.TIME_SERIES
+
+                    if 'secondary_type' in col_config:
+                        p_col_config['secondary_type'] = col_config['secondary_type']
+
+                    config['input_features'].append(p_col_config)
+
             else:
+                if self.transaction.lmd['tss']['historical_columns']:
+                    if 'secondary_type' in col_config:
+                        col_config['secondary_type'] = col_config['secondary_type']
+                    col_config['type'] = ColumnDataTypes.TIME_SERIES
+
                 config['input_features'].append(col_config)
 
         config['data_source'] = {}
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
 
-        config['mixer'] = {}
-        config['mixer']['selfaware'] = self.transaction.lmd['use_selfaware_model']
+        config['mixer'] = {
+            'class': NnMixer,
+            'kwargs': {
+                'selfaware': self.transaction.lmd['use_selfaware_model']
+            }
+        }
 
         return config
 
@@ -249,7 +282,7 @@ class LightwoodBackend():
         self.predictor = lightwood.Predictor(lightwood_config)
 
         # Evaluate less often for larger datasets and vice-versa
-        eval_every_x_epochs = int(round(1 * pow(10,6) * (1/len(train_df))))
+        eval_every_x_epochs = int(round(1 * pow(10, 6) * (1 / len(train_df))))
 
         # Within some limits
         if eval_every_x_epochs > 200:
@@ -257,11 +290,16 @@ class LightwoodBackend():
         if eval_every_x_epochs < 3:
             eval_every_x_epochs = 3
 
+        if lightwood_config['mixer']['class'] == NnMixer:
+            lightwood_config['mixer']['kwargs']['callback_on_iter'] = self.callback_on_iter
+            lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs
+
+            if self.transaction.lmd['stop_training_in_x_seconds'] is not None:
+                lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
+
         logging.getLogger().setLevel(logging.DEBUG)
-        if self.transaction.lmd['stop_training_in_x_seconds'] is None:
-            self.predictor.learn(from_data=train_df, test_data=test_df, callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
-        else:
-            self.predictor.learn(from_data=train_df, test_data=test_df, stop_training_after_seconds=self.transaction.lmd['stop_training_in_x_seconds'], callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
+
+        self.predictor.learn(from_data=train_df, test_data=test_df)
 
         self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
 

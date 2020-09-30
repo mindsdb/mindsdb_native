@@ -89,12 +89,14 @@ class Transaction:
             self.log.error(f'Could not load mindsdb conformal predictor in the file: {icp_fn}')
 
     def save_metadata(self):
+        Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.lmd['name'], 'light_model_metadata.pickle')
         self.lmd['updated_at'] = str(datetime.datetime.now())
         try:
             with open(fn, 'wb') as fp:
                 pickle.dump(self.lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as e:
+            self.log.error(traceback.print_exc())
             self.log.error(e)
             self.log.error(f'Could not save mindsdb light metadata in the file: {fn}')
 
@@ -116,6 +118,7 @@ class Transaction:
                 pickle.dump(save_hmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as e:
             self.log.error(e)
+            self.log.error(traceback.print_exc())
             self.log.error(f'Could not save mindsdb heavy metadata in the file: {fn}')
 
         if 'icp' in self.hmd.keys() and self.hmd['icp']['active']:
@@ -141,6 +144,7 @@ class Transaction:
 
             except Exception as e:
                 self.log.error(e)
+                self.log.error(traceback.print_exc())
                 self.log.error(f'Could not save mindsdb conformal predictor in the file: {icp_fn}')
 
     def _call_phase_module(self, module_name, **kwargs):
