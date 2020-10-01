@@ -313,7 +313,7 @@ class LightwoodBackend():
                 kwargs = lightwood_config['mixer']['kwargs']
 
                 kwargs['callback_on_iter'] = self.callback_on_iter
-                kwargs['eval_every_x_epochs'] = eval_every_x_epochs
+                kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
                 kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
 
             self.predictor = lightwood.Predictor(lightwood_config.copy())
