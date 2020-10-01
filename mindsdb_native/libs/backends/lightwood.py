@@ -357,7 +357,7 @@ class LightwoodBackend():
         # If difference between accuracies of best predictor and NnMixer predictor
         # is small, then use NnMixer predictor
         if nn_mixer_predictor is not None:
-            SMALL_ACCURACY_DIFFERENCE = 0.05
+            SMALL_ACCURACY_DIFFERENCE = 0.01
             if (best_accuracy - nn_mixer_predictor_accuracy) < SMALL_ACCURACY_DIFFERENCE:
                 self.predictor = nn_mixer_predictor
 
