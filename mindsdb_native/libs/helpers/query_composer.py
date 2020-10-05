@@ -18,7 +18,7 @@ def create_history_query(query, tss, stats, row):
     for order_column in tss['order_by']:
         if stats[order_column]['typing']['data_type'] in [DATA_TYPES.DATE]:
             order_by_filter.append(f'{order_column}<' + "'" + str(row[order_column]) + "'")
-        else:
+        elif stats[order_column]['typing']['data_type'] in [DATA_TYPES.NUMERIC]:
             order_by_filter.append(f'{order_column}<' + str(row[order_column]))
 
     merged_filter = ' AND '.join([*order_by_filter,*group_by_filter])
