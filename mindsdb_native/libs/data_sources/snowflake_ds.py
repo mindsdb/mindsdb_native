@@ -5,7 +5,7 @@ import snowflake
 from mindsdb_native.libs.data_types.data_source import DataSource
 
 
-class PostgresDS(DataSource):
+class SnowflakeDS(DataSource):
 
     def _setup(self, query, host, user, password, account, warehouse, database, schema, protocol='https', port=443):
 
