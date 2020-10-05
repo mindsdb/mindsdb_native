@@ -29,13 +29,14 @@ class ModelAnalyzer(BaseModule):
         # Make predictions on the validation dataset normally and with various columns missing
         normal_predictions = self.transaction.model_backend.predict('validate')
 
-
         normal_predictions_test = self.transaction.model_backend.predict('test')
-        normal_accuracy = evaluate_accuracy(normal_predictions,
-                                            self.transaction.input_data.validation_df,
-                                            self.transaction.lmd['stats_v2'],
-                                            output_columns,
-                                            backend=self.transaction.model_backend)
+        normal_accuracy = evaluate_accuracy(
+            normal_predictions,
+            self.transaction.input_data.validation_df,
+            self.transaction.lmd['stats_v2'],
+            output_columns,
+            backend=self.transaction.model_backend
+        )
 
         for col in output_columns:
             if self.transaction.lmd['tss']['is_timeseries']:
@@ -80,11 +81,13 @@ class ModelAnalyzer(BaseModule):
         for col in ignorable_input_columns:
             empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
             empty_input_predictions_test[col] = self.transaction.model_backend.predict('test', ignore_columns=[col])
-            empty_input_accuracy[col] = evaluate_accuracy(empty_input_predictions[col],
-                                                          self.transaction.input_data.validation_df,
-                                                          self.transaction.lmd['stats_v2'],
-                                                          output_columns,
-                                                          backend=self.transaction.model_backend)
+            empty_input_accuracy[col] = evaluate_accuracy(
+                empty_input_predictions[col],
+                self.transaction.input_data.validation_df,
+                self.transaction.lmd['stats_v2'],
+                output_columns,
+                backend=self.transaction.model_backend
+            )
 
         # Get some information about the importance of each column
         self.transaction.lmd['column_importances'] = {}
@@ -171,10 +174,13 @@ class ModelAnalyzer(BaseModule):
             data_subtype = self.transaction.lmd['stats_v2'][target]['typing']['data_subtype']
             is_classification = data_type == DATA_TYPES.CATEGORICAL
 
-            fit_params = {'target': target,
-                          'all_columns': self.transaction.lmd['columns'],
-                          'columns_to_ignore': self.transaction.lmd['columns_to_ignore'] +
-                                               [col for col in output_columns if col != target]}
+            fit_params = {
+                'target': target,
+                'all_columns': self.transaction.lmd['columns'],
+                'columns_to_ignore': []
+            }
+            fit_params['columns_to_ignore'].extend(self.transaction.lmd['columns_to_ignore'])
+            fit_params['columns_to_ignore'].extend([col for col in output_columns if col != target])
 
             if is_classification:
                 if data_subtype != DATA_SUBTYPES.TAGS:
