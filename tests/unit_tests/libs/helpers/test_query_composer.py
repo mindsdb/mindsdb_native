@@ -43,4 +43,4 @@ def test_query_composer():
     tss['group_by'] = ['C']
     tss['order_by'] = ['A','B']
     new_query = create_history_query('select * from table where z=55 group by W order by N limit 500;', tss, stats, {'A': 100, 'B': 500, 'C': 'value of C'})
-    assert new_query.lower() == 'select * from table where C=\'value of C\' AND z=55 group by W order by A, B DESC limit 6'.lower()
+    assert new_query.lower() == 'select * from table where B<500 AND C=\'value of C\' AND z=55 group by W order by A, B DESC limit 6'.lower()
