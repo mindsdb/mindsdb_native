@@ -313,9 +313,11 @@ class TypeDeductor(BaseModule):
             stats_v2[col_name]['typing'] = type_data
             stats_v2[col_name]['additional_info'] = additional_info
 
+            # work with the full data
             stats_v2[col_name]['identifier'] = get_identifier_description(
-                col_data,
+                input_data.data_frame[col_name],
                 col_name,
+                data_type,
                 data_subtype,
                 additional_info['other_potential_subtypes']
             )

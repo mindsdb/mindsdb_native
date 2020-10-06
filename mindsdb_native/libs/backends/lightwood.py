@@ -8,11 +8,11 @@ import pandas as pd
 import lightwood
 
 from lightwood.constants.lightwood import ColumnDataTypes
-from lightwood.mixers import NnMixer
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
+from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
 class LightwoodBackend():
 
@@ -218,7 +218,7 @@ class LightwoodBackend():
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
 
         config['mixer'] = {
-            'class': NnMixer,
+            'class': lightwood.mixers.NnMixer,
             'kwargs': {
                 'selfaware': self.transaction.lmd['use_selfaware_model']
             }
@@ -278,38 +278,95 @@ class LightwoodBackend():
 
         lightwood_config = self._create_lightwood_config(secondary_type_dict)
 
-
-        self.predictor = lightwood.Predictor(lightwood_config)
-
-        # Evaluate less often for larger datasets and vice-versa
-        eval_every_x_epochs = int(round(1 * pow(10, 6) * (1 / len(train_df))))
-
-        # Within some limits
-        if eval_every_x_epochs > 200:
-            eval_every_x_epochs = 200
-        if eval_every_x_epochs < 3:
-            eval_every_x_epochs = 3
-
-        if lightwood_config['mixer']['class'] == NnMixer:
-            lightwood_config['mixer']['kwargs']['callback_on_iter'] = self.callback_on_iter
-            lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs
-
-            if self.transaction.lmd['stop_training_in_x_seconds'] is not None:
-                lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
-
-        logging.getLogger().setLevel(logging.DEBUG)
-
-        self.predictor.learn(from_data=train_df, test_data=test_df)
-
-        self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
+        lightwood_train_ds = lightwood.api.data_source.DataSource(
+            train_df,
+            config=lightwood_config
+        )
+        lightwood_test_ds = lightwood_train_ds.make_child(test_df)
 
         self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
         Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.transaction.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
+
+        logging.getLogger().setLevel(logging.DEBUG)
+
+        predictors_and_accuracies = []
+
+        if self.transaction.lmd['mixer_class'] is not None:
+            mixer_classes = [self.transaction.lmd['mixer_class']]
+        else:
+            mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+
+        for mixer_class in mixer_classes:
+            lightwood_config['mixer']['kwargs'] = {}
+            lightwood_config['mixer']['class'] = mixer_class
+
+            if lightwood_config['mixer']['class'] == lightwood.mixers.NnMixer:
+                # Evaluate less often for larger datasets and vice-versa
+                eval_every_x_epochs = int(round(1 * pow(10, 6) * (1 / len(train_df))))
+
+                # Within some limits
+                if eval_every_x_epochs > 200:
+                    eval_every_x_epochs = 200
+                if eval_every_x_epochs < 3:
+                    eval_every_x_epochs = 3
+
+                kwargs = lightwood_config['mixer']['kwargs']
+
+                kwargs['callback_on_iter'] = self.callback_on_iter
+                kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
+                kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
+
+            self.predictor = lightwood.Predictor(lightwood_config.copy())
+
+            self.predictor.learn(
+                from_data=lightwood_train_ds,
+                test_data=lightwood_test_ds
+            )
+
+            self.transaction.log.info('[{}] Training accuracy of: {}'.format(
+                mixer_class.__name__,
+                self.predictor.train_accuracy
+            ))
+
+            validation_predictions = self.predict('validate')
+            validation_accuracy = evaluate_accuracy(
+                validation_predictions,
+                self.transaction.input_data.validation_df,
+                self.transaction.lmd['stats_v2'],
+                self.transaction.lmd['predict_columns'],
+                backend=self
+            )
+
+            predictors_and_accuracies.append((
+                self.predictor,
+                validation_accuracy
+            ))
+
+        best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
+
+        # Find predictor with NnMixer
+        for predictor, accuracy in predictors_and_accuracies:
+            if isinstance(predictor._mixer, lightwood.mixers.NnMixer):
+                nn_mixer_predictor, nn_mixer_predictor_accuracy = predictor, accuracy
+                break
+        else:
+            nn_mixer_predictor, nn_mixer_predictor_accuracy = None, None
+
+        self.predictor = best_predictor
+
+        # If difference between accuracies of best predictor and NnMixer predictor
+        # is small, then use NnMixer predictor
+        if nn_mixer_predictor is not None:
+            SMALL_ACCURACY_DIFFERENCE = 0.01
+            if (best_accuracy - nn_mixer_predictor_accuracy) < SMALL_ACCURACY_DIFFERENCE:
+                self.predictor = nn_mixer_predictor
+
         self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
 
-    def predict(self, mode='predict', ignore_columns=None):
+    def predict(self, mode='predict', ignore_columns=None, all_mixers=False):
         if ignore_columns is None:
             ignore_columns = []
+
         if self.transaction.lmd['use_gpu'] is not None:
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
