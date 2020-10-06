@@ -328,7 +328,7 @@ class LightwoodBackend():
                 self.predictor.train_accuracy
             ))
 
-            validation_predictions = self.predict('validate')
+            validation_predictions = self.predict('validate')[0]  # we only eval t+1 accuracy
             validation_accuracy = evaluate_accuracy(
                 validation_predictions,
                 self.transaction.input_data.validation_df,
