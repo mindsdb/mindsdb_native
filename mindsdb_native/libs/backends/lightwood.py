@@ -19,6 +19,8 @@ class LightwoodBackend():
     def __init__(self, transaction):
         self.transaction = transaction
         self.predictor = None
+        self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
+        self.nn_mixer_only = False
 
     def _create_timeseries_df(self, original_df):
         group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
@@ -105,14 +107,21 @@ class LightwoodBackend():
                     del previous_target_values[-1]
                     previous_target_values = [None] + previous_target_values
 
-                    previous_target_values_ts = []
+                    previous_target_values_arr = []
                     for i in range(len(previous_target_values)):
                         arr = previous_target_values[max(i-window,0):i+1]
                         while len(arr) <= window:
                             arr = [None] + arr
-                        previous_target_values_ts.append(arr)
+                        previous_target_values_arr.append(arr)
 
-                    ts_groups[k]['previous_' + target_column] = previous_target_values_ts
+                    ts_groups[k][f'previous_{target_column}'] = previous_target_values_arr
+                    for timestep_index in range(1,self.nr_predictions):
+                        next_target_value_arr = list(ts_groups[k][target_column])
+                        for del_index in range(0,timestep_index):
+                            del next_target_value_arr[del_index]
+                            next_target_value_arr.append(0)
+                        # @TODO: Maybe ignore the rows with `None` next targets for training
+                        ts_groups[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
 
         combined_df = pd.concat(list(ts_groups.values()))
 
@@ -164,6 +173,7 @@ class LightwoodBackend():
 
             elif data_subtype == DATA_SUBTYPES.ARRAY:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
+                self.nn_mixer_only = True
 
             else:
                 self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
@@ -171,6 +181,7 @@ class LightwoodBackend():
 
             if self.transaction.lmd['tss']['is_timeseries'] and col_name in self.transaction.lmd['tss']['order_by']:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
+                self.nn_mixer_only = True
 
             col_config = {
                 'name': col_name,
@@ -206,6 +217,11 @@ class LightwoodBackend():
 
                     config['input_features'].append(p_col_config)
 
+                if self.nr_predictions > 1:
+                    for timestep_index in range(1,self.nr_predictions):
+                        additional_target_config = copy.deepcopy(col_config)
+                        additional_target_config['name'] = f'{col_name}_timestep_{timestep_index}'
+                        config['output_features'].append(additional_target_config)
             else:
                 if self.transaction.lmd['tss']['historical_columns']:
                     if 'secondary_type' in col_config:
@@ -299,6 +315,9 @@ class LightwoodBackend():
                 mixer_classes = [use_mixers]
         else:
             mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+
+        if self.nn_mixer_only:
+            mixer_classes = [lightwood.mixers.nn.NnMixer]
 
         for mixer_class in mixer_classes:
             lightwood_config['mixer']['kwargs'] = {}
@@ -402,32 +421,34 @@ class LightwoodBackend():
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}
+
         for k in predictions:
             formated_predictions[k] = predictions[k]['predictions']
 
-            model_confidence_dict = {}
+            if self.nr_predictions > 1:
+                formated_predictions[k] = [[x] for x in formated_predictions[k]]
+                for timestep_index in range(1,self.nr_predictions):
+                    for i in range(len(formated_predictions[k])):
+                        formated_predictions[k][i].append(predictions[f'{k}_timestep_{timestep_index}']['predictions'][i])
+
+            model_confidence = []
             for confidence_name in ['selfaware_confidences','loss_confidences', 'quantile_confidences']:
 
                 if confidence_name in predictions[k]:
-                    if k not in model_confidence_dict:
-                        model_confidence_dict[k] = []
 
                     for i in range(len(predictions[k][confidence_name])):
-                        if len(model_confidence_dict[k]) <= i:
-                            model_confidence_dict[k].append([])
+                        if len(model_confidence) <= i:
+                            model_confidence.append([])
                         conf = predictions[k][confidence_name][i]
                         # @TODO We should make sure lightwood never returns confidences above or bellow 0 and 1
                         if conf < 0:
                             conf = 0
                         if conf > 1:
                             conf = 1
-                        model_confidence_dict[k][i].append(conf)
+                        model_confidence[i].append(conf)
 
-            for k in model_confidence_dict:
-                model_confidence_dict[k] = [np.mean(x) for x in model_confidence_dict[k]]
-
-            for k  in model_confidence_dict:
-                formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]
+            # @TODO: This is weird
+            formated_predictions[f'{k}_model_confidence'] = [np.mean(x) for x in model_confidence]
 
             if 'confidence_range' in predictions[k]:
                 formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
