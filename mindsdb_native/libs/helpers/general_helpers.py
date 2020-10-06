@@ -162,12 +162,27 @@ def evaluate_generic_accuracy(column, predictions, true_values, backend):
     pred_values = predictions[column]
     return accuracy_score(true_values, pred_values)
 
+def evaluate_array_accuracy(column, predictions, true_values, backend):
+    accuracy = 0
+    for i in range(len(predictions[column])):
+        if isinstance(true_values[i],list):
+            accuracy += f1_score(predictions[column][i],true_values[i])
+        else:
+            # For the T+1 usecase
+            print([x[0] for x in predictions[column]], ' ||| ', list(true_values), ' ||| ', len(list(true_values)), len(predictions[column]), len(([x[0] for x in predictions[column]])))
+            accuracy = f1_score([x[0] for x in predictions[column]], true_values)
+            break
+
+    accuracy = accuracy/len(predictions[column])
+    return accuracy
+
 
 def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backend=None, hmd=None):
     column_scores = []
     for column in output_columns:
         col_type = col_stats[column]['typing']['data_type']
         col_subtype = col_stats[column]['typing']['data_subtype']
+        print(col_type, col_subtype, column)
         if col_type == DATA_TYPES.NUMERIC:
             evaluator = evaluate_regression_accuracy
         elif col_type == DATA_TYPES.CATEGORICAL:
@@ -175,6 +190,8 @@ def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backen
                 evaluator = evaluate_multilabel_accuracy
             else:
                 evaluator = evaluate_classification_accuracy
+        elif col_type == DATA_TYPES.SEQUENTIAL:
+            evaluator = evaluate_array_accuracy
         else:
             evaluator = evaluate_generic_accuracy
         column_score = evaluator(column, predictions, data_frame[column], backend)

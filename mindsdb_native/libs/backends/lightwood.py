@@ -115,7 +115,7 @@ class LightwoodBackend():
                         previous_target_values_arr.append(arr)
 
                     ts_groups[k][f'previous_{target_column}'] = previous_target_values_arr
-                    for timestep_index in range(1,self.nr_predictions):
+                    for timestep_index in range(1, self.nr_predictions):
                         next_target_value_arr = list(ts_groups[k][target_column])
                         for del_index in range(0,timestep_index):
                             del next_target_value_arr[del_index]
@@ -218,6 +218,8 @@ class LightwoodBackend():
                     config['input_features'].append(p_col_config)
 
                 if self.nr_predictions > 1:
+                    self.transaction.lmd['stats_v2'][col_name]['typing']['data_subtype'] = DATA_SUBTYPES.ARRAY
+                    self.transaction.lmd['stats_v2'][col_name]['typing']['data_type'] = DATA_TYPES.SEQUENTIAL
                     for timestep_index in range(1,self.nr_predictions):
                         additional_target_config = copy.deepcopy(col_config)
                         additional_target_config['name'] = f'{col_name}_timestep_{timestep_index}'
@@ -423,6 +425,9 @@ class LightwoodBackend():
         formated_predictions = {}
 
         for k in predictions:
+            if '_timestep_' in k:
+                continue
+            
             formated_predictions[k] = predictions[k]['predictions']
 
             if self.nr_predictions > 1:
