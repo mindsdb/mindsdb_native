@@ -350,7 +350,7 @@ class LightwoodBackend():
                 for target in self.predictor._output_columns:
                     displaced_df[target] = predictions[t-1][target]['predictions']
                 # if self.transaction.lmd['tss']['use_previous_target']:
-                displaced_df = self._create_timeseries_df(displaced_df)
+                displaced_df, _ = self._create_timeseries_df(displaced_df)
                 predictions[t] = self.predictor.predict(when_data=displaced_df)
 
         formated_predictions = {}

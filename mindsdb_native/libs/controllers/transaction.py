@@ -299,7 +299,7 @@ class PredictTransaction(Transaction):
             timesteps = 1
             if self.lmd.get('tss'):
                 if self.lmd.get('tss').get('nr_predictions'):
-                    timesteps = self.lmd.get('tss').get('nr_predictions')
+                    timesteps = self.lmd.get('nr_predictions')
 
             output_data = {t: {col: [] for col in self.lmd['columns']} for t in range(timesteps)}
 
