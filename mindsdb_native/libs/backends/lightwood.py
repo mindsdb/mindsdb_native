@@ -356,7 +356,7 @@ class LightwoodBackend():
             validation_predictions = self.predict('validate')
             validation_accuracy = evaluate_accuracy(
                 validation_predictions,
-                self.transaction.input_data.validation_df,
+                self.transaction.input_data.clean_validation_df,
                 self.transaction.lmd['stats_v2'],
                 self.transaction.lmd['predict_columns'],
                 backend=self
@@ -427,7 +427,7 @@ class LightwoodBackend():
         for k in predictions:
             if '_timestep_' in k:
                 continue
-            
+
             formated_predictions[k] = predictions[k]['predictions']
 
             if self.nr_predictions > 1:

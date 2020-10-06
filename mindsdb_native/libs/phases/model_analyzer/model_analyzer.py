@@ -39,10 +39,7 @@ class ModelAnalyzer(BaseModule):
         )
 
         for col in output_columns:
-            if self.transaction.lmd['tss']['is_timeseries']:
-                reals = list(self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True][col])
-            else:
-                reals = self.transaction.input_data.validation_df[col]
+            reals = self.transaction.input_data.clean_validation_df[col]
             preds = normal_predictions[col]
 
             fails = False
@@ -83,7 +80,7 @@ class ModelAnalyzer(BaseModule):
             empty_input_predictions_test[col] = self.transaction.model_backend.predict('test', ignore_columns=[col])
             empty_input_accuracy[col] = evaluate_accuracy(
                 empty_input_predictions[col],
-                self.transaction.input_data.validation_df,
+                self.transaction.input_data.clean_validation_df,
                 self.transaction.lmd['stats_v2'],
                 output_columns,
                 backend=self.transaction.model_backend
@@ -143,7 +140,7 @@ class ModelAnalyzer(BaseModule):
             )
             self.transaction.lmd['valid_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
-                self.transaction.input_data.validation_df,
+                self.transaction.input_data.clean_validation_df,
                 self.transaction.lmd['stats_v2'],
                 [col],
                 backend=self.transaction.model_backend
@@ -225,7 +222,7 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp']['active'] = True
 
                 # calibrate conformal estimator on test set
-                X = deepcopy(self.transaction.input_data.validation_df)
+                X = deepcopy(self.transaction.input_data.clean_validation_df)
                 y = X.pop(target).values
 
                 if is_classification:
