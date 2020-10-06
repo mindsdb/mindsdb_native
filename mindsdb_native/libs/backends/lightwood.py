@@ -342,7 +342,6 @@ class LightwoodBackend():
         predictions[0] = self.predictor.predict(when_data=run_df)
 
         # additional predictions for timeseries
-        # OLD REMOVE: max([t['additional_info'].get('nr_predictions') for t in self.predictor.config['output_features']])
         timesteps = self.transaction.lmd.get('nr_predictions', 1)
         if self.transaction.lmd['tss']['is_timeseries']:
             for t in range(1, timesteps):
