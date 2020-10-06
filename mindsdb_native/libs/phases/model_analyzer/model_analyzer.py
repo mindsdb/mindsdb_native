@@ -29,7 +29,7 @@ class ModelAnalyzer(BaseModule):
 
         test_df = self.transaction.input_data.test_df
         if self.transaction.lmd['tss']['is_timeseries']:
-            validation_df = self.transaction.input_data.test_df[self.transaction.input_data.test_df['make_predictions'] == True]
+            test_df = self.transaction.input_data.test_df[self.transaction.input_data.test_df['make_predictions'] == True]
 
         output_columns = self.transaction.lmd['predict_columns']
         input_columns = [col for col in self.transaction.lmd['columns'] if col not in output_columns and col not in self.transaction.lmd['columns_to_ignore']]
