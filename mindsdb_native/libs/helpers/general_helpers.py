@@ -170,7 +170,7 @@ def evaluate_array_accuracy(column, predictions, true_values, backend):
             accuracy += r2_score(predictions[column][i],true_values[i])
         else:
             # For the T+1 usecase
-            accuracy = r2_score([x[0] for x in predictions[column]], true_values)
+            accuracy = r2_score([x[0] for x in predictions[column]], true_values) #[float(x) for x in true_values]
             return accuracy
 
     accuracy = accuracy/len(predictions[column])

@@ -23,6 +23,14 @@ class ModelAnalyzer(BaseModule):
         # Runs the model on the validation set in order to fit a probabilistic model that will evaluate the accuracy of future predictions
         """
 
+        validation_df = self.transaction.input_data.validation_df
+        if self.transaction.lmd['tss']['is_timeseries']:
+            validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
+
+        test_df = self.transaction.input_data.test_df
+        if self.transaction.lmd['tss']['is_timeseries']:
+            validation_df = self.transaction.input_data.test_df[self.transaction.input_data.test_df['make_predictions'] == True]
+
         output_columns = self.transaction.lmd['predict_columns']
         input_columns = [col for col in self.transaction.lmd['columns'] if col not in output_columns and col not in self.transaction.lmd['columns_to_ignore']]
 
@@ -32,14 +40,14 @@ class ModelAnalyzer(BaseModule):
         normal_predictions_test = self.transaction.model_backend.predict('test')
         normal_accuracy = evaluate_accuracy(
             normal_predictions,
-            self.transaction.input_data.validation_df,
+            validation_df,
             self.transaction.lmd['stats_v2'],
             output_columns,
             backend=self.transaction.model_backend
         )
 
         for col in output_columns:
-            reals = self.transaction.input_data.clean_validation_df[col]
+            reals = validation_df[col]
             preds = normal_predictions[col]
 
             fails = False
@@ -80,7 +88,7 @@ class ModelAnalyzer(BaseModule):
             empty_input_predictions_test[col] = self.transaction.model_backend.predict('test', ignore_columns=[col])
             empty_input_accuracy[col] = evaluate_accuracy(
                 empty_input_predictions[col],
-                self.transaction.input_data.clean_validation_df,
+                validation_df,
                 self.transaction.lmd['stats_v2'],
                 output_columns,
                 backend=self.transaction.model_backend
@@ -127,7 +135,7 @@ class ModelAnalyzer(BaseModule):
             )
             self.transaction.lmd['test_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
-                self.transaction.input_data.test_df,
+                test_df,
                 self.transaction.lmd['stats_v2'],
                 [col],
                 backend=self.transaction.model_backend
@@ -140,7 +148,7 @@ class ModelAnalyzer(BaseModule):
             )
             self.transaction.lmd['valid_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
-                self.transaction.input_data.clean_validation_df,
+                validation_df,
                 self.transaction.lmd['stats_v2'],
                 [col],
                 backend=self.transaction.model_backend
@@ -150,7 +158,7 @@ class ModelAnalyzer(BaseModule):
             pval = ProbabilisticValidator(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
             predictions_arr = [normal_predictions_test] + [x for x in empty_input_predictions_test.values()]
 
-            pval.fit(self.transaction.input_data.test_df, predictions_arr, [[ignored_column] for ignored_column in empty_input_predictions_test])
+            pval.fit(test_df, predictions_arr, [[ignored_column] for ignored_column in empty_input_predictions_test])
             overall_accuracy, accuracy_histogram, cm, accuracy_samples = pval.get_accuracy_stats()
             overall_accuracy_arr.append(overall_accuracy)
 
@@ -222,7 +230,7 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp']['active'] = True
 
                 # calibrate conformal estimator on test set
-                X = deepcopy(self.transaction.input_data.clean_validation_df)
+                X = deepcopy(validation_df)
                 y = X.pop(target).values
 
                 if is_classification:
