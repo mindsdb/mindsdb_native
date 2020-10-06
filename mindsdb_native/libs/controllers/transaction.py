@@ -296,7 +296,12 @@ class PredictTransaction(Transaction):
 
             self._call_phase_module(module_name='ModelInterface', mode='predict')
 
-            output_data = {col: [] for col in self.lmd['columns']}
+            timesteps = 1
+            if self.lmd.get('tss'):
+                if self.lmd.get('tss').get('nr_predictions'):
+                    timesteps = self.lmd.get('tss').get('nr_predictions')
+
+            output_data = {t: {col: [] for col in self.lmd['columns']} for t in range(timesteps)}
 
             if 'make_predictions' in self.input_data.data_frame.columns:
                 predictions_df = pd.DataFrame(self.input_data.data_frame[self.input_data.data_frame['make_predictions'] == True])
@@ -306,30 +311,36 @@ class PredictTransaction(Transaction):
 
             for column in self.input_data.columns:
                 if column in self.lmd['predict_columns']:
-                    output_data[f'__observed_{column}'] = list(predictions_df[column])
+                    vals = list(predictions_df[column])
+                    for t in range(timesteps):
+                        output_data[t][f'__observed_{column}'] = vals
+                        vals.pop(0)
+                        vals.append(0)  #  Might opt for None / NaN here
                 else:
-                    output_data[column] = list(predictions_df[column])
+                    for t in range(timesteps):
+                        output_data[t][column] = list(predictions_df[column])
 
             for predicted_col in self.lmd['predict_columns']:
-                output_data[predicted_col] = list(self.hmd['predictions'][predicted_col])
-                for extra_column in [f'{predicted_col}_model_confidence', f'{predicted_col}_confidence_range']:
-                    if extra_column in self.hmd['predictions']:
-                        output_data[extra_column] = self.hmd['predictions'][extra_column]
+                for t in range(timesteps):
+                    output_data[t][predicted_col] = list(self.hmd['predictions'][t][predicted_col])
+                    for extra_column in [f'{predicted_col}_model_confidence', f'{predicted_col}_confidence_range']:
+                        if extra_column in self.hmd['predictions']:
+                            output_data[t][extra_column] = self.hmd['predictions'][t][extra_column]
 
-                probabilistic_validator = unpickle_obj(self.hmd['probabilistic_validators'][predicted_col])
-                output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
+                    probabilistic_validator = unpickle_obj(self.hmd['probabilistic_validators'][predicted_col])
+                    output_data[t][f'{predicted_col}_confidence'] = [None] * len(output_data[t][predicted_col])
 
-                output_data[f'model_{predicted_col}'] = deepcopy(output_data[predicted_col])
-                for row_number, predicted_value in enumerate(output_data[predicted_col]):
+                    output_data[t][f'model_{predicted_col}'] = deepcopy(output_data[t][predicted_col])
+                    for row_number, predicted_value in enumerate(output_data[t][predicted_col]):
 
-                    # Compute the feature existance vector
-                    input_columns = [col for col in self.input_data.columns if col not in self.lmd['predict_columns']]
-                    features_existance_vector = [False if  str(output_data[col][row_number]) in ('None', 'nan', '', 'Nan', 'NAN', 'NaN') else True for col in input_columns if col not in self.lmd['columns_to_ignore']]
+                        # Compute the feature existance vector
+                        input_columns = [col for col in self.input_data.columns if col not in self.lmd['predict_columns']]
+                        features_existance_vector = [False if  str(output_data[t][col][row_number]) in ('None', 'nan', '', 'Nan', 'NAN', 'NaN') else True for col in input_columns if col not in self.lmd['columns_to_ignore']]
 
-                    # Create the probabilsitic evaluation
-                    probability_true_prediction = probabilistic_validator.evaluate_prediction_accuracy(features_existence=features_existance_vector, predicted_value=predicted_value)
+                        # Create the probabilsitic evaluation
+                        probability_true_prediction = probabilistic_validator.evaluate_prediction_accuracy(features_existence=features_existance_vector, predicted_value=predicted_value)
 
-                    output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
+                        output_data[t][f'{predicted_col}_confidence'][row_number] = probability_true_prediction
 
             # confidence estimation
             if self.hmd['icp']['active']:
@@ -349,14 +360,15 @@ class PredictTransaction(Transaction):
                                 significance = (99 - idx) / 100
                                 diff = sample[1, idx] - sample[0, idx]
                                 if diff <= tolerance:
-                                    output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                    output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
+                                    # for now, output confidence only for the first timestep
+                                    output_data[0][f'{predicted_col}_confidence'][sample_idx] = significance
+                                    output_data[0][f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
                                     break
                             else:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
+                                output_data[0][f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
                                 bounds = sample[:, 0]
                                 sigma = (bounds[1] - bounds[0]) / 2
-                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
+                                output_data[0][f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
 
                     elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL and not self.lmd['tss']['is_timeseries']:
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
@@ -367,10 +379,10 @@ class PredictTransaction(Transaction):
                                 for idx in range(sample.shape[1]):
                                     significance = (99 - idx) / 100
                                     if np.sum(sample[:, idx]) == 1:
-                                        output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                                        output_data[0][f'{predicted_col}_confidence'][sample_idx] = significance
                                         break
                                 else:
-                                    output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
+                                    output_data[0][f'{predicted_col}_confidence'][sample_idx] = 0.005
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
@@ -385,7 +397,7 @@ class PredictTransaction(Transaction):
                 input_confidence[predicted_col] = {}
                 extra_insights[predicted_col] = {'if_missing':[]}
 
-                actual_confidence = self.output_data[0].explanation[predicted_col]['confidence']
+                actual_confidence = self.output_data[0].explanation[predicted_col]['confidence']  # TODO: will crash, check out
 
                 for i, nulled_col_name in enumerate(nulled_out_columns):
                     nulled_out_predicted_value = nulled_out_predictions[i].explanation[predicted_col]['predicted_value']

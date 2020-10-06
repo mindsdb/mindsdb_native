@@ -371,6 +371,7 @@ class Predictor:
                 data_preparation = {},
                 run_confidence_variation_analysis = run_confidence_variation_analysis,
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
+                nr_predictions = advanced_args.get('nr_predictions', 1),
                 breakpoint=self.breakpoint
             )
 

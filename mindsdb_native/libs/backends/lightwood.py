@@ -324,9 +324,6 @@ class LightwoodBackend():
         else:
             raise Exception(f'Unknown mode specified: "{mode}"')
 
-        if self.transaction.lmd['tss']['is_timeseries']:
-            df, _ = self._create_timeseries_df(df)
-
         if self.predictor is None:
             self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
 
@@ -338,37 +335,55 @@ class LightwoodBackend():
         else:
             run_df = df
 
-        predictions = self.predictor.predict(when_data=run_df)
+        if self.transaction.lmd['tss']['is_timeseries']:
+            run_df, _ = self._create_timeseries_df(run_df)
+
+        predictions = {}
+        predictions[0] = self.predictor.predict(when_data=run_df)
+
+        # additional predictions for timeseries
+        # OLD REMOVE: max([t['additional_info'].get('nr_predictions') for t in self.predictor.config['output_features']])
+        timesteps = self.transaction.lmd.get('nr_predictions', 1)
+        if self.transaction.lmd['tss']['is_timeseries']:
+            for t in range(1, timesteps):
+                displaced_df = copy.deepcopy(df)
+                for target in self.predictor._output_columns:
+                    displaced_df[target] = predictions[t-1][target]['predictions']
+                # if self.transaction.lmd['tss']['use_previous_target']:
+                displaced_df = self._create_timeseries_df(displaced_df)
+                predictions[t] = self.predictor.predict(when_data=displaced_df)
 
         formated_predictions = {}
-        for k in predictions:
-            formated_predictions[k] = predictions[k]['predictions']
+        for t in range(timesteps):
+            formated_predictions[t] = {}
+            for k in predictions[t]:
+                formated_predictions[t][k] = predictions[t][k]['predictions']
 
-            model_confidence_dict = {}
-            for confidence_name in ['selfaware_confidences','loss_confidences', 'quantile_confidences']:
+                model_confidence_dict = {}
+                for confidence_name in ['selfaware_confidences','loss_confidences', 'quantile_confidences']:
 
-                if confidence_name in predictions[k]:
-                    if k not in model_confidence_dict:
-                        model_confidence_dict[k] = []
+                    if confidence_name in predictions[t][k]:
+                        if k not in model_confidence_dict:
+                            model_confidence_dict[k] = []
 
-                    for i in range(len(predictions[k][confidence_name])):
-                        if len(model_confidence_dict[k]) <= i:
-                            model_confidence_dict[k].append([])
-                        conf = predictions[k][confidence_name][i]
-                        # @TODO We should make sure lightwood never returns confidences above or bellow 0 and 1
-                        if conf < 0:
-                            conf = 0
-                        if conf > 1:
-                            conf = 1
-                        model_confidence_dict[k][i].append(conf)
+                        for i in range(len(predictions[t][k][confidence_name])):
+                            if len(model_confidence_dict[k]) <= i:
+                                model_confidence_dict[k].append([])
+                            conf = predictions[t][k][confidence_name][i]
+                            # @TODO We should make sure lightwood never returns confidences above or bellow 0 and 1
+                            if conf < 0:
+                                conf = 0
+                            if conf > 1:
+                                conf = 1
+                            model_confidence_dict[k][i].append(conf)
 
-            for k in model_confidence_dict:
-                model_confidence_dict[k] = [np.mean(x) for x in model_confidence_dict[k]]
+                for k in model_confidence_dict:
+                    model_confidence_dict[k] = [np.mean(x) for x in model_confidence_dict[k]]
 
-            for k  in model_confidence_dict:
-                formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]
+                for k  in model_confidence_dict:
+                    formated_predictions[t][f'{k}_model_confidence'] = model_confidence_dict[k]
 
-            if 'confidence_range' in predictions[k]:
-                formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
+                if 'confidence_range' in predictions[t][k]:
+                    formated_predictions[t][f'{k}_confidence_range'] = predictions[t][k]['confidence_range']
 
         return formated_predictions
