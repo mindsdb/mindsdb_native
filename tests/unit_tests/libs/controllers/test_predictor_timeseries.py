@@ -83,7 +83,7 @@ class TestPredictorTimeseries:
         assert model_data
 
 
-    #@pytest.mark.slow
+    @pytest.mark.slow
     def test_timeseries_stepahead(self, tmp_path):
         ts_hours = 12
         data_len = 120
