@@ -313,9 +313,9 @@ class PredictTransaction(Transaction):
                 if column in self.lmd['predict_columns']:
                     vals = list(predictions_df[column])
                     for t in range(timesteps):
-                        output_data[t][f'__observed_{column}'] = vals
+                        output_data[t][f'__observed_{column}'] = deepcopy(vals)
                         vals.pop(0)
-                        vals.append(0)  #  Might opt for None / NaN here
+                        vals.append(0)  # Might opt for None / NaN here
                 else:
                     for t in range(timesteps):
                         output_data[t][column] = list(predictions_df[column])
@@ -324,7 +324,7 @@ class PredictTransaction(Transaction):
                 for t in range(timesteps):
                     output_data[t][predicted_col] = list(self.hmd['predictions'][t][predicted_col])
                     for extra_column in [f'{predicted_col}_model_confidence', f'{predicted_col}_confidence_range']:
-                        if extra_column in self.hmd['predictions']:
+                        if extra_column in self.hmd['predictions'][t]:
                             output_data[t][extra_column] = self.hmd['predictions'][t][extra_column]
 
                     probabilistic_validator = unpickle_obj(self.hmd['probabilistic_validators'][predicted_col])
