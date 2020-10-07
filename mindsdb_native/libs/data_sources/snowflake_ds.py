@@ -1,6 +1,6 @@
 import os
 
-import snowflake
+from snowflake import connector
 
 from mindsdb_native.libs.data_types.data_source import DataSource
 
@@ -8,8 +8,7 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 class SnowflakeDS(DataSource):
 
     def _setup(self, query, host, user, password, account, warehouse, database, schema, protocol='https', port=443):
-
-        con = snowflake.connector.connect(
+        con = connector.connect(
                   host=host,
                   user=user,
                   password=password,
@@ -19,10 +18,8 @@ class SnowflakeDS(DataSource):
                   schema=schema,
                   protocol='https',
                   port=port)
-
         # Create a cursor object.
         cur = con.cursor()
-
         cur.execute(query)
         df = cur.fetch_pandas_all()
 
@@ -32,6 +29,7 @@ class SnowflakeDS(DataSource):
         self._database = database
         self._warehouse = warehouse
 
+        col_map = {}
         for col in df.columns:
             col_map[col] = col
 
