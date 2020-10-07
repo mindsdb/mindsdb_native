@@ -1,0 +1,2 @@
+asn1crypto==1.3.0
+snowflake-connector-python[pandas]

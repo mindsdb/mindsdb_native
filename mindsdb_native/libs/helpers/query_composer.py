@@ -8,17 +8,24 @@ i_li = re.compile(re.escape(' limit '), re.IGNORECASE)
 
 def create_history_query(query, tss, stats, row):
     group_by_filter = []
-    group_by_arr = tss['group_by'] if tss['group_by'] is not None else []
-    for group_column in group_by_arr:
-        if stats[group_column]['typing']['data_type'] in [DATA_TYPES.TEXT,DATA_TYPES.CATEGORICAL]:
+    for group_column in tss['group_by'] if tss['group_by'] is not None else []:
+        if stats[group_column]['typing']['data_type'] in [DATA_TYPES.TEXT,DATA_TYPES.CATEGORICAL,DATA_TYPES.DATE]:
             group_by_filter.append(f'{group_column}=' + "'" + str(row[group_column]) + "'")
         else:
             group_by_filter.append(f'{group_column}=' + str(row[group_column]))
 
-    group_by_filter = ' AND '.join(group_by_filter)
+    order_by_filter = []
+    for order_column in tss['order_by']:
+        if stats[order_column]['typing']['data_type'] in [DATA_TYPES.DATE]:
+            order_by_filter.append(f'{order_column}<' + "'" + str(row[order_column]) + "'")
+        elif stats[order_column]['typing']['data_type'] in [DATA_TYPES.NUMERIC]:
+            order_by_filter.append(f'{order_column}<' + str(row[order_column]))
+
+    merged_filter = ' AND '.join([*order_by_filter,*group_by_filter])
+
 
     order_by_list = []
-    for order_column in tss.get('order_by'):
+    for order_column in tss['order_by']:
         order_by_list.append(order_column)
     order_by_list = ', '.join(order_by_list)
 
@@ -38,21 +45,21 @@ def create_history_query(query, tss, stats, row):
                 query = ' limit '.join(split_query[:-1])
 
     # append filter
-    if len(group_by_filter) > 0:
+    if len(merged_filter) > 0:
         if ' where ' in query:
             split_query = query.split(' where ')
-            query = split_query[0] + f' WHERE {group_by_filter} AND ' + split_query[1]
+            query = split_query[0] + f' WHERE {merged_filter} AND ' + split_query[1]
         elif ' group by ' in query:
             split_query = query.split(' group by ')
-            query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
+            query = split_query[0] + f' WHERE {merged_filter} ' + split_query[1]
         elif ' having ' in query:
             split_query = query.split(' having ')
-            query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
+            query = split_query[0] + f' WHERE {merged_filter} ' + split_query[1]
         elif ' order by ' in query:
             split_query = query.split(' order by ')
-            query = split_query[0] + f' WHERE {group_by_filter} ' + split_query[1]
+            query = split_query[0] + f' WHERE {merged_filter} ' + split_query[1]
         else:
-            query += f' WHERE {group_by_filter}'
+            query += f' WHERE {merged_filter}'
 
     # append order
     if ' order by ' in query:

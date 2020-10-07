@@ -291,8 +291,12 @@ class LightwoodBackend():
 
         predictors_and_accuracies = []
 
-        if self.transaction.lmd['mixer_class'] is not None:
-            mixer_classes = [self.transaction.lmd['mixer_class']]
+        use_mixers = self.transaction.lmd.get('use_mixers', None)
+        if use_mixers is not None:
+            if isinstance(use_mixers, list):
+                mixer_classes = use_mixers
+            else:
+                mixer_classes = [use_mixers]
         else:
             mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
 
