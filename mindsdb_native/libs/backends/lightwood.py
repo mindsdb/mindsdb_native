@@ -335,7 +335,7 @@ class LightwoodBackend():
             validation_predictions = self.predict('validate')
             validation_accuracy = evaluate_accuracy(
                 validation_predictions,
-                self.transaction.input_data.validation_df,
+                self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df, 
                 self.transaction.lmd['stats_v2'],
                 self.transaction.lmd['predict_columns'],
                 backend=self,
