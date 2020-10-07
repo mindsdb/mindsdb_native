@@ -177,7 +177,7 @@ def evaluate_generic_accuracy(column, predictions, true_values, **kwargs):
     return accuracy_score(true_values, pred_values)
 
 
-def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backend, **kwargs):
+def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, **kwargs):
     column_scores = []
     for column in output_columns:
         col_type = col_stats[column]['typing']['data_type']
@@ -195,7 +195,6 @@ def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backen
             column,
             predictions,
             data_frame[column],
-            backend=backend,
             **kwargs
         )
         column_scores.append(column_score)
