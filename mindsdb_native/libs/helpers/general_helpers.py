@@ -157,7 +157,7 @@ def evaluate_regression_accuracy(
                 within_interval += 1
         return within_interval/len(true_values)
     else:
-        return r2_score(true_values, predictions)
+        return r2_score(true_values, predictions[column])
 
 
 def evaluate_classification_accuracy(column, predictions, true_values, **kwargs):
