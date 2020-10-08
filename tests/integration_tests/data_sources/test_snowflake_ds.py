@@ -1,4 +1,6 @@
+import pytest
 
+@pytest.mark.skip(reason="Can\'t run snowflake in a docker container")
 def test_snowflake_ds():
     from mindsdb_native.libs.data_sources.snowflake_ds import SnowflakeDS
 
