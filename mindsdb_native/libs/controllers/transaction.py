@@ -377,7 +377,7 @@ class PredictTransaction(Transaction):
             else:
                 nulled_out_predictions = PredictTransactionOutputData(transaction=self, data=output_data)
 
-        if self.lmd['run_confidence_variation_analysis']:
+        if self.lmd['run_confidence_variation_analysis'] and not self.lmd['tss']['is_timeseries']:
             input_confidence = {}
             extra_insights = {}
 
