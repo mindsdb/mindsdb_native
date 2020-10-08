@@ -25,5 +25,3 @@ def test_snowflake_ds():
     predictor.learn(from_data=snowflake_ds, to_predict='CHARGES')
     example_prediction = predictor.predict(when_data={'AGE':24})
     print(example_prediction)
-
-test_snowflake_ds()
