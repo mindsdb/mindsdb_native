@@ -273,7 +273,7 @@ class PredictTransaction(Transaction):
             self._call_phase_module(module_name='DataSplitter')
 
         # @TODO Maybe move to a separate "PredictionAnalysis" phase ?
-        if self.lmd['run_confidence_variation_analysis']:
+        if self.lmd['run_confidence_variation_analysis'] and not self.lmd['tss']['is_timeseries']:
             nulled_out_data = []
             nulled_out_columns = []
             for column in self.input_data.columns:
@@ -287,7 +287,7 @@ class PredictTransaction(Transaction):
 
         for mode in ['predict', 'analyze_confidence']:
             if mode == 'analyze_confidence':
-                if not self.lmd['run_confidence_variation_analysis']:
+                if not self.lmd['run_confidence_variation_analysis'] or self.lmd['tss']['is_timeseries']:
                     continue
                 else:
                     self.input_data.data_frame = nulled_out_data
