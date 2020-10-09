@@ -102,7 +102,7 @@ class Transaction:
 
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'heavy_model_metadata.pickle')
         save_hmd = {}
-        null_out_fields = ['from_data', 'icp', 'breakpoints']
+        null_out_fields = ['from_data', 'icp', 'breakpoint']
         for k in null_out_fields:
             save_hmd[k] = None
 
@@ -150,7 +150,8 @@ class Transaction:
     def _call_phase_module(self, module_name, **kwargs):
         """
         Loads the module and runs it
-
+        """
+        
         self.lmd['is_active'] = True
         self.lmd['phase'] = module_name
         module_path = convert_cammelcase_to_snake_string(module_name)
@@ -167,9 +168,9 @@ class Transaction:
             self.lmd['phase'] = module_name
             self.lmd['is_active'] = False
 
-        if  self.hmd['breakpoint'] is not None:
-             if module_name in self.hmd['breakpoint']:
-                 self.hmd['breakpoint'][module_name]()
+            if  self.hmd['breakpoint'] is not None:
+                 if module_name in self.hmd['breakpoint']:
+                     self.hmd['breakpoint'][module_name]()
 
     def run(self):
         pass
