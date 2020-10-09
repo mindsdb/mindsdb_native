@@ -71,11 +71,38 @@ class TestEvaluateAccuracy:
 
         assert round(accuracy, 2) == round((0.75 + 0.5)/2, 2)
 
+    def test_evaluate_array(self):
+        predictions = {
+            'y': [[1], [2], [3], [4]]
+        }
+
+        col_stats = {
+            'y': {'typing': {'data_type': DATA_TYPES.SEQUENTIAL,
+                             'data_subtype': DATA_SUBTYPES.ARRAY}}
+        }
+
+        output_columns = ['y']
+
+        data_frame = pd.DataFrame({'y': [1, 2, 3, 5]})
+
+        accuracy = evaluate_accuracy(predictions, data_frame, col_stats,
+                                     output_columns)
+
+        assert round(accuracy, 2) == 0.8
+
+        predictions = {
+            'y': [[1, 2, 3, 4], [2, 3, 4, 5]]
+        }
+        data_frame = pd.DataFrame({'y': [[1, 2, 3, 5], [2, 3, 4, 6]]})
+
+        accuracy = evaluate_accuracy(predictions, data_frame, col_stats, output_columns)
+
+        assert round(accuracy, 2)  == 0.8
+
     def test_evaluate_weird_data_types(self):
         for dtype, data_subtype in [
             (DATA_TYPES.DATE, DATA_SUBTYPES.DATE),
             (DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT),
-            (DATA_TYPES.SEQUENTIAL, DATA_SUBTYPES.ARRAY),
             (DATA_TYPES.FILE_PATH, None)
         ]:
             predictions = {

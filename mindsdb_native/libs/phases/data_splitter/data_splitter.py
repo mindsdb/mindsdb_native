@@ -89,7 +89,6 @@ class DataSplitter(BaseModule):
                 self.transaction.input_data.validation_df['make_predictions'] = [True] * len(self.transaction.input_data.validation_df)
                 self.transaction.input_data.validation_df = pd.concat([self.transaction.input_data.validation_df,historical_test,deepcopy(historical_train)])
 
-
             self.transaction.input_data.data_frame = None
 
             self.transaction.lmd['data_preparation']['test_row_count'] = len(self.transaction.input_data.test_df)
