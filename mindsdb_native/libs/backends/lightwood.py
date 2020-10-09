@@ -199,6 +199,7 @@ class LightwoodBackend():
                 if self.transaction.lmd['tss']['use_previous_target']:
                     p_col_config = copy.deepcopy(col_config)
                     p_col_config['name'] = f"previous_{p_col_config['name']}"
+                    p_col_config['original_type'] = col_config['type']
                     p_col_config['type'] = ColumnDataTypes.TIME_SERIES
 
                     if 'secondary_type' in col_config:
