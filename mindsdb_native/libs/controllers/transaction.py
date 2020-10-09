@@ -169,7 +169,7 @@ class Transaction:
 
         if  self.hmd['breakpoint'] is not None:
              if module_name in self.hmd['breakpoint']:
-                 self.hmd['breakpoint'][module_name]
+                 self.hmd['breakpoint'][module_name]()
 
     def run(self):
         pass
