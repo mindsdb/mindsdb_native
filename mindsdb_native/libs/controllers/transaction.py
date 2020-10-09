@@ -150,9 +150,6 @@ class Transaction:
     def _call_phase_module(self, module_name, **kwargs):
         """
         Loads the module and runs it
-        """
-        if self.lmd['breakpoint'] == module_name:
-            sys.exit(0)
 
         self.lmd['is_active'] = True
         self.lmd['phase'] = module_name
@@ -169,6 +166,10 @@ class Transaction:
         finally:
             self.lmd['phase'] = module_name
             self.lmd['is_active'] = False
+
+        if  self.hmd['breakpoint'] is not None:
+             if module_name in self.hmd['breakpoint']:
+                 self.hmd['breakpoint'][module_name]
 
     def run(self):
         pass
