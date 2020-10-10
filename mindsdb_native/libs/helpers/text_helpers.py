@@ -174,13 +174,11 @@ def extract_digits(point):
     return ''.join([char for char in str(point) if char.isdigit()])
 
 def get_pct_auto_increment(data):
-    data = [x for x in data if isinstance(x, (int, float, np.float))]
-    data = sorted(data)
-    prev = None
+    data = sorted([extract_digits(x) for x in data])
+    prev = ''
     increase_by_one = 0
-    for point in data:
-        digits = extract_digits(point)
-        if prev is not None and digits is not None:
+    for digits in data:
+        if prev != '' and digits != '':
             try:
                 diff = int(digits) - int(prev)
                 if diff == 1:
