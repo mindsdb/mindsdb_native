@@ -47,7 +47,16 @@ def test_identifiers():
     incrementing_data_3 = [f'an_id_prefix_{i}' for i in incrementing_data_2]
     incrementing_data_3[20] = None
     incrementing_data_3[55] = None
+
+    incrementing_data_4 = [x for x in incrementing_data_3]
+    for i in range(len(incrementing_data_4)):
+        if i % 4 == 0:
+            incrementing_data_4[i] = None
+        if i % 3 == 0:
+            incrementing_data_4[i] = 'regular value'
+
     assert get_identifier_description(hash_like_data, 'col', DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.MULTIPLE, []) is not None
     assert get_identifier_description(incrementing_data_1, 'col', DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT , []) is not None
     assert get_identifier_description(incrementing_data_2, 'col', DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT, []) is not None
     assert get_identifier_description(incrementing_data_3, 'col', DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT, []) is not None
+    assert get_identifier_description(incrementing_data_4, 'col', DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT, []) is None
