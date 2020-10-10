@@ -204,7 +204,8 @@ class Predictor:
                 predictions= None,
                 model_backend= backend,
                 sample_function=sample_function,
-                from_data_type=type(from_ds)
+                from_data_type=type(from_ds),
+                breakpoint = self.breakpoint
             )
 
             light_transaction_metadata = dict(
@@ -247,8 +248,6 @@ class Predictor:
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
                 force_predict = advanced_args.get('force_predict', False),
                 mixer_class = advanced_args.get('use_mixers', None),
-
-                breakpoint = self.breakpoint,
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None
             )
 
@@ -365,14 +364,15 @@ class Predictor:
             if backend is not None:
                 heavy_transaction_metadata['model_backend'] = backend
 
+            heavy_transaction_metadata['breakpoint'] = self.breakpoint
+
             light_transaction_metadata = dict(
                 name = self.name,
                 type = transaction_type,
                 use_gpu = use_gpu,
                 data_preparation = {},
                 run_confidence_variation_analysis = run_confidence_variation_analysis,
-                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
-                breakpoint=self.breakpoint
+                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache)
             )
 
             self.transaction = PredictTransaction(
