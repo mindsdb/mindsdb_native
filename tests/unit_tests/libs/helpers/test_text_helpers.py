@@ -39,7 +39,7 @@ def test_language_analysis():
 
 
 def test_identifiers():
-    N = 50
+    N = 300
 
     hash_like_data = [''.join(random.choices(string.ascii_letters, k=8)) for _ in range(N)]
     incrementing_data_1 = list(range(0, N))
