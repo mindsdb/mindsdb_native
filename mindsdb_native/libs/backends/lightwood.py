@@ -362,10 +362,11 @@ class LightwoodBackend():
 
             validation_accuracy = evaluate_accuracy(
                 validation_predictions,
-                validation_df,
+                self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df, 
                 self.transaction.lmd['stats_v2'],
                 self.transaction.lmd['predict_columns'],
-                backend=self
+                backend=self,
+                use_conf_intervals=False # r2_score will be used for regression
             )
 
             predictors_and_accuracies.append((
