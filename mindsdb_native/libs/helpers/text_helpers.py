@@ -174,19 +174,23 @@ def extract_digits(point):
     return ''.join([char for char in str(point) if char.isdigit()])
 
 def get_pct_auto_increment(data):
-    data = sorted([extract_digits(x) for x in data])
-    prev = ''
-    increase_by_one = 0
-    for digits in data:
-        if prev != '' and digits != '':
-            try:
-                diff = int(digits) - int(prev)
-                if diff == 1:
-                    increase_by_one += 1
-            except Exception:
-                pass
+    int_data = []
+    for point in [extract_digits(x) for x in data]:
+        try:
+            int_data.append(int(point))
+        except:
+            pass
 
-        prev = digits
+    int_data = sorted(int_data)
+
+    prev_nr = int_data[0]
+    increase_by_one = 0
+    for nr in int_data[1:]:
+        diff = nr - prev_nr
+        if diff == 1:
+            increase_by_one += 1
+        prev_nr = nr
+
     return increase_by_one/(len(data) - 1)
 
 def get_identifier_description(data, column_name, data_type, data_subtype, other_potential_subtypes):
