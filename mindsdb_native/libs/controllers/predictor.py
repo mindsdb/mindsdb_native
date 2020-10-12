@@ -248,7 +248,8 @@ class Predictor:
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
                 force_predict = advanced_args.get('force_predict', False),
                 mixer_class = advanced_args.get('use_mixers', None),
-                setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None
+                setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
+                debug = advanced_args.get('debug', False)
             )
 
             if rebuild_model is False:
