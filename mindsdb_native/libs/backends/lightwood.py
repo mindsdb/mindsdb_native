@@ -380,6 +380,9 @@ class LightwoodBackend():
                 validation_accuracy
             ))
 
+        if len(predictors_and_accuracies) == 0:
+            raise Exception('All models failed')
+
         best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
 
         # Find predictor with NnMixer
