@@ -88,14 +88,15 @@ class TestTypeDeductor:
             assert stats_v2[col_name]['typing']['data_subtype_dist'][expected_subtype] == 100
 
         for col_name in stats_v2['columns']:
+            if col_name in lmd['columns_to_ignore']:
+                continue
             assert stats_v2[col_name]['identifier'] is None
 
         assert DATA_SUBTYPES.INT in stats_v2['categorical_int']['additional_info']['other_potential_subtypes']
         assert hmd == {}
 
         assert isinstance(json.dumps(transaction.lmd), str)
-        print(list(input_dataframe.columns))
-        assert transaction.lmd['stats_v2']['columns'] == list(input_dataframe.columns)
+        assert set(transaction.lmd['stats_v2']['columns']) == set(input_dataframe.columns)
 
     def test_deduce_foreign_key(self, transaction, lmd):
         """Tests that basic cases of type deduction work correctly"""
