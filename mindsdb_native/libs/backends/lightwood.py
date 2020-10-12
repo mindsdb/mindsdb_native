@@ -356,7 +356,7 @@ class LightwoodBackend():
                 kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
 
                 if stop_training_after is not None:
-                    kwargs['stop_training_after_seconds'] = stop_training_after]
+                    kwargs['stop_training_after_seconds'] = stop_training_after
 
             self.predictor = lightwood.Predictor(lightwood_config.copy())
 
