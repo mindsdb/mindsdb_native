@@ -46,7 +46,7 @@ def test_identifiers():
     incrementing_data_2 = list(range(10000, 10000 + N))
     incrementing_data_3 = [f'an_id_prefix_{i}' for i in incrementing_data_2]
     incrementing_data_3[20] = None
-    incrementing_data_3[55] = None
+    incrementing_data_3[22] = None
 
     incrementing_data_4 = [x for x in incrementing_data_3]
     for i in range(len(incrementing_data_4)):
