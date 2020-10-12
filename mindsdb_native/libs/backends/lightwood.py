@@ -308,6 +308,8 @@ class LightwoodBackend():
 
         logging.getLogger().setLevel(logging.DEBUG)
 
+        reasonable_training_time = train_df.shape[0] * train_df.shape[1] / 20
+
         predictors_and_accuracies = []
 
         use_mixers = self.transaction.lmd.get('use_mixers', None)
@@ -317,7 +319,14 @@ class LightwoodBackend():
             else:
                 mixer_classes = [use_mixers]
         else:
-            mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+            if self.lmd['stop_training_in_x_seconds'] is not None:
+                if self.lmd['stop_training_in_x_seconds'] > reasonable_training_time:
+                    mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+                elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
+                    mixer_classes = [lightwood.mixers.NnMixer]
+                elif reasonable_training_time / 10 > self.lmd['stop_training_in_x_seconds']:
+                    mixer_classes = [lightwood.mixers.BoostMixer]
+
 
         if self.nn_mixer_only:
             mixer_classes = [lightwood.mixers.nn.NnMixer]
@@ -340,7 +349,12 @@ class LightwoodBackend():
 
                 kwargs['callback_on_iter'] = self.callback_on_iter
                 kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
-                kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
+                
+                if self.lmd['stop_training_in_x_seconds'] is not None:
+                    if self.lmd['stop_training_in_x_seconds'] > reasonable_training_time:
+                        kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds'] / 2
+                    elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
+                        kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
 
             self.predictor = lightwood.Predictor(lightwood_config.copy())
 
