@@ -278,8 +278,6 @@ def load_lmd(path):
         lmd = pickle.load(fp)
     if 'tss' not in lmd:
         lmd['tss'] = {'is_timeseries': False}
-    if 'breakpoint' not in lmd:
-        lmd['breakpoint'] = None
     if 'setup_args' not in lmd:
         lmd['setup_args'] = None
     return lmd
@@ -288,4 +286,6 @@ def load_lmd(path):
 def load_hmd(path):
     with open(path, 'rb') as fp:
         hmd = pickle.load(fp)
+    if 'breakpoint' not in hmd:
+        hmd['breakpoint'] = None
     return hmd

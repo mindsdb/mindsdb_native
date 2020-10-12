@@ -22,10 +22,10 @@ class PostgresDS(DataSource):
         df = pd.read_sql(query, con=con)
         con.close()
 
-        df.columns = [x.decode('utf-8') for x in df.columns]
+        df.columns = [x if isinstance(x, str) else x.decode('utf-8') for x in df.columns]
         for col_name in df.columns:
             try:
-                df[col_name] = df[col_name].apply(lambda x: x.decode("utf-8"))
+                df[col_name] = df[col_name].apply(lambda x: x if isinstance(x, str) else x.decode('utf-8'))
             except:
                 pass
 
