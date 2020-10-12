@@ -319,6 +319,7 @@ class LightwoodBackend():
             else:
                 mixer_classes = [use_mixers]
         else:
+            mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
             if self.transaction.lmd['stop_training_in_x_seconds'] is not None:
                 if self.transaction.lmd['stop_training_in_x_seconds'] > reasonable_training_time:
                     mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
