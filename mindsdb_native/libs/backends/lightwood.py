@@ -319,12 +319,12 @@ class LightwoodBackend():
             else:
                 mixer_classes = [use_mixers]
         else:
-            if self.lmd['stop_training_in_x_seconds'] is not None:
-                if self.lmd['stop_training_in_x_seconds'] > reasonable_training_time:
+            if self.transaction.lmd['stop_training_in_x_seconds'] is not None:
+                if self.transaction.lmd['stop_training_in_x_seconds'] > reasonable_training_time:
                     mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
                 elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
                     mixer_classes = [lightwood.mixers.NnMixer]
-                elif reasonable_training_time / 10 > self.lmd['stop_training_in_x_seconds']:
+                elif reasonable_training_time / 10 > self.transaction.lmd['stop_training_in_x_seconds']:
                     mixer_classes = [lightwood.mixers.BoostMixer]
 
 
@@ -350,8 +350,8 @@ class LightwoodBackend():
                 kwargs['callback_on_iter'] = self.callback_on_iter
                 kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
                 
-                if self.lmd['stop_training_in_x_seconds'] is not None:
-                    if self.lmd['stop_training_in_x_seconds'] > reasonable_training_time:
+                if self.transaction.lmd['stop_training_in_x_seconds'] is not None:
+                    if self.transaction.lmd['stop_training_in_x_seconds'] > reasonable_training_time:
                         kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds'] / 2
                     elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
                         kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
