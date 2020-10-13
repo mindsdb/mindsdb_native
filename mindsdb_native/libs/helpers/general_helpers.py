@@ -178,7 +178,8 @@ def evaluate_generic_accuracy(column, predictions, true_values, **kwargs):
     pred_values = predictions[column]
     return accuracy_score(true_values, pred_values)
 
-def evaluate_array_accuracy(column, predictions, true_values, backend):
+
+def evaluate_array_accuracy(column, predictions, true_values, **kwargs):
     accuracy = 0
     true_values = list(true_values)
     for i in range(len(predictions[column])):
