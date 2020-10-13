@@ -39,14 +39,24 @@ def test_language_analysis():
 
 
 def test_identifiers():
-    N = 50
+    N = 300
 
     hash_like_data = [''.join(random.choices(string.ascii_letters, k=8)) for _ in range(N)]
     incrementing_data_1 = list(range(0, N))
     incrementing_data_2 = list(range(10000, 10000 + N))
-    incrementing_data_3 = [f'adgad_{i}' for i in incrementing_data_2]
+    incrementing_data_3 = [f'an_id_prefix_{i}' for i in incrementing_data_2]
+    incrementing_data_3[20] = None
+    incrementing_data_3[22] = None
+
+    incrementing_data_4 = [x for x in incrementing_data_3]
+    for i in range(len(incrementing_data_4)):
+        if i % 4 == 0:
+            incrementing_data_4[i] = None
+        if i % 3 == 0:
+            incrementing_data_4[i] = 'regular value'
 
     assert get_identifier_description(hash_like_data, 'col', DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.MULTIPLE, []) is not None
     assert get_identifier_description(incrementing_data_1, 'col', DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT , []) is not None
     assert get_identifier_description(incrementing_data_2, 'col', DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT, []) is not None
     assert get_identifier_description(incrementing_data_3, 'col', DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT, []) is not None
+    assert get_identifier_description(incrementing_data_4, 'col', DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT, []) is None

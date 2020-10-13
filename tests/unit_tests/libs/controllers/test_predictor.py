@@ -89,6 +89,8 @@ class TestPredictor:
 
         model_data = F.analyse_dataset(from_data=input_dataframe)
         for col, col_data in model_data['data_analysis_v2'].items():
+            if col == 'columns':
+                continue
             expected_type = test_column_types[col][0]
             expected_subtype = test_column_types[col][1]
             assert col_data['typing']['data_type'] == expected_type
@@ -133,6 +135,8 @@ class TestPredictor:
             assert mock_function.called
 
         for col, col_data in model_data['data_analysis_v2'].items():
+            if col == 'columns':
+                continue
             expected_type = test_column_types[col][0]
             expected_subtype = test_column_types[col][1]
             assert col_data['typing']['data_type'] == expected_type
