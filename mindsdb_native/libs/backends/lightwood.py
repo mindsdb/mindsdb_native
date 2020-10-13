@@ -344,10 +344,17 @@ class LightwoodBackend():
 
             self.predictor = lightwood.Predictor(lightwood_config.copy())
 
-            self.predictor.learn(
-                from_data=lightwood_train_ds,
-                test_data=lightwood_test_ds
-            )
+            try:
+                self.predictor.learn(
+                    from_data=lightwood_train_ds,
+                    test_data=lightwood_test_ds
+                )
+            except Exception:
+                if self.transaction.lmd['debug']:
+                    raise
+                else:
+                    self.transaction.log.error('Exception while running {}'.format(mixer_class.__name__))
+                    continue
 
             self.transaction.log.info('[{}] Training accuracy of: {}'.format(
                 mixer_class.__name__,
@@ -362,16 +369,20 @@ class LightwoodBackend():
 
             validation_accuracy = evaluate_accuracy(
                 validation_predictions,
-                validation_df,
+                self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df, 
                 self.transaction.lmd['stats_v2'],
                 self.transaction.lmd['predict_columns'],
-                backend=self
+                backend=self,
+                use_conf_intervals=False # r2_score will be used for regression
             )
 
             predictors_and_accuracies.append((
                 self.predictor,
                 validation_accuracy
             ))
+
+        if len(predictors_and_accuracies) == 0:
+            raise Exception('All models failed')
 
         best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
 
