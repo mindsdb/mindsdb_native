@@ -1,7 +1,7 @@
 [<Back to TOC](../README.md)
-# MindsDB Time Series
+# MindsDB Time Series - Fuel Consumption
 
-Here you will find a file [fuel.csv](https://raw.githubusercontent.com/mindsdb/mindsdb/master/docs/examples/time_series/fuel.csv), containing the historical fuel consumption data.
+Here you will find a file [fuel.csv](https://raw.githubusercontent.com/mindsdb/mindsdb/master/docs/examples/time_series/fuel_consumption/fuel.csv), containing the historical fuel consumption data.
 
 ### Goal
 The goal is to be able to predict the fuel consumption of a vessel, given the past 24hrs of historical data.
@@ -20,9 +20,11 @@ Predictor(name='fuel').learn(
 
     # Time series arguments:
 
-    order_by='Time',
-    group_by='id',
-    window_size=24, # just 24 hours
+    timeseries_settings={
+        'order_by': ['Time'],
+        'group_by': ['id'],
+        'window': 24,  # just 24 hours
+    }
 
 )
 
@@ -45,7 +47,7 @@ In order to make a prediction, you can now pass a DataFrame with the last x hour
 
 For simplicity we use a file.
 
-Here you will find a file [fuel_predict.csv](https://raw.githubusercontent.com/mindsdb/mindsdb/master/docs/examples/time_series/fuel_predict.csv), containing the last 24hrs and the asking for the subsequent hours.
+Here you will find a file [fuel_predict.csv](https://raw.githubusercontent.com/mindsdb/mindsdb/master/docs/examples/time_series/fuel_consumption/fuel_predict.csv), containing the last 24hrs and the asking for the subsequent hours.
 
 
 ```python
