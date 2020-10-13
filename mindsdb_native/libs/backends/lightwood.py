@@ -19,6 +19,8 @@ class LightwoodBackend():
     def __init__(self, transaction):
         self.transaction = transaction
         self.predictor = None
+        self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
+        self.nn_mixer_only = False
 
     def _create_timeseries_df(self, original_df):
         group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
@@ -105,14 +107,21 @@ class LightwoodBackend():
                     del previous_target_values[-1]
                     previous_target_values = [None] + previous_target_values
 
-                    previous_target_values_ts = []
+                    previous_target_values_arr = []
                     for i in range(len(previous_target_values)):
                         arr = previous_target_values[max(i-window,0):i+1]
                         while len(arr) <= window:
                             arr = [None] + arr
-                        previous_target_values_ts.append(arr)
+                        previous_target_values_arr.append(arr)
 
-                    ts_groups[k]['previous_' + target_column] = previous_target_values_ts
+                    ts_groups[k][f'previous_{target_column}'] = previous_target_values_arr
+                    for timestep_index in range(1, self.nr_predictions):
+                        next_target_value_arr = list(ts_groups[k][target_column])
+                        for del_index in range(0,timestep_index):
+                            del next_target_value_arr[del_index]
+                            next_target_value_arr.append(0)
+                        # @TODO: Maybe ignore the rows with `None` next targets for training
+                        ts_groups[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
 
         combined_df = pd.concat(list(ts_groups.values()))
 
@@ -164,6 +173,7 @@ class LightwoodBackend():
 
             elif data_subtype == DATA_SUBTYPES.ARRAY:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
+                self.nn_mixer_only = True
 
             else:
                 self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
@@ -171,6 +181,7 @@ class LightwoodBackend():
 
             if self.transaction.lmd['tss']['is_timeseries'] and col_name in self.transaction.lmd['tss']['order_by']:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
+                self.nn_mixer_only = True
 
             col_config = {
                 'name': col_name,
@@ -199,6 +210,7 @@ class LightwoodBackend():
                 if self.transaction.lmd['tss']['use_previous_target']:
                     p_col_config = copy.deepcopy(col_config)
                     p_col_config['name'] = f"previous_{p_col_config['name']}"
+                    p_col_config['original_type'] = col_config['type']
                     p_col_config['type'] = ColumnDataTypes.TIME_SERIES
 
                     if 'secondary_type' in col_config:
@@ -206,6 +218,13 @@ class LightwoodBackend():
 
                     config['input_features'].append(p_col_config)
 
+                if self.nr_predictions > 1:
+                    self.transaction.lmd['stats_v2'][col_name]['typing']['data_subtype'] = DATA_SUBTYPES.ARRAY
+                    self.transaction.lmd['stats_v2'][col_name]['typing']['data_type'] = DATA_TYPES.SEQUENTIAL
+                    for timestep_index in range(1,self.nr_predictions):
+                        additional_target_config = copy.deepcopy(col_config)
+                        additional_target_config['name'] = f'{col_name}_timestep_{timestep_index}'
+                        config['output_features'].append(additional_target_config)
             else:
                 if self.transaction.lmd['tss']['historical_columns']:
                     if 'secondary_type' in col_config:
@@ -289,9 +308,12 @@ class LightwoodBackend():
 
         logging.getLogger().setLevel(logging.DEBUG)
 
+        reasonable_training_time = train_df.shape[0] * train_df.shape[1] / 20
+
         predictors_and_accuracies = []
 
         use_mixers = self.transaction.lmd.get('use_mixers', None)
+        stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
         if use_mixers is not None:
             if isinstance(use_mixers, list):
                 mixer_classes = use_mixers
@@ -299,6 +321,22 @@ class LightwoodBackend():
                 mixer_classes = [use_mixers]
         else:
             mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+            if stop_training_after is not None:
+                if stop_training_after > reasonable_training_time:
+                    mixer_classes = [lightwood.mixers.BoostMixer, lightwood.mixers.NnMixer]
+                    stop_training_after = stop_training_after/len(mixer_classes)
+                elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
+                    mixer_classes = [lightwood.mixers.NnMixer]
+                else:
+                    # Should probably be `lightwood.mixers.BoostMixer` but using NnMixer as it's the best tested at the moment
+                    mixer_classes = [lightwood.mixers.NnMixer]
+
+            # If dataset is too large only use NnMixer
+            if train_df.shape[0] * train_df.shape[1] > 3 * pow(10, 5):
+                mixer_classes = [lightwood.mixers.NnMixer]
+
+        if self.nn_mixer_only:
+            mixer_classes = [lightwood.mixers.nn.NnMixer]
 
         for mixer_class in mixer_classes:
             lightwood_config['mixer']['kwargs'] = {}
@@ -318,14 +356,23 @@ class LightwoodBackend():
 
                 kwargs['callback_on_iter'] = self.callback_on_iter
                 kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
-                kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
+
+                if stop_training_after is not None:
+                    kwargs['stop_training_after_seconds'] = stop_training_after
 
             self.predictor = lightwood.Predictor(lightwood_config.copy())
 
-            self.predictor.learn(
-                from_data=lightwood_train_ds,
-                test_data=lightwood_test_ds
-            )
+            try:
+                self.predictor.learn(
+                    from_data=lightwood_train_ds,
+                    test_data=lightwood_test_ds
+                )
+            except Exception:
+                if self.transaction.lmd['debug']:
+                    raise
+                else:
+                    self.transaction.log.error('Exception while running {}'.format(mixer_class.__name__))
+                    continue
 
             self.transaction.log.info('[{}] Training accuracy of: {}'.format(
                 mixer_class.__name__,
@@ -333,6 +380,11 @@ class LightwoodBackend():
             ))
 
             validation_predictions = self.predict('validate')
+
+            validation_df = self.transaction.input_data.validation_df
+            if self.transaction.lmd['tss']['is_timeseries']:
+                validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
+
             validation_accuracy = evaluate_accuracy(
                 validation_predictions,
                 self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df, 
@@ -346,6 +398,9 @@ class LightwoodBackend():
                 self.predictor,
                 validation_accuracy
             ))
+
+        if len(predictors_and_accuracies) == 0:
+            raise Exception('All models failed')
 
         best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
 
@@ -403,12 +458,21 @@ class LightwoodBackend():
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}
+
         for k in predictions:
+            if '_timestep_' in k:
+                continue
+
             formated_predictions[k] = predictions[k]['predictions']
+
+            if self.nr_predictions > 1:
+                formated_predictions[k] = [[x] for x in formated_predictions[k]]
+                for timestep_index in range(1,self.nr_predictions):
+                    for i in range(len(formated_predictions[k])):
+                        formated_predictions[k][i].append(predictions[f'{k}_timestep_{timestep_index}']['predictions'][i])
 
             model_confidence_dict = {}
             for confidence_name in ['selfaware_confidences','loss_confidences', 'quantile_confidences']:
-
                 if confidence_name in predictions[k]:
                     if k not in model_confidence_dict:
                         model_confidence_dict[k] = []
@@ -427,7 +491,7 @@ class LightwoodBackend():
             for k in model_confidence_dict:
                 model_confidence_dict[k] = [np.mean(x) for x in model_confidence_dict[k]]
 
-            for k  in model_confidence_dict:
+            for k in model_confidence_dict:
                 formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]
 
             if 'confidence_range' in predictions[k]:

@@ -273,7 +273,10 @@ class TypeDeductor(BaseModule):
 
     def run(self, input_data):
         stats_v2 = defaultdict(dict)
-
+        stats_v2['columns'] = set(input_data.data_frame.columns.values)
+        stats_v2['columns'].update(self.transaction.lmd['columns_to_ignore'])
+        stats_v2['columns'] = list(stats_v2['columns'])
+        
         sample_settings = self.transaction.lmd['sample_settings']
         if sample_settings['sample_for_analysis']:
             sample_margin_of_error = sample_settings['sample_margin_of_error']

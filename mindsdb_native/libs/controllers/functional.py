@@ -64,7 +64,8 @@ def analyse_dataset(from_data, sample_settings=None):
     heavy_transaction_metadata = dict(
         name=None,
         from_data=from_ds,
-        sample_function=sample_function
+        sample_function=sample_function,
+        breakpoint = None
     )
 
     light_transaction_metadata = dict(
@@ -82,7 +83,6 @@ def analyse_dataset(from_data, sample_settings=None):
         force_categorical_encoding = [],
         data_types = {},
         data_subtypes = {},
-        breakpoint = None
     )
 
     tx = AnalyseTransaction(
@@ -247,7 +247,7 @@ def import_model(model_archive_path, new_name=None):
         lmd['name'] = new_name
     elif lmd['name'] is None:
         lmd['name'] = extract_dir
-    
+
     if lmd['name'] in previous_models:
         shutil.rmtree(extract_dir)
         raise Exception(f"Model with name '{lmd['name']}' already exists.")

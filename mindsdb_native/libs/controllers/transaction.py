@@ -102,7 +102,7 @@ class Transaction:
 
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'heavy_model_metadata.pickle')
         save_hmd = {}
-        null_out_fields = ['from_data', 'icp']
+        null_out_fields = ['from_data', 'icp', 'breakpoint']
         for k in null_out_fields:
             save_hmd[k] = None
 
@@ -151,9 +151,7 @@ class Transaction:
         """
         Loads the module and runs it
         """
-        if self.lmd['breakpoint'] == module_name:
-            sys.exit(0)
-
+        
         self.lmd['is_active'] = True
         self.lmd['phase'] = module_name
         module_path = convert_cammelcase_to_snake_string(module_name)
@@ -169,6 +167,10 @@ class Transaction:
         finally:
             self.lmd['phase'] = module_name
             self.lmd['is_active'] = False
+
+            if  self.hmd['breakpoint'] is not None:
+                 if module_name in self.hmd['breakpoint']:
+                     self.hmd['breakpoint'][module_name]()
 
     def run(self):
         pass
@@ -273,7 +275,7 @@ class PredictTransaction(Transaction):
             self._call_phase_module(module_name='DataSplitter')
 
         # @TODO Maybe move to a separate "PredictionAnalysis" phase ?
-        if self.lmd['run_confidence_variation_analysis']:
+        if self.lmd['run_confidence_variation_analysis'] and not self.lmd['tss']['is_timeseries']:
             nulled_out_data = []
             nulled_out_columns = []
             for column in self.input_data.columns:
@@ -287,7 +289,7 @@ class PredictTransaction(Transaction):
 
         for mode in ['predict', 'analyze_confidence']:
             if mode == 'analyze_confidence':
-                if not self.lmd['run_confidence_variation_analysis']:
+                if not self.lmd['run_confidence_variation_analysis'] or self.lmd['tss']['is_timeseries']:
                     continue
                 else:
                     self.input_data.data_frame = nulled_out_data
@@ -377,7 +379,7 @@ class PredictTransaction(Transaction):
             else:
                 nulled_out_predictions = PredictTransactionOutputData(transaction=self, data=output_data)
 
-        if self.lmd['run_confidence_variation_analysis']:
+        if self.lmd['run_confidence_variation_analysis'] and not self.lmd['tss']['is_timeseries']:
             input_confidence = {}
             extra_insights = {}
 

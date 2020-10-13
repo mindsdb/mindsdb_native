@@ -51,13 +51,20 @@ def create_history_query(query, tss, stats, row):
             query = split_query[0] + f' WHERE {merged_filter} AND ' + split_query[1]
         elif ' group by ' in query:
             split_query = query.split(' group by ')
-            query = split_query[0] + f' WHERE {merged_filter} ' + split_query[1]
+            if len(split_query) > 2:
+                query = split_query[0] + f' WHERE {merged_filter} GROUP BY ' + split_query[1]
+            else:
+                query += f' WHERE {merged_filter}'
+                
         elif ' having ' in query:
-            split_query = query.split(' having ')
-            query = split_query[0] + f' WHERE {merged_filter} ' + split_query[1]
+            split_query = query.split(' group by ')
+            if len(split_query) > 2:
+                query = split_query[0] + f' WHERE {merged_filter} HAVING ' + split_query[1]
+            else:
+                query += f' WHERE {merged_filter}'
         elif ' order by ' in query:
             split_query = query.split(' order by ')
-            query = split_query[0] + f' WHERE {merged_filter} ' + split_query[1]
+            query = split_query[0] + f' WHERE {merged_filter}'
         else:
             query += f' WHERE {merged_filter}'
 

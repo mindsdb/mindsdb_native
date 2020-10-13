@@ -8,6 +8,8 @@ from pathlib import Path
 import uuid
 from contextlib import contextmanager
 
+import os
+import sys
 from sklearn.metrics import (
     balanced_accuracy_score,
     accuracy_score,
@@ -177,6 +179,21 @@ def evaluate_generic_accuracy(column, predictions, true_values, **kwargs):
     return accuracy_score(true_values, pred_values)
 
 
+def evaluate_array_accuracy(column, predictions, true_values, **kwargs):
+    accuracy = 0
+    true_values = list(true_values)
+    for i in range(len(predictions[column])):
+        if isinstance(true_values[i],list):
+            accuracy += r2_score(predictions[column][i],true_values[i])
+        else:
+            # For the T+1 usecase
+            accuracy = r2_score([x[0] for x in predictions[column]], true_values)
+            return accuracy
+
+    accuracy = accuracy/len(predictions[column])
+    return accuracy
+
+
 def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backend=None, **kwargs):
     column_scores = []
     for column in output_columns:
@@ -189,6 +206,8 @@ def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backen
                 evaluator = evaluate_multilabel_accuracy
             else:
                 evaluator = evaluate_classification_accuracy
+        elif col_type == DATA_TYPES.SEQUENTIAL:
+            evaluator = evaluate_array_accuracy
         else:
             evaluator = evaluate_generic_accuracy
         column_score = evaluator(
@@ -282,8 +301,6 @@ def load_lmd(path):
         lmd = pickle.load(fp)
     if 'tss' not in lmd:
         lmd['tss'] = {'is_timeseries': False}
-    if 'breakpoint' not in lmd:
-        lmd['breakpoint'] = None
     if 'setup_args' not in lmd:
         lmd['setup_args'] = None
     return lmd
@@ -292,4 +309,6 @@ def load_lmd(path):
 def load_hmd(path):
     with open(path, 'rb') as fp:
         hmd = pickle.load(fp)
+    if 'breakpoint' not in hmd:
+        hmd['breakpoint'] = None
     return hmd
