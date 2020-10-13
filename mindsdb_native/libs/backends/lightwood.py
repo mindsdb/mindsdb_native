@@ -308,9 +308,12 @@ class LightwoodBackend():
 
         logging.getLogger().setLevel(logging.DEBUG)
 
+        reasonable_training_time = train_df.shape[0] * train_df.shape[1] / 20
+
         predictors_and_accuracies = []
 
         use_mixers = self.transaction.lmd.get('use_mixers', None)
+        stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
         if use_mixers is not None:
             if isinstance(use_mixers, list):
                 mixer_classes = use_mixers
@@ -318,6 +321,17 @@ class LightwoodBackend():
                 mixer_classes = [use_mixers]
         else:
             mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+            if stop_training_after is not None:
+                if stop_training_after > reasonable_training_time:
+                    #mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+                    mixer_classes = [lightwood.mixers.BoostMixer, lightwood.mixers.NnMixer]
+                    stop_training_after = stop_training_after/len(mixer_classes)
+                elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
+                    mixer_classes = [lightwood.mixers.NnMixer]
+                else:
+                    # Should probably be `lightwood.mixers.BoostMixer` but using NnMixer as it's the best tested at the moment
+                    mixer_classes = [lightwood.mixers.NnMixer]
+
 
         if self.nn_mixer_only:
             mixer_classes = [lightwood.mixers.nn.NnMixer]
@@ -340,14 +354,23 @@ class LightwoodBackend():
 
                 kwargs['callback_on_iter'] = self.callback_on_iter
                 kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
-                kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
+
+                if stop_training_after is not None:
+                    kwargs['stop_training_after_seconds'] = stop_training_after
 
             self.predictor = lightwood.Predictor(lightwood_config.copy())
 
-            self.predictor.learn(
-                from_data=lightwood_train_ds,
-                test_data=lightwood_test_ds
-            )
+            try:
+                self.predictor.learn(
+                    from_data=lightwood_train_ds,
+                    test_data=lightwood_test_ds
+                )
+            except Exception:
+                if self.transaction.lmd['debug']:
+                    raise
+                else:
+                    self.transaction.log.error('Exception while running {}'.format(mixer_class.__name__))
+                    continue
 
             self.transaction.log.info('[{}] Training accuracy of: {}'.format(
                 mixer_class.__name__,
@@ -362,16 +385,20 @@ class LightwoodBackend():
 
             validation_accuracy = evaluate_accuracy(
                 validation_predictions,
-                validation_df,
+                self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df, 
                 self.transaction.lmd['stats_v2'],
                 self.transaction.lmd['predict_columns'],
-                backend=self
+                backend=self,
+                use_conf_intervals=False # r2_score will be used for regression
             )
 
             predictors_and_accuracies.append((
                 self.predictor,
                 validation_accuracy
             ))
+
+        if len(predictors_and_accuracies) == 0:
+            raise Exception('All models failed')
 
         best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
 
