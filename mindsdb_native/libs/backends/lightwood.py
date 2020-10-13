@@ -308,9 +308,12 @@ class LightwoodBackend():
 
         logging.getLogger().setLevel(logging.DEBUG)
 
+        reasonable_training_time = train_df.shape[0] * train_df.shape[1] / 20
+
         predictors_and_accuracies = []
 
         use_mixers = self.transaction.lmd.get('use_mixers', None)
+        stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
         if use_mixers is not None:
             if isinstance(use_mixers, list):
                 mixer_classes = use_mixers
@@ -318,6 +321,17 @@ class LightwoodBackend():
                 mixer_classes = [use_mixers]
         else:
             mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+            if stop_training_after is not None:
+                if stop_training_after > reasonable_training_time:
+                    #mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+                    mixer_classes = [lightwood.mixers.BoostMixer, lightwood.mixers.NnMixer]
+                    stop_training_after = stop_training_after/len(mixer_classes)
+                elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
+                    mixer_classes = [lightwood.mixers.NnMixer]
+                else:
+                    # Should probably be `lightwood.mixers.BoostMixer` but using NnMixer as it's the best tested at the moment
+                    mixer_classes = [lightwood.mixers.NnMixer]
+
 
         if self.nn_mixer_only:
             mixer_classes = [lightwood.mixers.nn.NnMixer]
@@ -340,7 +354,9 @@ class LightwoodBackend():
 
                 kwargs['callback_on_iter'] = self.callback_on_iter
                 kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
-                kwargs['stop_training_after_seconds'] = self.transaction.lmd['stop_training_in_x_seconds']
+
+                if stop_training_after is not None:
+                    kwargs['stop_training_after_seconds'] = stop_training_after
 
             self.predictor = lightwood.Predictor(lightwood_config.copy())
 
