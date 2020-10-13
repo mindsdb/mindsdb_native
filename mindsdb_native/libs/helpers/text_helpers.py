@@ -178,7 +178,7 @@ def get_pct_auto_increment(data):
     for point in [extract_digits(x) for x in data]:
         try:
             int_data.append(int(point))
-        except:
+        except Exception:
             pass
 
     int_data = sorted(int_data)
@@ -191,7 +191,6 @@ def get_pct_auto_increment(data):
             increase_by_one += 1
         prev_nr = nr
 
-    print(increase_by_one, len(data) - 1)
     return increase_by_one/(len(data) - 1)
 
 def get_identifier_description(data, column_name, data_type, data_subtype, other_potential_subtypes):
