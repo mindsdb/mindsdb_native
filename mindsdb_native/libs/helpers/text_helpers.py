@@ -174,20 +174,23 @@ def extract_digits(point):
     return ''.join([char for char in str(point) if char.isdigit()])
 
 def get_pct_auto_increment(data):
-    data = sorted(data)
-    prev = None
-    increase_by_one = 0
-    for point in data:
-        digits = extract_digits(point)
-        if prev is not None and digits is not None:
-            try:
-                diff = int(digits) - int(prev)
-                if diff == 1:
-                    increase_by_one += 1
-            except Exception:
-                pass
+    int_data = []
+    for point in [extract_digits(x) for x in data]:
+        try:
+            int_data.append(int(point))
+        except Exception:
+            pass
 
-        prev = digits
+    int_data = sorted(int_data)
+    print(int_data)
+    prev_nr = int_data[0]
+    increase_by_one = 0
+    for nr in int_data[1:]:
+        diff = nr - prev_nr
+        if diff == 1:
+            increase_by_one += 1
+        prev_nr = nr
+
     return increase_by_one/(len(data) - 1)
 
 def get_identifier_description(data, column_name, data_type, data_subtype, other_potential_subtypes):
@@ -204,43 +207,43 @@ def get_identifier_description(data, column_name, data_type, data_subtype, other
     uuid_charset = set('0123456789abcdefABCDEF-')
     all_uuid_charset = all(set(str(x)).issubset(uuid_charset) for x in data)
     is_uuid = all_uuid_charset and all_same_length
-    
+
     if all_same_length and len(data) == len(set(data)):
         str_data = [str(x) for x in data]
-        # If all data points are strings of equal length	
-        # then compute entropy per each index through all data	
-        #	
-        # Example:	
-        #	
-        #   column	
-        # 1 'wqk5'	
-        # 2 'wq6z'	
-        # 3 'wqv7'	
-        # 4 'eq8O'	
-        # 5 'eqkO'	
-        # 6 'eqyS'	
-        # 7 'eqAe' 	
-        #    ||||	
-        #    ||||-------------------- index 3	
-        #    |||                      Counter({5: 1, z: 1, 7: 1, O: 2, s: 1, e: 1})	
-        #    |||                      S = entropy[1, 1, 1, 2, 1, 1]	
-        #    |||                      randomness = S / np.log(6) <----- 6 unique values at this index	
-        #    |||	
-        #    |||--------------------- index 2	
-        #    ||                       Counter({k: 2, 6: 1, v: 1, 8: 1, Y: 1, A: 1})	
-        #    ||                       S = entropy[2, 1, 1, 1, 1, 1]	
-        #    ||                       randomness = S / np.log(6) <----- 6 unique values at this index	
-        #    ||	
-        #    ||---------------------- index 1	
-        #    |                        Counter({q: 7})	
-        #    |                        S = entropy[7]	
-        #    |                        randomness = S / np.log(1) <----- 1 unique value at this index	
-        #    |	
-        #    |----------------------- index 0	
-        #                             Counter({w: 3, e: 4})	
-        #                             S = entropy[3, 4]	
-        #                             randomness = S / np.log(2) <----- 2 unique values at this index	
-        #	
+        # If all data points are strings of equal length
+        # then compute entropy per each index through all data
+        #
+        # Example:
+        #
+        #   column
+        # 1 'wqk5'
+        # 2 'wq6z'
+        # 3 'wqv7'
+        # 4 'eq8O'
+        # 5 'eqkO'
+        # 6 'eqyS'
+        # 7 'eqAe'
+        #    ||||
+        #    ||||-------------------- index 3
+        #    |||                      Counter({5: 1, z: 1, 7: 1, O: 2, s: 1, e: 1})
+        #    |||                      S = entropy[1, 1, 1, 2, 1, 1]
+        #    |||                      randomness = S / np.log(6) <----- 6 unique values at this index
+        #    |||
+        #    |||--------------------- index 2
+        #    ||                       Counter({k: 2, 6: 1, v: 1, 8: 1, Y: 1, A: 1})
+        #    ||                       S = entropy[2, 1, 1, 1, 1, 1]
+        #    ||                       randomness = S / np.log(6) <----- 6 unique values at this index
+        #    ||
+        #    ||---------------------- index 1
+        #    |                        Counter({q: 7})
+        #    |                        S = entropy[7]
+        #    |                        randomness = S / np.log(1) <----- 1 unique value at this index
+        #    |
+        #    |----------------------- index 0
+        #                             Counter({w: 3, e: 4})
+        #                             S = entropy[3, 4]
+        #                             randomness = S / np.log(2) <----- 2 unique values at this index
+        #
         # Scaling entropy by np.log(num_of_unique_values) produces a number in range [0, 1]
         randomness_per_index = []
         for i, _ in enumerate(str_data[0]):
