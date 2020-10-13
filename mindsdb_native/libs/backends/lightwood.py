@@ -323,12 +323,12 @@ class LightwoodBackend():
             mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
             if stop_training_after is not None:
                 if stop_training_after > reasonable_training_time:
-                    stop_training_after = stop_training_after / len(mixer_classes)
                     # If dataset is too large only use NnMixer
                     if train_df.shape[0] * train_df.shape[1] > 3 * pow(10, 5):
                         mixer_classes = [lightwood.mixers.NnMixer]
                     else:
                         mixer_classes = [lightwood.mixers.BoostMixer, lightwood.mixers.NnMixer]
+                    stop_training_after = stop_training_after / len(mixer_classes)
                 elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
                     mixer_classes = [lightwood.mixers.NnMixer]
                 else:
