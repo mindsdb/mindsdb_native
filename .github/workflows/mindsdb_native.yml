@@ -2,7 +2,11 @@ name: MindsDB Native workflow
 
 on:
   push:
-
+  pull_request:
+    branches:
+      - stable
+      - staging
+      
 jobs:
   test:
     runs-on: ${{ matrix.os }}
