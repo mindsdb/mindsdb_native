@@ -19,13 +19,15 @@ from mindsdb_native import F
 from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
-from unit_tests.utils import (test_column_types,
-                            generate_value_cols,
-                            generate_timeseries_labels,
-                            generate_log_labels,
-                            columns_to_file,
-                            PickableMock,
-                            SMALL_VOCAB)
+from unit_tests.utils import (
+    test_column_types,
+    generate_value_cols,
+    generate_timeseries_labels,
+    generate_log_labels,
+    columns_to_file,
+    PickableMock,
+    SMALL_VOCAB
+)
 
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
