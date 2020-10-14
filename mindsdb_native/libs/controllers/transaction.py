@@ -151,7 +151,7 @@ class Transaction:
         """
         Loads the module and runs it
         """
-        
+
         self.lmd['is_active'] = True
         self.lmd['phase'] = module_name
         module_path = convert_cammelcase_to_snake_string(module_name)
@@ -175,6 +175,12 @@ class Transaction:
     def run(self):
         pass
 
+
+class MutatingTransaction(Transaction):
+    def run(self, mutating_callback):
+        self.load_metadata()
+        mutating_callback(self.lmd, self.hmd)
+        self.save_metadata()
 
 class LearnTransaction(Transaction):
     def _run(self):
@@ -237,7 +243,6 @@ class AnalyseTransaction(Transaction):
         self._call_phase_module(module_name='TypeDeductor', input_data=self.input_data)
         self._call_phase_module(module_name='DataAnalyzer', input_data=self.input_data)
         self.lmd['current_phase'] = MODEL_STATUS_DONE
-
 
 class PredictTransaction(Transaction):
     def run(self):

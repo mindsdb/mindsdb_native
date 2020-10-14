@@ -36,8 +36,8 @@ class ModelAnalyzer(BaseModule):
 
         # Make predictions on the validation dataset normally and with various columns missing
         normal_predictions = self.transaction.model_backend.predict('validate')
-
         normal_predictions_test = self.transaction.model_backend.predict('test')
+
         normal_accuracy = evaluate_accuracy(
             normal_predictions,
             validation_df,
@@ -45,6 +45,17 @@ class ModelAnalyzer(BaseModule):
             output_columns,
             backend=self.transaction.model_backend
         )
+
+        # @TODO Limiting to 4 as to not kill the GUI, sample later (or maybe only select latest?)
+        if self.transaction.lmd['tss']['is_timeseries'] and len(normal_predictions[output_columns[0]]) < pow(10,4):
+            self.transaction.lmd['test_data_plot'] = {}
+            for output_column in output_columns:
+                self.transaction.lmd['test_data_plot'][col] = {
+                    'real': list(validation_df[output_column])
+                    ,'predicted': list(normal_predictions[output_column])
+                    ,'confidence': list(normal_predictions[f'{output_column}_confidence_range'])
+                    ,'order_by': list(validation_df[self.transaction.lmd['tss']['order_by'][0]])
+                }
 
         for col in output_columns:
             reals = validation_df[col]
