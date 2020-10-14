@@ -8,8 +8,8 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 class RedshiftDS(DataSource):
     
-    def _setup(self, table=None, query=None, database='redshift', host='localhost',
-               port=5439, user='postgres', password=''):
+    def _setup(self, table=None, query=None, database='dev', host='localhost',
+               port=5439, user='awsuser', password=''):
 
         self._database_name = database
         self._table_name = table
