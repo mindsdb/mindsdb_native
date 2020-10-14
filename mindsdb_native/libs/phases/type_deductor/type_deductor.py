@@ -20,7 +20,7 @@ from mindsdb_native.libs.constants.mindsdb import (
 from mindsdb_native.libs.helpers.text_helpers import (
     word_tokenize,
     cast_string_to_python_type,
-    is_foreign_key
+    get_identifier_description
 )
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
@@ -45,11 +45,10 @@ def get_file_subtype_if_exists(path):
 
 def get_number_subtype(string):
     """ Returns the subtype inferred from a number string, or False if its not a number"""
-    string = str(string)
-    python_type = type(cast_string_to_python_type(string))
-    if python_type is float:
+    pytype = cast_string_to_python_type(str(string))
+    if isinstance(pytype, float):
         return DATA_SUBTYPES.FLOAT
-    elif python_type is int:
+    elif isinstance(pytype, int):
         return DATA_SUBTYPES.INT
     else:
         return None
@@ -198,7 +197,7 @@ class TypeDeductor(BaseModule):
             possible_subtype_counts = [(k, v) for k, v in subtype_dist.items()
                                     if k in DATA_TYPES_SUBTYPES[curr_data_type]]
             curr_data_subtype, _ = max(possible_subtype_counts,
-                                    key=lambda pair: pair[0])
+                                    key=lambda pair: pair[1])
         else:
             curr_data_type, curr_data_subtype = None, None
 
@@ -274,7 +273,10 @@ class TypeDeductor(BaseModule):
 
     def run(self, input_data):
         stats_v2 = defaultdict(dict)
-
+        stats_v2['columns'] = set(input_data.data_frame.columns.values)
+        stats_v2['columns'].update(self.transaction.lmd['columns_to_ignore'])
+        stats_v2['columns'] = list(stats_v2['columns'])
+        
         sample_settings = self.transaction.lmd['sample_settings']
         if sample_settings['sample_for_analysis']:
             sample_margin_of_error = sample_settings['sample_margin_of_error']
@@ -314,13 +316,19 @@ class TypeDeductor(BaseModule):
             stats_v2[col_name]['typing'] = type_data
             stats_v2[col_name]['additional_info'] = additional_info
 
-            stats_v2[col_name]['is_foreign_key'] = is_foreign_key(col_data,
-                                                                  col_name,
-                                                                  data_subtype,
-                                                                  additional_info['other_potential_subtypes'])
+            # work with the full data
+            stats_v2[col_name]['identifier'] = get_identifier_description(
+                input_data.data_frame[col_name],
+                col_name,
+                data_type,
+                data_subtype,
+                additional_info['other_potential_subtypes']
+            )
 
-            if stats_v2[col_name]['is_foreign_key'] and self.transaction.lmd['handle_foreign_keys'] and col_name not in self.transaction.lmd['predict_columns']:
-                self.transaction.lmd['columns_to_ignore'].append(col_name)
+            if stats_v2[col_name]['identifier'] is not None:
+                if col_name not in self.transaction.lmd['force_column_usage']:
+                    if col_name not in self.transaction.lmd['predict_columns']:
+                        self.transaction.lmd['columns_to_ignore'].append(col_name)
 
             if data_subtype_dist:
                 self.log.info(f'Data distribution for column "{col_name}" '

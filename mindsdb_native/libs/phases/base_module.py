@@ -21,7 +21,6 @@ The interesting part is that in a module you should not instantiate data sources
 Those should be available via self.session
 
 """
-
 from mindsdb_native.libs.constants.mindsdb import *
 import time
 

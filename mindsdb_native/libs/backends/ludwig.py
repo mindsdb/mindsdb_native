@@ -2,6 +2,7 @@ from dateutil.parser import parse as parse_datetime
 import os, sys
 import shutil
 import subprocess
+from pathlib import Path
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
@@ -60,7 +61,7 @@ class LudwigBackend():
 
         other_col_names = []
         for feature_def in model_definition['input_features']:
-            if feature_def['name'] not in self.transaction.lmd['model_group_by'] and feature_def['name'] not in previous_predict_col_names:
+            if feature_def['name'] not in self.transaction.lmd['tss']['group_by'] and feature_def['name'] not in previous_predict_col_names:
                 feature_def['type'] = 'sequence'
                 if feature_def['name'] not in [timeseries_col_name]:
                     other_col_names.append(feature_def['name'])
@@ -69,7 +70,7 @@ class LudwigBackend():
             previous_predict_col_names.append(previous_predict_col_name)
 
         new_cols = {}
-        for col in [*other_col_names,*previous_predict_col_names,timeseries_col_name,*predict_col_names,*self.transaction.lmd['model_group_by']]:
+        for col in [*other_col_names,*previous_predict_col_names,timeseries_col_name,*predict_col_names,*self.transaction.lmd['tss']['group_by']]:
             new_cols[col] = []
 
         nr_ele = len(df[timeseries_col_name])
@@ -86,14 +87,14 @@ class LudwigBackend():
                 new_row[col] = []
             for col in predict_col_names:
                 new_row[col] = df[col][i]
-            for col in self.transaction.lmd['model_group_by']:
+            for col in self.transaction.lmd['tss']['group_by']:
                 new_row[col] = df[col][i]
 
             inverted_index_range = list(range(i))
             inverted_index_range.reverse()
             ii = 0
             for ii in inverted_index_range:
-                if (i - ii) > self.transaction.lmd['window_size']:
+                if (i - ii) > self.transaction.lmd['tss']['window']:
                     break
                 timeseries_row.append(df[timeseries_col_name][ii])
 
@@ -116,7 +117,7 @@ class LudwigBackend():
             new_row[timeseries_col_name] = timeseries_row
 
             for col in new_row:
-                if col not in predict_col_names and col not in self.transaction.lmd['model_group_by']:
+                if col not in predict_col_names and col not in self.transaction.lmd['tss']['group_by']:
                     new_row[col].reverse()
                 new_cols[col].append(new_row[col])
 
@@ -144,10 +145,10 @@ class LudwigBackend():
         model_definition = {'input_features': [], 'output_features': []}
         data = {}
 
-        if self.transaction.lmd['model_order_by'] is None:
+        if self.transaction.lmd['tss']['order_by'] is None:
             timeseries_cols = []
         else:
-            timeseries_cols = list(map(lambda x: x[0], self.transaction.lmd['model_order_by']))
+            timeseries_cols = list(map(lambda x: x[0], self.transaction.lmd['tss']['order_by']))
 
         for col in df.columns:
             tf_col = get_tensorflow_colname(col)
@@ -431,7 +432,8 @@ class LudwigBackend():
                 # The resulting train_stats are "None"... wonderful -_-
             '''
 
-        ludwig_model_savepath = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_ludwig_data')
+        ludwig_model_savepath = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'ludwig_data')
+        Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.transaction.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
         if ludwig_save_is_working:
             model.save(ludwig_model_savepath)
             model.close()

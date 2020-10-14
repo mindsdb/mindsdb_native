@@ -12,7 +12,7 @@ from mindsdb_native.libs.controllers.transaction import (
     LearnTransaction, PredictTransaction
 )
 from mindsdb_native.libs.constants.mindsdb import *
-from mindsdb_native.libs.helpers.general_helpers import check_for_updates
+from mindsdb_native.libs.helpers.general_helpers import check_for_updates, load_lmd, load_hmd
 from mindsdb_native.libs.helpers.locking import MDBLock
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
@@ -22,7 +22,7 @@ def _get_memory_optimizations(df):
     total_memory = psutil.virtual_memory().total
 
     mem_usage_ratio = df_memory / total_memory
-    
+
     sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > (3 * pow(10, 4))
     sample_for_training = mem_usage_ratio >= 0.5
     disable_lightwood_transform_cache = mem_usage_ratio >= 0.2
@@ -52,6 +52,40 @@ def _prepare_sample_settings(user_provided_settings,
     sample_settings['sample_function'] = sample_settings['sample_function'].__name__
 
     return sample_settings, sample_function
+
+def _prepare_timeseries_settings(user_provided_settings):
+    timeseries_settings = dict(
+        is_timeseries=False
+        ,group_by=None
+        ,order_by=None
+        ,window=None
+        ,dynamic_window=None
+        ,use_previous_target=True
+        ,keep_order_column=True
+        ,nr_predictions=1
+        ,historical_columns=[]
+    )
+
+    if len(user_provided_settings) > 0:
+        if 'order_by' not in user_provided_settings:
+            raise Exception('Invalid timeseries settings, please provide `order_by` key [a list of columns]')
+
+        elif 'window' not in user_provided_settings and 'dynamic_window' not in user_provided_settings:
+            raise Exception(f'Invalid timeseries settings, you must specify a window size with either `window` or `dynamic_window` key')
+
+        elif 'window' in user_provided_settings and 'dynamic_window' in user_provided_settings:
+            raise Exception(f'Invalid timeseries settings, you must specify a window size with *EITHER* `window` or `dynamic_window` key, not both!')
+        else:
+            timeseries_settings['is_timeseries'] = True
+
+
+    for k in user_provided_settings:
+        if k in timeseries_settings:
+            timeseries_settings[k] = user_provided_settings[k]
+        else:
+            raise Exception(f'Invalid timeseries setting: {k}')
+
+    return timeseries_settings
 
 
 class Predictor:
@@ -89,9 +123,7 @@ class Predictor:
     def learn(self,
               to_predict,
               from_data,
-              group_by=None,    # @TODO: Move this logic to datasource
-              window_size=None, # @TODO: Move this logic to datasource
-              order_by=None,    # @TODO: Move this logic to datasource
+              timeseries_settings=None,
               ignore_columns=None,
               stop_training_in_x_seconds=None,
               backend='lightwood',
@@ -109,9 +141,7 @@ class Predictor:
         :param from_data: the data that you want to learn from, this can be either a file, a pandas data frame, or url or a mindsdb data source
 
         Optional Time series arguments:
-        :param order_by: this order by defines the time series, it can be a list. By default it sorts each sort by column in ascending manner, if you want to change this pass a touple ('column_name', 'boolean_for_ascending <default=true>')
-        :param group_by: This argument tells the time series that it should learn by grouping rows by a given id
-        :param window_size: The number of samples to learn from in the time series
+        :param timeseries_settings: dictionary of options for handling the data as a timeseries
 
         Optional data transformation arguments:
         :param ignore_columns: mindsdb will ignore this column
@@ -127,32 +157,21 @@ class Predictor:
 
         :return:
         """
+
         with MDBLock('exclusive', 'learn_' + self.name):
+            ignore_columns = [] if ignore_columns is None else ignore_columns
+            timeseries_settings = {} if timeseries_settings is None else timeseries_settings
+            advanced_args = {} if advanced_args is None else advanced_args
 
-            if ignore_columns is None:
-                ignore_columns = []
-
-            if group_by is None:
-                group_by = []
-
-            if order_by is None:
-                order_by = []
-
-            # lets turn into lists: predict, ignore, group_by, order_by
             predict_columns = to_predict if isinstance(to_predict, list) else [to_predict]
             ignore_columns = ignore_columns if isinstance(ignore_columns, list) else [ignore_columns]
-            group_by = group_by if isinstance(group_by, list) else [group_by]
-            order_by = order_by if isinstance(order_by, list) else [order_by]
-
-            # lets turn order by into list of tuples if not already
-            # each element ('column_name', 'boolean_for_ascending <default=true>')
-            order_by = [col_name if isinstance(col_name, tuple) else (col_name, True) for col_name in order_by]
-
-            if advanced_args is None:
-                advanced_args = {}
+            if len(predict_columns) == 0:
+                error = 'You need to specify the column[s] you want to predict via the `to_predict` argument!'
+                self.log.error(error)
+                raise ValueError(error)
 
             from_ds = getDS(from_data)
-            
+
             # Set user-provided subtypes
             from_ds.set_subtypes(
                 advanced_args.get('subtypes', {})
@@ -160,21 +179,17 @@ class Predictor:
 
             transaction_type = TRANSACTION_LEARN
 
-            sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(
-                from_ds.df)
-            sample_settings, sample_function = _prepare_sample_settings(sample_settings,
-                                                        sample_for_analysis,
-                                                        sample_for_training)
+            sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(from_ds.df)
+            sample_settings, sample_function = _prepare_sample_settings(
+                sample_settings,
+                sample_for_analysis,
+                sample_for_training
+            )
+
+            timeseries_settings = _prepare_timeseries_settings(timeseries_settings)
 
             self.log.warning(f'Sample for analysis: {sample_for_analysis}')
             self.log.warning(f'Sample for training: {sample_for_training}')
-
-            if len(predict_columns) == 0:
-                error = 'You need to specify a column to predict'
-                self.log.error(error)
-                raise ValueError(error)
-
-            is_time_series = True if len(order_by) > 0 else False
 
             """
             We don't implement "name" as a concept in mindsdbd data sources, this is only available for files,
@@ -188,7 +203,9 @@ class Predictor:
                 from_data=from_ds,
                 predictions= None,
                 model_backend= backend,
-                sample_function=sample_function
+                sample_function=sample_function,
+                from_data_type=type(from_ds),
+                breakpoint = self.breakpoint
             )
 
             light_transaction_metadata = dict(
@@ -197,12 +214,9 @@ class Predictor:
                 data_preparation = {},
                 predict_columns = predict_columns,
                 model_columns_map = from_ds._col_map,
-                model_group_by = group_by,
-                model_order_by = order_by,
-                model_is_time_series = is_time_series,
+                tss=timeseries_settings,
                 data_source = data_source_name,
                 type = transaction_type,
-                window_size = window_size,
                 sample_settings = sample_settings,
                 stop_training_in_x_seconds = stop_training_in_x_seconds,
                 rebuild_model = rebuild_model,
@@ -226,15 +240,16 @@ class Predictor:
 
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
-                handle_foreign_keys = advanced_args.get('handle_foreign_keys', True),
+                force_column_usage = advanced_args.get('force_column_usage', []),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
                 null_values = advanced_args.get('null_values', {}),
                 data_split_indexes = advanced_args.get('data_split_indexes', None),
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
                 force_predict = advanced_args.get('force_predict', False),
-
-                breakpoint=self.breakpoint
+                mixer_class = advanced_args.get('use_mixers', None),
+                setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
+                debug = advanced_args.get('debug', False)
             )
 
             if rebuild_model is False:
@@ -244,11 +259,17 @@ class Predictor:
                 old_hmd = {}
                 for k in heavy_transaction_metadata: old_hmd[k] = heavy_transaction_metadata[k]
 
-                with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, light_transaction_metadata['name'] + '_light_model_metadata.pickle'), 'rb') as fp:
-                    light_transaction_metadata = pickle.load(fp)
+                light_transaction_metadata = load_lmd(os.path.join(
+                    CONFIG.MINDSDB_STORAGE_PATH,
+                    light_transaction_metadata['name'],
+                    'light_model_metadata.pickle'
+                ))
 
-                with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, heavy_transaction_metadata['name'] + '_heavy_model_metadata.pickle'), 'rb') as fp:
-                    heavy_transaction_metadata= pickle.load(fp)
+                heavy_transaction_metadata = load_hmd(os.path.join(
+                    CONFIG.MINDSDB_STORAGE_PATH,
+                    heavy_transaction_metadata['name'],
+                    'heavy_model_metadata.pickle'
+                ))
 
                 for k in ['data_preparation', 'rebuild_model', 'data_source', 'type', 'columns_to_ignore', 'sample_margin_of_error', 'sample_confidence_level', 'stop_training_in_x_seconds']:
                     if old_lmd[k] is not None: light_transaction_metadata[k] = old_lmd[k]
@@ -256,10 +277,12 @@ class Predictor:
                 if old_hmd['from_data'] is not None:
                     heavy_transaction_metadata['from_data'] = old_hmd['from_data']
 
-            self.transaction = LearnTransaction(session=self,
-                        light_transaction_metadata=light_transaction_metadata,
-                        heavy_transaction_metadata=heavy_transaction_metadata,
-                        logger=self.log)
+            self.transaction = LearnTransaction(
+                session=self,
+                light_transaction_metadata=light_transaction_metadata,
+                heavy_transaction_metadata=heavy_transaction_metadata,
+                logger=self.log
+            )
 
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
@@ -277,8 +300,7 @@ class Predictor:
 
             predictions = self.predict(when_data=when_data, **predict_args)
 
-            with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, f'{self.name}_light_model_metadata.pickle'), 'rb') as fp:
-                lmd = pickle.load(fp)
+            lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.name, 'light_model_metadata.pickle'))
 
             accuracy_dict = {}
             for col in lmd['predict_columns']:
@@ -343,17 +365,20 @@ class Predictor:
             if backend is not None:
                 heavy_transaction_metadata['model_backend'] = backend
 
+            heavy_transaction_metadata['breakpoint'] = self.breakpoint
+
             light_transaction_metadata = dict(
                 name = self.name,
                 type = transaction_type,
                 use_gpu = use_gpu,
                 data_preparation = {},
                 run_confidence_variation_analysis = run_confidence_variation_analysis,
-                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
-                breakpoint=self.breakpoint
+                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache)
             )
 
-            self.transaction = PredictTransaction(session=self,
-                                    light_transaction_metadata=light_transaction_metadata,
-                                    heavy_transaction_metadata=heavy_transaction_metadata)
+            self.transaction = PredictTransaction(
+                session=self,
+                light_transaction_metadata=light_transaction_metadata,
+                heavy_transaction_metadata=heavy_transaction_metadata
+            )
             return self.transaction.output_data

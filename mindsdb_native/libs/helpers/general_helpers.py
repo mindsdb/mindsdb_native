@@ -1,3 +1,5 @@
+import os
+import sys
 import platform
 import re
 import pickle
@@ -6,9 +8,14 @@ from pathlib import Path
 import uuid
 from contextlib import contextmanager
 
-from sklearn.metrics import balanced_accuracy_score, accuracy_score, f1_score
 import os
 import sys
+from sklearn.metrics import (
+    balanced_accuracy_score,
+    accuracy_score,
+    f1_score,
+    r2_score
+)
 
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.config import CONFIG
@@ -136,34 +143,58 @@ def get_value_bucket(value, buckets, col_stats, hmd=None):
     return bucket
 
 
-def evaluate_regression_accuracy(column, predictions, true_values, backend):
-    pred_confidence_intervals = predictions[f'{column}_confidence_range']
+def evaluate_regression_accuracy(
+        column,
+        predictions,
+        true_values,
+        backend,
+        use_conf_intervals=True,
+        **kwargs
+    ):
+    if use_conf_intervals:
+        pred_confidence_intervals = predictions[f'{column}_confidence_range']
+        within_interval = 0
+        for true, interval in zip(true_values, pred_confidence_intervals):
+            if true >= interval[0] and true <= interval[1]:
+                within_interval += 1
+        return within_interval/len(true_values)
+    else:
+        return r2_score(true_values, predictions[column])
 
-    within_interval = 0
-    for true, interval in zip(true_values, pred_confidence_intervals):
-        if true >= interval[0] and true <= interval[1]:
-            within_interval += 1
-    return within_interval/len(true_values)
 
-
-def evaluate_classification_accuracy(column, predictions, true_values, backend):
+def evaluate_classification_accuracy(column, predictions, true_values, **kwargs):
     pred_values = predictions[column]
     return balanced_accuracy_score(true_values, pred_values)
 
 
-def evaluate_multilabel_accuracy(column, predictions, true_values, backend):
+def evaluate_multilabel_accuracy(column, predictions, true_values, backend, **kwargs):
     encoder = backend.predictor._mixer.encoders[column]
     pred_values = encoder.encode(predictions[column])
     true_values = encoder.encode(true_values)
     return f1_score(true_values, pred_values, average='weighted')
 
 
-def evaluate_generic_accuracy(column, predictions, true_values, backend):
+def evaluate_generic_accuracy(column, predictions, true_values, **kwargs):
     pred_values = predictions[column]
     return accuracy_score(true_values, pred_values)
 
 
-def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backend=None, hmd=None):
+def evaluate_array_accuracy(column, predictions, true_values, **kwargs):
+    accuracy = 0
+    true_values = list(true_values)
+    for i in range(len(predictions[column])):
+        if isinstance(true_values[i],list):
+            accuracy += r2_score(predictions[column][i],true_values[i])
+        else:
+            # For the T+1 usecase
+            accuracy = r2_score([x[0] for x in predictions[column]], true_values)
+            return accuracy
+
+    accuracy = accuracy/len(predictions[column])
+    return accuracy
+
+
+def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backend=None, **kwargs):
     column_scores = []
     for column in output_columns:
         col_type = col_stats[column]['typing']['data_type']
@@ -175,12 +206,20 @@ def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backen
                 evaluator = evaluate_multilabel_accuracy
             else:
                 evaluator = evaluate_classification_accuracy
+        elif col_type == DATA_TYPES.SEQUENTIAL:
+            evaluator = evaluate_array_accuracy
         else:
             evaluator = evaluate_generic_accuracy
-        column_score = evaluator(column, predictions, data_frame[column], backend)
+        column_score = evaluator(
+            column,
+            predictions,
+            data_frame[column],
+            backend=backend,
+            **kwargs
+        )
         column_scores.append(column_score)
 
-    score = sum(column_scores)/len(column_scores) if column_scores else 0.
+    score = sum(column_scores) / len(column_scores) if column_scores else 0.0
     if score == 0:
         score = 0.00000001
     return score
@@ -255,3 +294,21 @@ def value_isnan(value):
     except:
         isnan = True
     return isnan
+
+
+def load_lmd(path):
+    with open(path, 'rb') as fp:
+        lmd = pickle.load(fp)
+    if 'tss' not in lmd:
+        lmd['tss'] = {'is_timeseries': False}
+    if 'setup_args' not in lmd:
+        lmd['setup_args'] = None
+    return lmd
+
+
+def load_hmd(path):
+    with open(path, 'rb') as fp:
+        hmd = pickle.load(fp)
+    if 'breakpoint' not in hmd:
+        hmd['breakpoint'] = None
+    return hmd

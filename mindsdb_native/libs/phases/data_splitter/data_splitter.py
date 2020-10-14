@@ -1,3 +1,8 @@
+from collections import defaultdict
+from copy import deepcopy
+
+import pandas as pd
+
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
@@ -5,86 +10,84 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
 class DataSplitter(BaseModule):
-    def run(self):
-        group_by = self.transaction.lmd['model_group_by']
-        if group_by is None or len(group_by) == 0:
-            group_by = []
-            # @TODO: Group by seems not to work on certain datasets and the values get split complete unevenly between train/test/validation
-            if len(group_by) > 0:
-                try:
-                    self.transaction.input_data.data_frame = self.transaction.input_data.data_frame.sort_values(group_by)
-                except Exception:
-                    # If categories can't be sroted because of various issues, that's fine, no need for the prediction logic to fail
-                    if len(self.transaction.lmd['model_group_by']) == 0:
-                        group_by = []
-                    else:
-                        raise
+    def run(self, test_train_ratio=CONFIG.TEST_TRAIN_RATIO):
+        group_by = self.transaction.lmd['tss']['group_by'] or []
 
+        NO_GROUP = tuple()
 
-        KEY_NO_GROUP_BY = '{PLEASE_DONT_TELL_ME_ANYONE_WOULD_CALL_A_COLUMN_THIS}##ALL_ROWS_NO_GROUP_BY##{PLEASE_DONT_TELL_ME_ANYONE_WOULD_CALL_A_COLUMN_THIS}'
+        all_indexes = defaultdict(list)
 
-        # create all indexes by group by, that is all the rows that belong to each group by
-        all_indexes = {}
-        train_indexes = {}
-        test_indexes = {}
-        validation_indexes = {}
-
-        all_indexes[KEY_NO_GROUP_BY] = []
-        train_indexes[KEY_NO_GROUP_BY] = []
-        test_indexes[KEY_NO_GROUP_BY] = []
-        validation_indexes[KEY_NO_GROUP_BY] = []
         for i, row in self.transaction.input_data.data_frame.iterrows():
+            all_indexes[NO_GROUP].append(i)
 
-            if len(group_by) > 0:
-                group_by_value = '_'.join([str(row[group_by_index]) for group_by_index in [self.transaction.input_data.columns.index(group_by_col) for group_by_col in group_by]])
+        if len(group_by) > 0:
+            for i, row in self.transaction.input_data.data_frame.iterrows():
+                all_indexes[tuple(row[group_by])].append(i)
 
-                if group_by_value not in all_indexes:
-                    all_indexes[group_by_value] = []
-
-                all_indexes[group_by_value].append(i)
-
-            all_indexes[KEY_NO_GROUP_BY].append(i)
+        train_indexes = defaultdict(list)
+        test_indexes = defaultdict(list)
+        validation_indexes = defaultdict(list)
 
         # move indexes to corresponding train, test, validation, etc and trim input data accordingly
         if self.transaction.lmd['type'] == TRANSACTION_LEARN:
             data_split_indexes = self.transaction.lmd.get('data_split_indexes')
-            if data_split_indexes is None:
-                for key in all_indexes:
-                    should_split_by_group = isinstance(group_by, list) and len(group_by) > 0
-
-                    # If this is a group by, skip the `KEY_NO_GROUP_BY` key
-                    if should_split_by_group and key == KEY_NO_GROUP_BY:
-                        continue
-
-                    length = len(all_indexes[key])
-                    # this evals True if it should send the entire group data into test, train or validation as opposed to breaking the group into the subsets
-                    if should_split_by_group:
-                        train_indexes[key] = all_indexes[key][0:round(length - length * CONFIG.TEST_TRAIN_RATIO)]
-                        train_indexes[KEY_NO_GROUP_BY].extend(train_indexes[key])
-
-                        test_indexes[key] = all_indexes[key][round(length - length * CONFIG.TEST_TRAIN_RATIO):round(length - length*CONFIG.TEST_TRAIN_RATIO) + round(length * CONFIG.TEST_TRAIN_RATIO / 2)]
-                        test_indexes[KEY_NO_GROUP_BY].extend(test_indexes[key])
-
-                        validation_indexes[key] = all_indexes[key][(round(length - length * CONFIG.TEST_TRAIN_RATIO) + round(length * CONFIG.TEST_TRAIN_RATIO / 2)):]
-                        validation_indexes[KEY_NO_GROUP_BY].extend(validation_indexes[key])
-
-                    else:
-                        # make sure that the last in the time series are also the subset used for test
-
-                        train_window = (0, int(length*(1-2*CONFIG.TEST_TRAIN_RATIO)))
-                        train_indexes[key] = all_indexes[key][train_window[0]:train_window[1]]
-                        validation_window = (train_window[1],train_window[1] + int(length*CONFIG.TEST_TRAIN_RATIO))
-                        test_window = (validation_window[1],length)
-                        test_indexes[key] = all_indexes[key][test_window[0]:test_window[1]]
-                        validation_indexes[key] = all_indexes[key][validation_window[0]:validation_window[1]]
+            if data_split_indexes is not None:
+                train_indexes[NO_GROUP] = data_split_indexes['train_indexes']
+                test_indexes[NO_GROUP] = data_split_indexes['test_indexes']
+                validation_indexes[NO_GROUP] = data_split_indexes['validation_indexes']
             else:
-                train_indexes[KEY_NO_GROUP_BY] = data_split_indexes['train_indexes']
-                test_indexes[KEY_NO_GROUP_BY] = data_split_indexes['test_indexes']
-                validation_indexes[KEY_NO_GROUP_BY] = data_split_indexes['validation_indexes']
+                if len(group_by) > 0:
+                    for group in all_indexes:
+                        if group == NO_GROUP: continue
+                        length = len(all_indexes[group])
 
-            self.transaction.input_data.train_df = self.transaction.input_data.data_frame.loc[train_indexes[KEY_NO_GROUP_BY]].copy()
-            self.transaction.input_data.test_df = self.transaction.input_data.data_frame.loc[test_indexes[KEY_NO_GROUP_BY]].copy()
-            self.transaction.input_data.validation_df = self.transaction.input_data.data_frame.loc[validation_indexes[KEY_NO_GROUP_BY]].copy()
+                        train_a = 0
+                        train_b = round(length - length * test_train_ratio)
+                        train_indexes[group] = all_indexes[group][train_a:train_b]
+
+                        test_a = train_b
+                        test_b = train_b + round(length * test_train_ratio / 2)
+                        test_indexes[group] = all_indexes[group][test_a:test_b]
+
+                        valid_a = test_b
+                        valid_b = length
+                        validation_indexes[group] = all_indexes[group][valid_a:valid_b]
+
+                        train_indexes[NO_GROUP].extend(train_indexes[group])
+                        test_indexes[NO_GROUP].extend(test_indexes[group])
+                        validation_indexes[NO_GROUP].extend(validation_indexes[group])
+                else:
+                    length = len(all_indexes[NO_GROUP])
+
+                    # make sure that the last in the time series are also the subset used for test
+                    train_a = 0
+                    train_b = int(length * (1 - 2 * CONFIG.TEST_TRAIN_RATIO))
+                    train_indexes[NO_GROUP] = all_indexes[NO_GROUP][train_a:train_b]
+
+                    valid_a = train_b
+                    valid_b = train_b + int(length * CONFIG.TEST_TRAIN_RATIO)
+                    validation_indexes[NO_GROUP] = all_indexes[NO_GROUP][valid_a:valid_b]
+
+                    test_a = valid_b
+                    test_b = length
+                    test_indexes[NO_GROUP] = all_indexes[NO_GROUP][test_a:test_b]
+
+            self.transaction.input_data.train_df = self.transaction.input_data.data_frame.loc[train_indexes[NO_GROUP]].copy()
+            self.transaction.input_data.test_df = self.transaction.input_data.data_frame.loc[test_indexes[NO_GROUP]].copy()
+            self.transaction.input_data.validation_df = self.transaction.input_data.data_frame.loc[validation_indexes[NO_GROUP]].copy()
+
+            if self.transaction.lmd['tss']['is_timeseries']:
+                historical_train = deepcopy(self.transaction.input_data.train_df)
+                historical_train['make_predictions'] = [False] * len(historical_train)
+
+                historical_test = deepcopy(self.transaction.input_data.test_df)
+                historical_test['make_predictions'] = [False] * len(historical_test)
+
+                self.transaction.input_data.test_df['make_predictions'] = [True] * len(self.transaction.input_data.test_df)
+                self.transaction.input_data.test_df = pd.concat([self.transaction.input_data.test_df,historical_train])
+
+                self.transaction.input_data.validation_df['make_predictions'] = [True] * len(self.transaction.input_data.validation_df)
+                self.transaction.input_data.validation_df = pd.concat([self.transaction.input_data.validation_df,historical_test,deepcopy(historical_train)])
 
             self.transaction.input_data.data_frame = None
 
@@ -104,3 +107,4 @@ class DataSplitter(BaseModule):
             self.log.info('We have split the input data into:')
             self.log.infoChart(data, type='pie')
 
+        return all_indexes, train_indexes, test_indexes, validation_indexes

@@ -1,9 +1,12 @@
+from copy import deepcopy
+
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.helpers.text_helpers import hashtext
 from mindsdb_native.external_libs.stats import calculate_sample_size
+from mindsdb_native.libs.helpers.query_composer import create_history_query
 
 from pandas.api.types import is_numeric_dtype
 import random
@@ -51,13 +54,14 @@ class DataExtractor(BaseModule):
         """
 
         # apply order by (group_by, order_by)
-        if self.transaction.lmd['model_is_time_series']:
-            asc_values = [order_tuple[ORDER_BY_KEYS.ASCENDING_VALUE] for order_tuple in self.transaction.lmd['model_order_by']]
-            sort_by = [order_tuple[ORDER_BY_KEYS.COLUMN] for order_tuple in self.transaction.lmd['model_order_by']]
+        if self.transaction.lmd['tss']['is_timeseries']:
+            asc_values = [True for _ in self.transaction.lmd['tss']['order_by']]
+            sort_by = self.transaction.lmd['tss']['order_by']
 
-            if self.transaction.lmd['model_group_by']:
-                sort_by = self.transaction.lmd['model_group_by'] + sort_by
-                asc_values = [True for i in self.transaction.lmd['model_group_by']] + asc_values
+            if self.transaction.lmd['tss']['group_by'] is not None:
+                sort_by = self.transaction.lmd['tss']['group_by'] + sort_by
+                asc_values = [True for _ in self.transaction.lmd['tss']['group_by']] + asc_values
+
             df = df.sort_values(sort_by, ascending=asc_values)
 
         # if its not a time series, randomize the input data and we are learning
@@ -87,6 +91,43 @@ class DataExtractor(BaseModule):
                 # if no data frame yet, make one
                 df = self._data_from_when()
 
+            if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries']:
+                if 'make_predictions' not in df.columns:
+                    df['make_predictions'] = [True] * len(df)
+
+                setup_args = deepcopy(self.transaction.lmd['setup_args'])
+
+
+                if len(df) > 1 and self.transaction.lmd['tss']['group_by'] is not None:
+                    encountered_set = set()
+                    unique_group_by_rows = []
+                    for i in range(len(df)):
+                        val_tuple = tuple()
+                        for group_col in self.transaction.lmd['tss']['group_by']:
+                            val_tuple = tuple([*val_tuple,df.iloc[i][group_col]])
+                            if val_tuple not in encountered_set:
+                                encountered_set.add(val_tuple)
+                                unique_group_by_rows.append(df.iloc[i])
+                else:
+                    unique_group_by_rows = [df.iloc[0]]
+
+                historical_df = None
+
+                for row in unique_group_by_rows:
+                    setup_args['query'] = create_history_query(setup_args['query'], self.transaction.lmd['tss'], self.transaction.lmd['stats_v2'], row)
+
+                    if historical_df is None:
+                        historical_df = self.transaction.hmd['from_data_type'](**setup_args)._df
+                    else:
+                        historical_df = pd.concat(historical_df,self.transaction.hmd['from_data_type'](**setup_args)._df)
+
+                historical_df['make_predictions'] = [False] * len(historical_df)
+                for col in historical_df.columns:
+                    if df[col].iloc[0] is not None:
+                        historical_df[col] = [type(df[col].iloc[0])(x) for x in historical_df[col]]
+
+                df = pd.concat([df,historical_df])
+
         df = self._apply_sort_conditions_to_df(df)
 
         # Mutable lists -> immutable tuples
@@ -94,7 +135,7 @@ class DataExtractor(BaseModule):
         df = df.applymap(lambda cell: tuple(cell) if isinstance(cell, list) else cell)
 
         groups = df.columns.to_series().groupby(df.dtypes).groups
-        
+
         # @TODO: Maybe move to data cleaner ? Seems kind of out of place here
         if np.dtype('datetime64[ns]') in groups:
             for colname in groups[np.dtype('datetime64[ns]')]:
@@ -134,7 +175,7 @@ class DataExtractor(BaseModule):
         # --- Dataset gets randomized or sorted (if timeseries) --- #
 
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
-        self.transaction.input_data.columns = result.columns.values.tolist()
+        self.transaction.input_data.columns = [x for x in result.columns.values.tolist() if x != 'make_predictions']
         self.transaction.lmd['columns'] = self.transaction.input_data.columns
         self.transaction.input_data.data_frame = result
         # --- Some information about the dataset gets transplanted into transaction level variables --- #

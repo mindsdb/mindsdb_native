@@ -47,13 +47,17 @@ class TestPredictor:
         with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
             mock_function):
 
-            predictor.learn(from_data=input_dataframe,
-                            to_predict='y',
-                            backend='lightwood',
-                            sample_settings={'sample_for_training': True,
-                                             'sample_for_analysis': True},
-                            stop_training_in_x_seconds=1,
-                            use_gpu=False)
+            predictor.learn(
+                from_data=input_dataframe,
+                to_predict='y',
+                backend='lightwood',
+                sample_settings={
+                    'sample_for_training': True,
+                    'sample_for_analysis': True
+                },
+                stop_training_in_x_seconds=1,
+                use_gpu=False
+            )
 
             assert mock_function.called
 
@@ -85,6 +89,8 @@ class TestPredictor:
 
         model_data = F.analyse_dataset(from_data=input_dataframe)
         for col, col_data in model_data['data_analysis_v2'].items():
+            if col == 'columns':
+                continue
             expected_type = test_column_types[col][0]
             expected_subtype = test_column_types[col][1]
             assert col_data['typing']['data_type'] == expected_type
@@ -94,7 +100,7 @@ class TestPredictor:
             assert col_data['histogram']
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
-            assert not col_data['is_foreign_key']
+            assert col_data['identifier'] is None
 
         assert isinstance(json.dumps(model_data), str)
 
@@ -129,6 +135,8 @@ class TestPredictor:
             assert mock_function.called
 
         for col, col_data in model_data['data_analysis_v2'].items():
+            if col == 'columns':
+                continue
             expected_type = test_column_types[col][0]
             expected_subtype = test_column_types[col][1]
             assert col_data['typing']['data_type'] == expected_type
@@ -138,7 +146,7 @@ class TestPredictor:
             assert col_data['histogram']
             assert 'percentage_buckets' in col_data
             assert 'nr_warnings' in col_data
-            assert not col_data['is_foreign_key']
+            assert col_data['identifier'] is None
 
     def test_ignore_columns(self):
         input_dataframe = pd.DataFrame({
@@ -153,25 +161,29 @@ class TestPredictor:
             to_predict='y',
             ignore_columns=['ignore_this'],
             stop_training_in_x_seconds=1,
-            use_gpu=False
+            use_gpu=False,
+            advanced_args={'force_column_usage': ['do_use']}
         )
         transaction = predictor.transaction
 
         assert 'do_use' in transaction.input_data.train_df.columns
         assert 'ignore_this' not in transaction.input_data.train_df.columns
 
-    def test_ignore_foreign_keys(self):
+    def test_ignore_identifiers(self):
         input_dataframe = pd.DataFrame({
-            'do_use': list(range(100)),
+            'do_use': [*range(60), *range(40)],
             'numeric_id': list(range(100)),
+            'malicious_naming': list(range(99)) + [200],
             'y': list(range(100)),
         })
 
         predictor = Predictor(name='test')
-        predictor.learn(from_data=input_dataframe,
-                        to_predict='y',
-                        stop_training_in_x_seconds=1,
-                        use_gpu=False)
+        predictor.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False
+        )
 
         transaction = predictor.transaction
 
@@ -179,13 +191,17 @@ class TestPredictor:
         # Foreign key is ignored and removed from data frames
         assert 'numeric_id' not in transaction.input_data.train_df.columns
         assert 'numeric_id' in transaction.lmd['columns_to_ignore']
+        assert 'malicious_naming' not in transaction.input_data.train_df.columns
+        assert 'malicious_naming' in transaction.lmd['columns_to_ignore']
 
         predictor = Predictor(name='test')
-        predictor.learn(from_data=input_dataframe,
-                        to_predict='y',
-                        stop_training_in_x_seconds=1,
-                        advanced_args={'handle_foreign_keys': False},
-                        use_gpu=False)
+        predictor.learn(
+            from_data=input_dataframe,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            advanced_args={'force_column_usage': ['numeric_id']},
+            use_gpu=False
+        )
 
         transaction = predictor.transaction
 
@@ -297,11 +313,12 @@ class TestPredictor:
             advanced_args={'force_predict': True}
         )
 
-        result = mdb.predict(when_data={"numeric_x": 10, 'categorical_x': 1})
+        # Test predicting using a data frame
+        result = mdb.predict(when_data=pd.DataFrame([{"numeric_x": 10, 'categorical_x': 1}]))
         explanation_new = result[0].explanation['numeric_y']
         assert isinstance(explanation_new['predicted_value'], int)
         assert isinstance(explanation_new['confidence_interval'],list)
-        assert isinstance(explanation_new['confidence_interval'][0],int)
+        assert isinstance(explanation_new['confidence_interval'][0],float)
         assert isinstance(explanation_new['important_missing_information'], list)
         assert isinstance(explanation_new['prediction_quality'], str)
 
@@ -420,56 +437,6 @@ class TestPredictor:
         assert (a2['existing_credits']['typing'][
                     'data_subtype'] == DATA_SUBTYPES.SINGLE)
 
-    @pytest.mark.skip(reason='Test gets stuck during learn call, need investigation')
-    @pytest.mark.slow
-    def test_timeseries(self, tmp_path):
-        ts_hours = 12
-        data_len = 120
-        train_file_name = os.path.join(str(tmp_path), 'train_data.csv')
-        test_file_name = os.path.join(str(tmp_path), 'test_data.csv')
-
-        features = generate_value_cols(['date', 'int'], data_len, ts_hours * 3600)
-        labels = [generate_timeseries_labels(features)]
-
-        feature_headers = list(map(lambda col: col[0], features))
-        label_headers = list(map(lambda col: col[0], labels))
-
-        # Create the training dataset and save it to a file
-        columns_train = list(
-            map(lambda col: col[1:int(len(col) * 3 / 4)], features))
-        columns_train.extend(
-            list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
-        columns_to_file(columns_train, train_file_name, headers=[*feature_headers,
-                                                                 *label_headers])
-        # Create the testing dataset and save it to a file
-        columns_test = list(
-            map(lambda col: col[int(len(col) * 3 / 4):], features))
-        columns_to_file(columns_test, test_file_name, headers=feature_headers)
-
-        mdb = Predictor(name='test_timeseries')
-
-        mdb.learn(
-            from_data=train_file_name,
-            to_predict=label_headers,
-            order_by=feature_headers[0],
-            # ,window_size_seconds=ts_hours* 3600 * 1.5
-            window_size=3,
-            stop_training_in_x_seconds=1,
-            use_gpu=False
-        )
-
-        results = mdb.predict(when_data=test_file_name, use_gpu=False)
-
-        for row in results:
-            expect_columns = [label_headers[0],
-                              label_headers[0] + '_confidence']
-            for col in expect_columns:
-                assert col in row
-
-        models = F.get_models()
-        model_data = F.get_model_data(models[0]['name'])
-        assert model_data
-
     def test_multilabel_prediction(self, tmp_path):
         train_file_name = os.path.join(str(tmp_path), 'train_data.csv')
         test_file_name = os.path.join(str(tmp_path), 'test_data.csv')
@@ -528,11 +495,12 @@ class TestPredictor:
         Tests whole pipeline from downloading the dataset to making predictions and explanations.
         """
         # Create & Learn
-        mdb = Predictor(name='home_rentals_price')
+        name = 'home_rentals_price'
+        mdb = Predictor(name=name)
         mdb.learn(to_predict='rental_price',
                   from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
                   backend='lightwood',
-                  stop_training_in_x_seconds=180,
+                  stop_training_in_x_seconds=80,
                   use_gpu=use_gpu)
 
         def assert_prediction_interface(predictions):
@@ -551,7 +519,7 @@ class TestPredictor:
         predictions = mdb.predict(when_data={'sqft': 300}, use_gpu=use_gpu)
         assert_prediction_interface(predictions)
 
-        amd = F.get_model_data('home_rentals_price')
+        amd = F.get_model_data(name)
         assert isinstance(json.dumps(amd), str)
 
         for k in ['status', 'name', 'version', 'data_source', 'current_phase',
@@ -582,7 +550,7 @@ class TestPredictor:
         for k in ['train', 'test', 'valid']:
             assert isinstance(model_analysis[0][k + '_data_accuracy'], dict)
             assert len(model_analysis[0][k + '_data_accuracy']) == 1
-            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.60
+            assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.4
 
         for column, importance in zip(input_importance["x"],
                                       input_importance["y"]):
@@ -590,7 +558,15 @@ class TestPredictor:
             assert (len(column) > 0)
             assert isinstance(importance, (float, int))
             assert (importance >= 0 and importance <= 10)
-            
+
+        # Test confidence estimation after save -> load
+        p = None
+        F.export_predictor(name)
+        F.import_model(f"{name}.zip", f"{name}-new")
+        p = Predictor(name=f'{name}-new')
+        predictions = p.predict(when_data={'sqft': 1000}, use_gpu=use_gpu, run_confidence_variation_analysis=True)
+        assert_prediction_interface(predictions)
+
     @pytest.mark.slow
     def test_category_tags_input(self):
         vocab = random.sample(SMALL_VOCAB, 10)
@@ -621,7 +597,7 @@ class TestPredictor:
 
         predictor.learn(from_data=df_train, to_predict='y',
                         advanced_args=dict(deduplicate_data=False),
-                        stop_training_in_x_seconds=60,
+                        stop_training_in_x_seconds=40,
                         use_gpu=False)
 
         model_data = F.get_model_data('test')
@@ -636,7 +612,7 @@ class TestPredictor:
             predicted_y.append(predictions[i]['y'])
 
         score = accuracy_score(test_y, predicted_y)
-        assert score >= 0.3
+        assert score >= 0.2
 
     @pytest.mark.slow
     def test_category_tags_output(self):
@@ -701,7 +677,8 @@ class TestPredictor:
                     'validation_indexes': [*range(0, 30)],
                     'train_indexes': [*range(30, 60)],
                     'test_indexes': [*range(60, 100)]
-                }
+                },
+                'force_column_usage': ['col_a', 'col_b']
             },
             use_gpu=False
         )

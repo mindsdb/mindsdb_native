@@ -26,6 +26,11 @@ with open('requirements.txt', 'r') as req_file:
 with open('requirements_test.txt', 'r') as req_file:
     test_requirements = [req.strip() for req in req_file.read().splitlines()]
 
+snowflake_requirements = []
+with open('optional_requirements_snowflake.txt', 'r') as fp:
+    for line in fp:
+        snowflake_requirements.append(line.rstrip('\n'))
+
 extra_data_sources_requirements = []
 with open('optional_requirements_extra_data_sources.txt', 'r') as fp:
     for line in fp:
@@ -79,6 +84,7 @@ setuptools.setup(
         'extra_data_sources': extra_data_sources_requirements
         ,'ludwig_model': ludwig_model_requirements
         ,'beta': beta_requirements
+        ,'snowflake': snowflake_requirements
     },
     tests_require = test_requirements,
     dependency_links=dependency_links,

@@ -327,14 +327,15 @@ class DataAnalyzer(BaseModule):
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     delimiter = self.transaction.lmd.get('tags_delimiter', ',')
-                    data = [[x.strip() for x in item.split(delimiter)] for item in col_data]
                     stats_v2[col_name]['tag_hist'] = Counter()
-                    for arr in data:
+                    for item in col_data:
+                        arr = [x.strip() for x in item.split(delimiter)]
                         stats_v2[col_name]['tag_hist'].update(arr)
-                    stats_v2[col_name]['guess_probability'] = sum((v / len(data))**2 for v in stats_v2[col_name]['tag_hist'].values())
+                    stats_v2[col_name]['guess_probability'] = np.mean([(v / len(col_data))**2 for v in stats_v2[col_name]['tag_hist'].values()])
+                    stats_v2[col_name]['balanced_guess_probability'] = 0.5
                 else:
-                    total = sum(histogram['y'])
-                    stats_v2[col_name]['guess_probability'] = sum((v / total)**2 for v in histogram['y'])
+                    stats_v2[col_name]['guess_probability'] = sum((k / len(col_data))**2 for k in histogram['y'])
+                    stats_v2[col_name]['balanced_guess_probability'] = 1 / len(histogram['y'])
 
         self.transaction.lmd['data_preparation']['accepted_margin_of_error'] = self.transaction.lmd['sample_settings']['sample_margin_of_error']
 

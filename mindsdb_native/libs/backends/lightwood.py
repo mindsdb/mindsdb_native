@@ -1,38 +1,41 @@
+import copy
+from pathlib import Path
+from collections import defaultdict
 from lightwood.constants.lightwood import ColumnDataTypes
 
 import numpy as np
 import pandas as pd
 import lightwood
 
+from lightwood.constants.lightwood import ColumnDataTypes
+
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
-
+from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
 class LightwoodBackend():
 
     def __init__(self, transaction):
         self.transaction = transaction
         self.predictor = None
-
-    def _get_group_by_key(self, group_by, row):
-        gb_lookup_key = '!!@@!!'
-        for column in group_by:
-            gb_lookup_key += f'{column}_{row[column]}_!!@@!!'
-        return gb_lookup_key
+        self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
+        self.nn_mixer_only = False
 
     def _create_timeseries_df(self, original_df):
-        group_by = self.transaction.lmd['model_group_by']
-        order_by = [x[0] for x in self.transaction.lmd['model_order_by']]
-        nr_samples = self.transaction.lmd['window_size']
+        group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
+        order_by = self.transaction.lmd['tss']['order_by']
+        window = self.transaction.lmd['tss']['window']
 
-        group_by_ts_map = {}
+        secondary_type_dict = {}
+        for col in order_by:
+            if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
+                secondary_type_dict[col] = ColumnDataTypes.DATETIME
+            else:
+                secondary_type_dict[col] = ColumnDataTypes.NUMERIC
 
+        # Convert order_by columns to numbers
         for _, row in original_df.iterrows():
-            gb_lookup_key = self._get_group_by_key(group_by, row)
-            if gb_lookup_key not in group_by_ts_map:
-                group_by_ts_map[gb_lookup_key] = []
-
             for col in order_by:
                 if row[col] is None:
                     row[col] = 0.0
@@ -41,44 +44,94 @@ class LightwoodBackend():
                 except Exception:
                     try:
                         row[col] = float(row[col].timestamp())
+                        secondary_type_dict[col] = ColumnDataTypes.DATETIME
                     except Exception:
                         error_msg = f'Backend Lightwood does not support ordering by the column: {col} !, Faulty value: {row[col]}'
                         self.transaction.log.error(error_msg)
                         raise ValueError(error_msg)
 
-            group_by_ts_map[gb_lookup_key].append(row)
+        # TODO: use pandas.DataFrame.groupby, the issue is that it raises
+        # an exception when len(group_by) is equal to 0
+        # (when no ['tss']['group_by'] is provided)
+        # Make groups
+        ts_groups = defaultdict(list)
+        for _, row in original_df.iterrows():
+            ts_groups[tuple(row[group_by])].append(row)
 
-        for k in group_by_ts_map:
-            group_by_ts_map[k] = pd.DataFrame.from_records(group_by_ts_map[k], columns=original_df.columns)
-            group_by_ts_map[k] = group_by_ts_map[k].sort_values(by=order_by)
+        # Convert each group to pandas.DataFrame
+        for group in ts_groups:
+            ts_groups[group] = pd.DataFrame.from_records(
+                ts_groups[group],
+                columns=original_df.columns
+            )
 
-            for order_col in order_by:
-                for i in range(0,len(group_by_ts_map[k])):
-                    group_by_ts_map[k][order_col] = group_by_ts_map[k][order_col].astype(object)
+        # Sort each group by order_by columns
+        for group in ts_groups:
+            ts_groups[group].sort_values(by=order_by, inplace=True)
 
+        # Make type `object` so that dataframe cells can be python lists
+        for group in ts_groups:
+            ts_groups[group] = ts_groups[group].astype(object)
 
-                    numerical_value = float(group_by_ts_map[k][order_col].iloc[i])
-                    arr_val = [str(numerical_value)]
+        # Make all order column cells lists
+        for group in ts_groups:
+            for order_col in order_by + self.transaction.lmd['tss']['historical_columns']:
+                for i in range(len(ts_groups[group])):
+                    ts_groups[group][order_col].iloc[i] = [
+                        ts_groups[group][order_col].iloc[i]
+                    ]
 
-                    group_by_ts_map[k][order_col].iat[i] = arr_val
+        # Add previous rows
+        for group in ts_groups:
+            for order_col in order_by + self.transaction.lmd['tss']['historical_columns']:
+                for i in range(len(ts_groups[group])):
+                    previous_indexes = [*range(max(0, i - window), i)]
 
-                    previous_indexes = list(range(i - nr_samples, i))
-                    previous_indexes = [x for x in previous_indexes if x >= 0]
-                    previous_indexes.reverse()
+                    for prev_i in reversed(previous_indexes):
+                        ts_groups[group][order_col].iloc[i].append(
+                            ts_groups[group][order_col].iloc[prev_i][-1]
+                        )
 
-                    for prev_i in previous_indexes:
-                        group_by_ts_map[k].iloc[i][order_col].append(group_by_ts_map[k][order_col].iloc[prev_i].split(' ')[-1])
+                    # Zeor pad
+                    # @TODO: Remove since RNN encoder can do without (???)
+                    ts_groups[group].iloc[i][order_col].extend(
+                        [0] * (1 + window - len(ts_groups[group].iloc[i][order_col]))
+                    )
 
-                    while len(group_by_ts_map[k].iloc[i][order_col]) <= nr_samples:
-                        group_by_ts_map[k].iloc[i][order_col].append('0')
+                    ts_groups[group].iloc[i][order_col].reverse()
 
-                    group_by_ts_map[k].iloc[i][order_col].reverse()
-                    group_by_ts_map[k][order_col].iat[i] = ' '.join(group_by_ts_map[k].iloc[i][order_col])
+        if self.transaction.lmd['tss']['use_previous_target']:
+            for target_column in self.transaction.lmd['predict_columns']:
+                for k in ts_groups:
+                    previous_target_values = list(ts_groups[k][target_column])
+                    del previous_target_values[-1]
+                    previous_target_values = [None] + previous_target_values
 
-        combined_df = pd.concat(list(group_by_ts_map.values()))
-        return combined_df
+                    previous_target_values_arr = []
+                    for i in range(len(previous_target_values)):
+                        arr = previous_target_values[max(i-window,0):i+1]
+                        while len(arr) <= window:
+                            arr = [None] + arr
+                        previous_target_values_arr.append(arr)
 
-    def _create_lightwood_config(self):
+                    ts_groups[k][f'previous_{target_column}'] = previous_target_values_arr
+                    for timestep_index in range(1, self.nr_predictions):
+                        next_target_value_arr = list(ts_groups[k][target_column])
+                        for del_index in range(0,timestep_index):
+                            del next_target_value_arr[del_index]
+                            next_target_value_arr.append(0)
+                        # @TODO: Maybe ignore the rows with `None` next targets for training
+                        ts_groups[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
+
+        combined_df = pd.concat(list(ts_groups.values()))
+
+        if 'make_predictions' in combined_df.columns:
+            combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
+            del combined_df['make_predictions']
+
+        return combined_df, secondary_type_dict
+
+    def _create_lightwood_config(self, secondary_type_dict):
         config = {}
 
         config['input_features'] = []
@@ -120,13 +173,15 @@ class LightwoodBackend():
 
             elif data_subtype == DATA_SUBTYPES.ARRAY:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
+                self.nn_mixer_only = True
 
             else:
                 self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
                 raise Exception('Failed to build data definition for Lightwood model backend')
 
-            if col_name in [x[0] for x in self.transaction.lmd['model_order_by']]:
+            if self.transaction.lmd['tss']['is_timeseries'] and col_name in self.transaction.lmd['tss']['order_by']:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
+                self.nn_mixer_only = True
 
             col_config = {
                 'name': col_name,
@@ -140,41 +195,76 @@ class LightwoodBackend():
             if col_name in self.transaction.lmd['weight_map']:
                 col_config['weights'] = self.transaction.lmd['weight_map'][col_name]
 
+            if col_name in secondary_type_dict:
+                col_config['secondary_type'] = secondary_type_dict[col_name]
+
             col_config.update(other_keys)
 
             if col_name in self.transaction.lmd['predict_columns']:
+                if self.transaction.lmd['tss']['is_timeseries']:
+                    col_config['additional_info'] = {
+                        'nr_predictions': self.transaction.lmd['tss']['nr_predictions']
+                    }
                 config['output_features'].append(col_config)
-            else:
-                config['input_features'].append(col_config)
 
+                if self.transaction.lmd['tss']['use_previous_target']:
+                    p_col_config = copy.deepcopy(col_config)
+                    p_col_config['name'] = f"previous_{p_col_config['name']}"
+                    p_col_config['original_type'] = col_config['type']
+                    p_col_config['type'] = ColumnDataTypes.TIME_SERIES
+
+                    if 'secondary_type' in col_config:
+                        p_col_config['secondary_type'] = col_config['secondary_type']
+
+                    config['input_features'].append(p_col_config)
+
+                if self.nr_predictions > 1:
+                    self.transaction.lmd['stats_v2'][col_name]['typing']['data_subtype'] = DATA_SUBTYPES.ARRAY
+                    self.transaction.lmd['stats_v2'][col_name]['typing']['data_type'] = DATA_TYPES.SEQUENTIAL
+                    for timestep_index in range(1,self.nr_predictions):
+                        additional_target_config = copy.deepcopy(col_config)
+                        additional_target_config['name'] = f'{col_name}_timestep_{timestep_index}'
+                        config['output_features'].append(additional_target_config)
+            else:
+                if self.transaction.lmd['tss']['historical_columns']:
+                    if 'secondary_type' in col_config:
+                        col_config['secondary_type'] = col_config['secondary_type']
+                    col_config['type'] = ColumnDataTypes.TIME_SERIES
+
+                config['input_features'].append(col_config)
 
         config['data_source'] = {}
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
 
-        config['mixer'] = {}
-        config['mixer']['selfaware'] = self.transaction.lmd['use_selfaware_model']
+        config['mixer'] = {
+            'class': lightwood.mixers.NnMixer,
+            'kwargs': {
+                'selfaware': self.transaction.lmd['use_selfaware_model']
+            }
+        }
 
         return config
 
     def callback_on_iter(self, epoch, mix_error, test_error, delta_mean, accuracy):
-        test_error_rounded = round(test_error,4)
+        test_error_rounded = round(test_error, 4)
         for col in accuracy:
             value = accuracy[col]['value']
             if accuracy[col]['function'] == 'r2_score':
-                value_rounded = round(value,3)
+                value_rounded = round(value, 3)
                 self.transaction.log.debug(f'We\'ve reached training epoch nr {epoch} with an r2 score of {value_rounded} on the testing dataset')
             else:
-                value_pct = round(value * 100,2)
+                value_pct = round(value * 100, 2)
                 self.transaction.log.debug(f'We\'ve reached training epoch nr {epoch} with an accuracy of {value_pct}% on the testing dataset')
 
     def train(self):
         if self.transaction.lmd['use_gpu'] is not None:
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
-        if self.transaction.lmd['model_order_by'] is not None and len(self.transaction.lmd['model_order_by']) > 0:
+        secondary_type_dict = {}
+        if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
-            train_df = self._create_timeseries_df(self.transaction.input_data.train_df)
-            test_df = self._create_timeseries_df(self.transaction.input_data.test_df)
+            train_df, secondary_type_dict = self._create_timeseries_df(self.transaction.input_data.train_df)
+            test_df, _ = self._create_timeseries_df(self.transaction.input_data.test_df)
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
             if self.transaction.lmd['sample_settings']['sample_for_training']:
@@ -183,15 +273,19 @@ class LightwoodBackend():
                 sample_percentage = self.transaction.lmd['sample_settings']['sample_percentage']
                 sample_function = self.transaction.hmd['sample_function']
 
-                train_df = sample_function(self.transaction.input_data.train_df,
-                                       sample_margin_of_error,
-                                       sample_confidence_level,
-                                       sample_percentage)
+                train_df = sample_function(
+                    self.transaction.input_data.train_df,
+                    sample_margin_of_error,
+                    sample_confidence_level,
+                    sample_percentage
+                )
 
-                test_df = sample_function(self.transaction.input_data.test_df,
-                                       sample_margin_of_error,
-                                       sample_confidence_level,
-                                       sample_percentage)
+                test_df = sample_function(
+                    self.transaction.input_data.test_df,
+                    sample_margin_of_error,
+                    sample_confidence_level,
+                    sample_percentage
+                )
 
                 sample_size = len(train_df)
                 population_size = len(self.transaction.input_data.train_df)
@@ -201,34 +295,138 @@ class LightwoodBackend():
                 train_df = self.transaction.input_data.train_df
                 test_df = self.transaction.input_data.test_df
 
-        lightwood_config = self._create_lightwood_config()
+        lightwood_config = self._create_lightwood_config(secondary_type_dict)
 
+        lightwood_train_ds = lightwood.api.data_source.DataSource(
+            train_df,
+            config=lightwood_config
+        )
+        lightwood_test_ds = lightwood_train_ds.make_child(test_df)
 
-        self.predictor = lightwood.Predictor(lightwood_config)
-
-        # Evaluate less often for larger datasets and vice-versa
-        eval_every_x_epochs = int(round(1 * pow(10,6) * (1/len(train_df))))
-
-        # Within some limits
-        if eval_every_x_epochs > 200:
-            eval_every_x_epochs = 200
-        if eval_every_x_epochs < 3:
-            eval_every_x_epochs = 3
+        self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
+        Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.transaction.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
 
         logging.getLogger().setLevel(logging.DEBUG)
-        if self.transaction.lmd['stop_training_in_x_seconds'] is None:
-            self.predictor.learn(from_data=train_df, test_data=test_df, callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
+
+        reasonable_training_time = train_df.shape[0] * train_df.shape[1] / 20
+
+        predictors_and_accuracies = []
+
+        use_mixers = self.transaction.lmd.get('use_mixers', None)
+        stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
+        if use_mixers is not None:
+            if isinstance(use_mixers, list):
+                mixer_classes = use_mixers
+            else:
+                mixer_classes = [use_mixers]
         else:
-            self.predictor.learn(from_data=train_df, test_data=test_df, stop_training_after_seconds=self.transaction.lmd['stop_training_in_x_seconds'], callback_on_iter=self.callback_on_iter, eval_every_x_epochs=eval_every_x_epochs)
+            mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+            if stop_training_after is not None:
+                if stop_training_after > reasonable_training_time:
+                    mixer_classes = [lightwood.mixers.BoostMixer, lightwood.mixers.NnMixer]
+                    stop_training_after = stop_training_after/len(mixer_classes)
+                elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
+                    mixer_classes = [lightwood.mixers.NnMixer]
+                else:
+                    # Should probably be `lightwood.mixers.BoostMixer` but using NnMixer as it's the best tested at the moment
+                    mixer_classes = [lightwood.mixers.NnMixer]
 
-        self.transaction.log.info('Training accuracy of: {}'.format(self.predictor.train_accuracy))
+            # If dataset is too large only use NnMixer
+            if train_df.shape[0] * train_df.shape[1] > 3 * pow(10, 5):
+                mixer_classes = [lightwood.mixers.NnMixer]
 
-        self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_lightwood_data')
+        if self.nn_mixer_only:
+            mixer_classes = [lightwood.mixers.nn.NnMixer]
+
+        for mixer_class in mixer_classes:
+            lightwood_config['mixer']['kwargs'] = {}
+            lightwood_config['mixer']['class'] = mixer_class
+
+            if lightwood_config['mixer']['class'] == lightwood.mixers.NnMixer:
+                # Evaluate less often for larger datasets and vice-versa
+                eval_every_x_epochs = int(round(1 * pow(10, 6) * (1 / len(train_df))))
+
+                # Within some limits
+                if eval_every_x_epochs > 200:
+                    eval_every_x_epochs = 200
+                if eval_every_x_epochs < 3:
+                    eval_every_x_epochs = 3
+
+                kwargs = lightwood_config['mixer']['kwargs']
+
+                kwargs['callback_on_iter'] = self.callback_on_iter
+                kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
+
+                if stop_training_after is not None:
+                    kwargs['stop_training_after_seconds'] = stop_training_after
+
+            self.predictor = lightwood.Predictor(lightwood_config.copy())
+
+            try:
+                self.predictor.learn(
+                    from_data=lightwood_train_ds,
+                    test_data=lightwood_test_ds
+                )
+            except Exception:
+                if self.transaction.lmd['debug']:
+                    raise
+                else:
+                    self.transaction.log.error('Exception while running {}'.format(mixer_class.__name__))
+                    continue
+
+            self.transaction.log.info('[{}] Training accuracy of: {}'.format(
+                mixer_class.__name__,
+                self.predictor.train_accuracy
+            ))
+
+            validation_predictions = self.predict('validate')
+
+            validation_df = self.transaction.input_data.validation_df
+            if self.transaction.lmd['tss']['is_timeseries']:
+                validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
+
+            validation_accuracy = evaluate_accuracy(
+                validation_predictions,
+                self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df, 
+                self.transaction.lmd['stats_v2'],
+                self.transaction.lmd['predict_columns'],
+                backend=self,
+                use_conf_intervals=False # r2_score will be used for regression
+            )
+
+            predictors_and_accuracies.append((
+                self.predictor,
+                validation_accuracy
+            ))
+
+        if len(predictors_and_accuracies) == 0:
+            raise Exception('All models failed')
+
+        best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
+
+        # Find predictor with NnMixer
+        for predictor, accuracy in predictors_and_accuracies:
+            if isinstance(predictor._mixer, lightwood.mixers.NnMixer):
+                nn_mixer_predictor, nn_mixer_predictor_accuracy = predictor, accuracy
+                break
+        else:
+            nn_mixer_predictor, nn_mixer_predictor_accuracy = None, None
+
+        self.predictor = best_predictor
+
+        # If difference between accuracies of best predictor and NnMixer predictor
+        # is small, then use NnMixer predictor
+        if nn_mixer_predictor is not None:
+            SMALL_ACCURACY_DIFFERENCE = 0.01
+            if (best_accuracy - nn_mixer_predictor_accuracy) < SMALL_ACCURACY_DIFFERENCE:
+                self.predictor = nn_mixer_predictor
+
         self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
 
-    def predict(self, mode='predict', ignore_columns=None):
+    def predict(self, mode='predict', ignore_columns=None, all_mixers=False):
         if ignore_columns is None:
             ignore_columns = []
+
         if self.transaction.lmd['use_gpu'] is not None:
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
@@ -243,8 +441,8 @@ class LightwoodBackend():
         else:
             raise Exception(f'Unknown mode specified: "{mode}"')
 
-        if self.transaction.lmd['model_order_by'] is not None and len(self.transaction.lmd['model_order_by']) > 0:
-            df = self._create_timeseries_df(df)
+        if self.transaction.lmd['tss']['is_timeseries']:
+            df, _ = self._create_timeseries_df(df)
 
         if self.predictor is None:
             self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
@@ -260,12 +458,21 @@ class LightwoodBackend():
         predictions = self.predictor.predict(when_data=run_df)
 
         formated_predictions = {}
+
         for k in predictions:
+            if '_timestep_' in k:
+                continue
+
             formated_predictions[k] = predictions[k]['predictions']
+
+            if self.nr_predictions > 1:
+                formated_predictions[k] = [[x] for x in formated_predictions[k]]
+                for timestep_index in range(1,self.nr_predictions):
+                    for i in range(len(formated_predictions[k])):
+                        formated_predictions[k][i].append(predictions[f'{k}_timestep_{timestep_index}']['predictions'][i])
 
             model_confidence_dict = {}
             for confidence_name in ['selfaware_confidences','loss_confidences', 'quantile_confidences']:
-
                 if confidence_name in predictions[k]:
                     if k not in model_confidence_dict:
                         model_confidence_dict[k] = []
@@ -284,7 +491,7 @@ class LightwoodBackend():
             for k in model_confidence_dict:
                 model_confidence_dict[k] = [np.mean(x) for x in model_confidence_dict[k]]
 
-            for k  in model_confidence_dict:
+            for k in model_confidence_dict:
                 formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]
 
             if 'confidence_range' in predictions[k]:

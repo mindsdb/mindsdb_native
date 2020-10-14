@@ -17,7 +17,17 @@ class ClickhouseDS(DataSource):
             err_msg = 'Please refrain from adding a "FORMAT" statement to the query'
             log.error(err_msg)
             raise Exception(err_msg)
-        
+
+        self.setup_args = {
+                'query' : query
+                ,'host' : host
+                ,'user' : user
+                ,'password' : password
+                ,'port' : port
+                ,'protocol' : protocol
+        }
+
+
         query = '{} FORMAT JSON'.format(query.rstrip(" ;\n"))
         log.info(f'Getting data via the query: "{query}"')
 
@@ -26,7 +36,7 @@ class ClickhouseDS(DataSource):
             params['password'] = password
 
         response = requests.post(f'{protocol}://{host}:{port}', data=query, params=params)
-        
+
         try:
             data = response.json()['data']
         except:
@@ -34,7 +44,7 @@ class ClickhouseDS(DataSource):
             raise Exception(response.text)
 
         df = pd.DataFrame(data)
-        
+
         col_map = {}
         for col in df.columns:
             col_map[col] = col
