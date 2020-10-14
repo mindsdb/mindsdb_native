@@ -1,8 +1,8 @@
+import unittest
 import json
 import random
 from unittest import mock
 
-import pytest
 import os
 import numpy as np
 import pandas as pd
@@ -32,7 +32,7 @@ from unit_tests.utils import (
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
-class TestPredictor:
+class TestPredictor(unittest.TestCase):
     def test_sample_for_training(self):
         predictor = Predictor(name='test')
 
@@ -41,14 +41,11 @@ class TestPredictor:
             'numeric_int': [x % 10 for x in list(range(n_points))],
             'categorical_binary': [0, 1] * (n_points // 2),
         }, index=list(range(n_points)))
-        input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int*input_dataframe.categorical_binary
+        input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int * input_dataframe.categorical_binary
 
-        mock_function = PickableMock(spec=sample_data,
-                                       wraps=sample_data)
+        mock_function = PickableMock(spec=sample_data, wraps=sample_data)
         setattr(mock_function, '__name__', 'mock_sample_data')
-        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
-            mock_function):
-
+        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data', mock_function):
             predictor.learn(
                 from_data=input_dataframe,
                 to_predict='y',
@@ -74,17 +71,10 @@ class TestPredictor:
         input_dataframe = pd.DataFrame({
             'numeric_int': [x % 10 for x in list(range(n_points))],
             'numeric_float': np.linspace(0, n_points, n_points),
-            'date_timestamp': [
-                (datetime.now() - timedelta(minutes=int(i))).isoformat() for i in
-                range(n_points)],
-            'date_date': [
-                (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in
-                range(n_points)],
-            'categorical_str': [f'a{x}' for x in (
-                    list(range(n_category_values)) * (
-                        n_points // n_category_values))],
-            'categorical_int': [x for x in (list(range(n_category_values)) * (
-                    n_points // n_category_values))],
+            'date_timestamp': [(datetime.now() - timedelta(minutes=int(i))).isoformat() for i in range(n_points)],
+            'date_date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
+            'categorical_str': [f'a{x}' for x in (list(range(n_category_values)) * (n_points // n_category_values))],
+            'categorical_int': [x for x in (list(range(n_category_values)) * (n_points // n_category_values))],
             'categorical_binary': [0, 1] * (n_points // 2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)]
         }, index=list(range(n_points)))
@@ -112,28 +102,21 @@ class TestPredictor:
         input_dataframe = pd.DataFrame({
             'numeric_int': [x % 10 for x in list(range(n_points))],
             'numeric_float': np.linspace(0, n_points, n_points),
-            'date_timestamp': [
-                (datetime.now() - timedelta(minutes=int(i))).isoformat() for i in
-                range(n_points)],
-            'date_date': [
-                (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in
-                range(n_points)],
-            'categorical_str': [f'a{x}' for x in (
-                list(range(n_category_values)) * (
-                n_points // n_category_values))],
-            'categorical_int': [x for x in (list(range(n_category_values)) * (
-                n_points // n_category_values))],
+            'date_timestamp': [(datetime.now() - timedelta(minutes=int(i))).isoformat() for i in range(n_points)],
+            'date_date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
+            'categorical_str': [f'a{x}' for x in (list(range(n_category_values)) * (n_points // n_category_values))],
+            'categorical_int': [x for x in (list(range(n_category_values)) * (n_points // n_category_values))],
             'categorical_binary': [0, 1] * (n_points // 2),
             'sequential_array': [f"1,2,3,4,5,{i}" for i in range(n_points)]
         }, index=list(range(n_points)))
 
-        mock_function = PickableMock(spec=sample_data,
-                                     wraps=sample_data)
+        mock_function = PickableMock(spec=sample_data, wraps=sample_data)
         setattr(mock_function, '__name__', 'mock_sample_data')
-        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data',
-                        mock_function):
-            model_data = F.analyse_dataset(from_data=input_dataframe,
-                                           sample_settings={'sample_for_analysis': True})
+        with mock.patch('mindsdb_native.libs.controllers.predictor.sample_data', mock_function):
+            model_data = F.analyse_dataset(
+                from_data=input_dataframe,
+                sample_settings={'sample_for_analysis': True}
+            )
             assert mock_function.called
 
         for col, col_data in model_data['data_analysis_v2'].items():
@@ -261,8 +244,8 @@ class TestPredictor:
         assert model_data['data_preparation']['used_row_count'] <= n_points
 
         assert sum([model_data['data_preparation']['train_row_count'],
-                   model_data['data_preparation']['validation_row_count'],
-                   model_data['data_preparation']['test_row_count']]) == n_points
+                    model_data['data_preparation']['validation_row_count'],
+                    model_data['data_preparation']['test_row_count']]) == n_points
 
         assert sum([mdb.transaction.input_data.train_df.shape[0],
                     mdb.transaction.input_data.test_df.shape[0],
@@ -295,7 +278,6 @@ class TestPredictor:
                     mdb.transaction.input_data.test_df.shape[0],
                     mdb.transaction.input_data.validation_df.shape[0]]) == n_points+1
 
-    @pytest.mark.slow
     def test_explain_prediction(self):
         mdb = Predictor(name='test_explain_prediction')
 
@@ -326,8 +308,7 @@ class TestPredictor:
 
         assert len(str(result[0])) > 20
 
-    @pytest.mark.skip(reason="Causes error in probabilistic validator")
-    @pytest.mark.slow
+    @unittest.skip(reason="Causes error in probabilistic validator")
     def test_custom_backend(self):
         predictor = Predictor(name='custom_model_test_predictor')
 
@@ -388,25 +369,31 @@ class TestPredictor:
 
         dt_model = CustomDTModel()
 
-        predictor.learn(to_predict='rental_price',
-                        from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-                        backend=dt_model,
-                        use_gpu=False)
+        predictor.learn(
+            to_predict='rental_price',
+            from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            backend=dt_model,
+            use_gpu=False
+        )
+
         predictions = predictor.predict(
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-            backend=dt_model)
+            backend=dt_model
+        )
 
         assert predictions
 
-    @pytest.mark.slow
     def test_data_source_setting(self):
         data_url = 'https://raw.githubusercontent.com/mindsdb/mindsdb-examples/master/classics/german_credit_data/processed_data/test.csv'
         data_source = FileDS(data_url)
         data_source.set_subtypes({})
 
         data_source_mod = FileDS(data_url)
-        data_source_mod.set_subtypes({'credit_usage': 'Int', 'Average_Credit_Balance': 'Short Text',
-             'existing_credits': 'Binary Category'})
+        data_source_mod.set_subtypes({
+            'credit_usage': 'Int',
+            'Average_Credit_Balance': 'Short Text',
+            'existing_credits': 'Binary Category'
+        })
 
         analysis = F.analyse_dataset(data_source)
         analysis_mod = F.analyse_dataset(data_source_mod)
@@ -453,18 +440,21 @@ class TestPredictor:
         label_headers = list(map(lambda col: col[0], labels))
 
         # Create the training dataset and save it to a file
-        columns_train = list(
-            map(lambda col: col[1:int(len(col) * 3 / 4)], features))
-        columns_train.extend(
-            list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
-        columns_to_file(columns_train, train_file_name,
-                        headers=[*feature_headers, *label_headers])
+        columns_train = list(map(lambda col: col[1:int(len(col) * 3 / 4)], features))
+        columns_train.extend(list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
+        columns_to_file(
+            columns_train,
+            train_file_name,
+            headers=[*feature_headers, *label_headers]
+        )
 
         # Create the testing dataset and save it to a file
-        columns_test = list(
-            map(lambda col: col[int(len(col) * 3 / 4):], features))
-        columns_to_file(columns_test, test_file_name,
-                        headers=feature_headers)
+        columns_test = list(map(lambda col: col[int(len(col) * 3 / 4):], features))
+        columns_to_file(
+            columns_test,
+            test_file_name,
+            headers=feature_headers
+        )
 
         mdb = Predictor(name='test_multilabel_prediction')
         mdb.learn(
@@ -487,23 +477,28 @@ class TestPredictor:
                 for col in expect_columns:
                     assert col in row
 
-    # If cuda is not available then we expect the test to fail when trying to use it
-    @pytest.mark.parametrize("use_gpu", [
-        True if torch.cuda.is_available() else pytest.param(True, marks=pytest.mark.xfail),
-        False])
-    @pytest.mark.slow
-    def test_house_pricing(self, use_gpu):
+    def test_house_pricing(self):
+        self._test_house_pricing(use_gpu=False)
+        if torch.cuda.is_available():
+            self._test_house_pricing(use_gpu=True)
+        else:
+            with self.assertRaises(Exception):
+                self._test_house_pricing(use_gpu=True)
+
+    def _test_house_pricing(self, use_gpu):
         """
         Tests whole pipeline from downloading the dataset to making predictions and explanations.
         """
         # Create & Learn
         name = 'home_rentals_price'
         mdb = Predictor(name=name)
-        mdb.learn(to_predict='rental_price',
-                  from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-                  backend='lightwood',
-                  stop_training_in_x_seconds=80,
-                  use_gpu=use_gpu)
+        mdb.learn(
+            to_predict='rental_price',
+            from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            backend='lightwood',
+            stop_training_in_x_seconds=80,
+            use_gpu=use_gpu
+        )
 
         def assert_prediction_interface(predictions):
             for prediction in predictions:
@@ -511,12 +506,15 @@ class TestPredictor:
 
         test_results = mdb.test(
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-            accuracy_score_functions=r2_score, predict_args={'use_gpu': use_gpu})
+            accuracy_score_functions=r2_score,
+            predict_args={'use_gpu': use_gpu}
+        )
         assert test_results['rental_price_accuracy'] >= 0.8
 
         predictions = mdb.predict(
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-            use_gpu=use_gpu)
+            use_gpu=use_gpu
+        )
         assert_prediction_interface(predictions)
         predictions = mdb.predict(when_data={'sqft': 300}, use_gpu=use_gpu)
         assert_prediction_interface(predictions)
@@ -525,8 +523,7 @@ class TestPredictor:
         assert isinstance(json.dumps(amd), str)
 
         for k in ['status', 'name', 'version', 'data_source', 'current_phase',
-                  'updated_at', 'created_at',
-                  'train_end_at']:
+                  'updated_at', 'created_at', 'train_end_at']:
             assert isinstance(amd[k], str)
 
         assert isinstance(amd['predict'], (list, str))
@@ -554,8 +551,7 @@ class TestPredictor:
             assert len(model_analysis[0][k + '_data_accuracy']) == 1
             assert model_analysis[0][k + '_data_accuracy']['rental_price'] > 0.4
 
-        for column, importance in zip(input_importance["x"],
-                                      input_importance["y"]):
+        for column, importance in zip(input_importance["x"], input_importance["y"]):
             assert isinstance(column, str)
             assert (len(column) > 0)
             assert isinstance(importance, (float, int))
@@ -566,10 +562,13 @@ class TestPredictor:
         F.export_predictor(name)
         F.import_model(f"{name}.zip", f"{name}-new")
         p = Predictor(name=f'{name}-new')
-        predictions = p.predict(when_data={'sqft': 1000}, use_gpu=use_gpu, run_confidence_variation_analysis=True)
+        predictions = p.predict(
+            when_data={'sqft': 1000},
+            use_gpu=use_gpu,
+            run_confidence_variation_analysis=True
+        )
         assert_prediction_interface(predictions)
 
-    @pytest.mark.slow
     def test_category_tags_input(self):
         vocab = random.sample(SMALL_VOCAB, 10)
         # tags contains up to 2 randomly selected tags
@@ -597,10 +596,13 @@ class TestPredictor:
 
         predictor = Predictor(name='test')
 
-        predictor.learn(from_data=df_train, to_predict='y',
-                        advanced_args=dict(deduplicate_data=False),
-                        stop_training_in_x_seconds=40,
-                        use_gpu=False)
+        predictor.learn(
+            from_data=df_train,
+            to_predict='y',
+            advanced_args=dict(deduplicate_data=False),
+            stop_training_in_x_seconds=40,
+            use_gpu=False
+        )
 
         model_data = F.get_model_data('test')
         assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL
@@ -616,7 +618,6 @@ class TestPredictor:
         score = accuracy_score(test_y, predicted_y)
         assert score >= 0.2
 
-    @pytest.mark.slow
     def test_category_tags_output(self):
         vocab = random.sample(SMALL_VOCAB, 10)
         vocab = {i: word for i, word in enumerate(vocab)}
@@ -640,11 +641,13 @@ class TestPredictor:
 
         predictor = Predictor('test')
 
-        predictor.learn(from_data=df_train,
-                        to_predict='tags',
-                        advanced_args=dict(deduplicate_data=False),
-                        stop_training_in_x_seconds=60,
-                        use_gpu=False)
+        predictor.learn(
+            from_data=df_train,
+            to_predict='tags',
+            advanced_args=dict(deduplicate_data=False),
+            stop_training_in_x_seconds=60,
+            use_gpu=False
+        )
 
         model_data = F.get_model_data('test')
         assert model_data['data_analysis_v2']['tags']['typing']['data_type'] == DATA_TYPES.CATEGORICAL
