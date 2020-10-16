@@ -15,7 +15,7 @@ import mindsdb_native.libs.constants.mindsdb as CONST
 
 from mindsdb_native.__about__ import __package_name__ as name, __version__
 
-from mindsdb_native.libs.controllers.predictor import Predictor
+from mindsdb_native.libs.controllers.predictor import Predictor, PandasPredictor
 
 from mindsdb_native.libs.data_sources.maria_ds import MariaDS
 from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS

@@ -11,6 +11,7 @@ from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import (
     LearnTransaction, PredictTransaction
 )
+
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import check_for_updates, load_lmd, load_hmd
 from mindsdb_native.libs.helpers.locking import MDBLock
@@ -382,3 +383,35 @@ class Predictor:
                 heavy_transaction_metadata=heavy_transaction_metadata
             )
             return self.transaction.output_data
+
+import pandas as pd
+
+@pd.api.extensions.register_dataframe_accessor("mdb")
+class PandasPredictor:
+    def __init__(self, pandas_obj):
+        self._df = pandas_obj
+        self._predictor = None
+        self._analysis = None
+
+    @property
+    def analysis(self):
+        from mindsdb_native.libs.controllers.functional import analyse_dataset
+        if self._analysis is None:
+            self._analysis = analyse_dataset(self._df)
+        return self._analysis
+
+    def learn(self, to_predict, name=None):
+        if name is None:
+            name = str(pd.util.hash_pandas_object(self._df).sum())
+
+        self._predictor = Predictor(name)
+        self._predictor.learn(from_data=self._df, to_predict=to_predict)
+
+        return name
+
+    def predict(self, name=None):
+        if name is not None:
+            predictor = Predictor(name)
+        else:
+            predictor = self._predictor
+        return predictor.predict(when_data=self._df)
