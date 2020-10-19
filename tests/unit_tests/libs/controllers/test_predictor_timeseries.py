@@ -31,7 +31,7 @@ from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class TestPredictorTimeseries:
-    @pytest.mark.slow
+    # @pytest.mark.slow
     def test_timeseries(self, tmp_path):
         ts_hours = 12
         data_len = 120
@@ -77,6 +77,9 @@ class TestPredictorTimeseries:
                               label_headers[0] + '_confidence']
             for col in expect_columns:
                 assert col in row
+
+        for row in [x.explanation[label_headers[0]] for x in results]:
+            assert row['confidence_interval'][0] <= row['predicted_value'] <= row['confidence_interval'][1]
 
         models = F.get_models()
         model_data = F.get_model_data(models[0]['name'])
