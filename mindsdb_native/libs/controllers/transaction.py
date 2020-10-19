@@ -370,6 +370,7 @@ class PredictTransaction(Transaction):
                                     significance = (99 - idx) / 100
                                     if np.sum(sample[:, idx]) == 1:
                                         output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                                        output_data[f'{predicted_col}_confidence_subset'][sample_idx] = list(sample[:, idx])
                                         break
                                 else:
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
