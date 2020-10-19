@@ -362,6 +362,9 @@ class PredictTransaction(Transaction):
 
                     elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL and not self.lmd['tss']['is_timeseries']:
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
+                            if not output_data.get(f'{predicted_col}_confidence_range', None):
+                                output_data[f'{predicted_col}_confidence_range'] = {}
+                            all_classes = self.hmd['icp'][predicted_col].nc_function.model.classes
                             all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100) for s in range(1, 100)])
                             self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
                             for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
@@ -370,7 +373,7 @@ class PredictTransaction(Transaction):
                                     significance = (99 - idx) / 100
                                     if np.sum(sample[:, idx]) == 1:
                                         output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                        output_data[f'{predicted_col}_confidence_subset'][sample_idx] = list(sample[:, idx])
+                                        output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(all_classes[sample[:, idx]])
                                         break
                                 else:
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005

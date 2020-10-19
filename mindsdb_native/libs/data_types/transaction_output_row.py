@@ -60,7 +60,7 @@ class TransactionOutputRow:
 
             answers[pred_col]['prediction_quality'] = quality
 
-            if self._col_stats[pred_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE):
+            if self._col_stats[pred_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE, DATA_TYPES.CATEGORICAL):
                 if f'{pred_col}_confidence_range' in prediction_row:
                     answers[pred_col]['confidence_interval'] = prediction_row[f'{pred_col}_confidence_range']
 

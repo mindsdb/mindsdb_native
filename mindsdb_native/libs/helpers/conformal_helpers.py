@@ -62,6 +62,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
     def __init__(self, model, fit_params=None):
         super(ConformalClassifierAdapter, self).__init__(model, fit_params)
         self.target = fit_params['target']
+        self.classes = None
         self.columns = fit_params['all_columns']
         self.ignore_columns = fit_params['columns_to_ignore']
 
@@ -91,4 +92,6 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         predictions = self.model.predict(when_data=x)
         ys = np.array(predictions[self.target]['predictions'])
         ys = self.fit_params['one_hot_enc'].transform(ys.reshape(-1, 1))  # ideally, complete class distribution here
+        if self.classes is None:
+            self.classes = self.fit_params['one_hot_enc'].categories_[0]
         return ys
