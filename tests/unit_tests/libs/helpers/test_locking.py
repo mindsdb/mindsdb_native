@@ -1,4 +1,4 @@
-import pytest
+import unittest
 from mindsdb_native.libs.helpers.locking import MDBLock
 import portalocker
 
@@ -13,9 +13,9 @@ def func():
 def test_exclusive_lock():
     lock = MDBLock('exclusive', 'name')
 
-    with pytest.raises(ExceptionForTest):
+    with unittest.assertRaises(ExceptionForTest):
         lock(func)()
 
-    with pytest.raises(ExceptionForTest):
+    with unittest.assertRaises(ExceptionForTest):
         with lock:
             func()

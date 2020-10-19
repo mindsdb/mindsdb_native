@@ -55,7 +55,6 @@ class TestDataAnalyzer:
             result[k]['typing']['data_subtype_dist'] = {v['typing']['data_subtype']: 100}
         return result
 
-
     def test_data_analysis(self, transaction, lmd):
         """Tests that data analyzer doesn't crash on common types"""
         data_analyzer = DataAnalyzer(session=transaction.session,

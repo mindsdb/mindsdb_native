@@ -1,8 +1,9 @@
+import unittest
 import json
 import random
 from unittest import mock
+import tempfile
 
-import pytest
 import os
 import numpy as np
 import pandas as pd
@@ -32,13 +33,15 @@ from unit_tests.utils import (
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
-class TestPredictorTimeseries:
-    @pytest.mark.slow
-    def test_timeseries(self, tmp_path):
+class TestPredictorTimeseries(unittest.TestCase):
+    def setUp(self):
+        self.tmp_path = tempfile.mkdtemp()
+
+    def test_timeseries(self):
         ts_hours = 12
         data_len = 120
-        train_file_name = os.path.join(str(tmp_path), 'train_data.csv')
-        test_file_name = os.path.join(str(tmp_path), 'test_data.csv')
+        train_file_name = os.path.join(str(self.tmp_path), 'train_data.csv')
+        test_file_name = os.path.join(str(self.tmp_path), 'test_data.csv')
 
         features = generate_value_cols(['date', 'int'], data_len, ts_hours * 3600)
         labels = [generate_timeseries_labels(features)]
@@ -84,12 +87,11 @@ class TestPredictorTimeseries:
         model_data = F.get_model_data(models[0]['name'])
         assert model_data
 
-    @pytest.mark.slow
-    def test_timeseries_stepahead(self, tmp_path):
+    def test_timeseries_stepahead(self):
         ts_hours = 12
         data_len = 120
-        train_file_name = os.path.join(str(tmp_path), 'train_data.csv')
-        test_file_name = os.path.join(str(tmp_path), 'test_data.csv')
+        train_file_name = os.path.join(str(self.tmp_path), 'train_data.csv')
+        test_file_name = os.path.join(str(self.tmp_path), 'test_data.csv')
 
         features = generate_value_cols(['date', 'int'], data_len, ts_hours * 3600)
         labels = [generate_timeseries_labels(features)]
