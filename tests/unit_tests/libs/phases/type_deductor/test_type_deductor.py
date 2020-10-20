@@ -48,8 +48,10 @@ class TestTypeDeductor:
         hmd = transaction.hmd
         lmd['force_column_usage'] = []
         lmd['force_column_usage'] = []
-        type_deductor = TypeDeductor(session=transaction.session,
-                                     transaction=transaction)
+        type_deductor = TypeDeductor(
+            session=transaction.session,
+            transaction=transaction
+        )
 
         n_points = 100
 
@@ -71,7 +73,7 @@ class TestTypeDeductor:
             'multiple_categories_array_str': [",".join([f'{next(multiple_categories_str_cycle)}' for j in range(random.randint(1,6))]) for i in range(n_points)],
             'short_text': generate_short_sentences(n_points),
             'rich_text': generate_rich_sentences(n_points)
-        }, index=list(range(n_points)))
+        })
 
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
@@ -104,14 +106,16 @@ class TestTypeDeductor:
 
         lmd['force_column_usage'] = []
 
-        type_deductor = TypeDeductor(session=transaction.session,
-                                     transaction=transaction)
+        type_deductor = TypeDeductor(
+            session=transaction.session,
+            transaction=transaction
+        )
         n_points = 100
 
         input_dataframe = pd.DataFrame({
             'numeric_id': list(range(n_points)),
             'uuid': [str(uuid4()) for i in range(n_points)]
-        }, index=list(range(n_points)))
+        })
 
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
@@ -127,13 +131,15 @@ class TestTypeDeductor:
 
     def test_empty_values(self, transaction, lmd):
         lmd['force_column_usage'] = []
-        type_deductor = TypeDeductor(session=transaction.session,
-                                    transaction=transaction)
+        type_deductor = TypeDeductor(
+            session=transaction.session,
+            transaction=transaction
+        )
 
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_float': np.linspace(0, n_points, n_points),
-        }, index=list(range(n_points)))
+        })
         input_dataframe['numeric_float'].iloc[::2] = None
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
@@ -147,13 +153,15 @@ class TestTypeDeductor:
 
     def test_type_mix(self, transaction, lmd):
         lmd['force_column_usage'] = []
-        type_deductor = TypeDeductor(session=transaction.session,
-                                     transaction=transaction)
+        type_deductor = TypeDeductor(
+            session=transaction.session,
+            transaction=transaction
+        )
 
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_float': np.linspace(0, n_points, n_points),
-        }, index=list(range(n_points)))
+        })
         input_dataframe['numeric_float'].iloc[:2] = 'random string'
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
@@ -170,13 +178,15 @@ class TestTypeDeductor:
         lmd['force_column_usage'] = []
         transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
 
-        type_deductor = TypeDeductor(session=transaction.session,
-                                     transaction=transaction)
+        type_deductor = TypeDeductor(
+            session=transaction.session,
+            transaction=transaction
+        )
 
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_int': [x % 10 for x in list(range(n_points))],
-        }, index=list(range(n_points)))
+        })
 
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
@@ -204,13 +214,15 @@ class TestTypeDeductor:
         lmd['force_column_usage'] = []
         transaction.hmd['sample_function'] = mock.MagicMock(wraps=sample_data)
 
-        type_deductor = TypeDeductor(session=transaction.session,
-                                     transaction=transaction)
+        type_deductor = TypeDeductor(
+            session=transaction.session,
+            transaction=transaction
+        )
 
         n_points = 50
         input_dataframe = pd.DataFrame({
             'numeric_int': [x % 10 for x in list(range(n_points))],
-        }, index=list(range(n_points)))
+        })
 
         input_data = TransactionData()
         input_data.data_frame = input_dataframe
