@@ -182,7 +182,6 @@ def get_pct_auto_increment(data):
             pass
 
     int_data = sorted(int_data)
-    print(int_data)
     prev_nr = int_data[0]
     increase_by_one = 0
     for nr in int_data[1:]:
