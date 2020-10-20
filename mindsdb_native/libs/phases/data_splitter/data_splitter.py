@@ -10,7 +10,7 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
 class DataSplitter(BaseModule):
-    def run(self, test_train_ratio=CONFIG.TEST_TRAIN_RATIO):
+    def run(self):
         group_by = self.transaction.lmd['tss']['group_by'] or []
 
         NO_GROUP = tuple()
@@ -42,11 +42,11 @@ class DataSplitter(BaseModule):
                         length = len(all_indexes[group])
 
                         train_a = 0
-                        train_b = round(length - length * test_train_ratio)
+                        train_b = round(length - length * CONFIG.TEST_TRAIN_RATIO)
                         train_indexes[group] = all_indexes[group][train_a:train_b]
 
                         test_a = train_b
-                        test_b = train_b + round(length * test_train_ratio / 2)
+                        test_b = train_b + round(length * CONFIG.TEST_TRAIN_RATIO / 2)
                         test_indexes[group] = all_indexes[group][test_a:test_b]
 
                         valid_a = test_b

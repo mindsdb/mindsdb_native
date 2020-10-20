@@ -20,6 +20,11 @@ import pandas as pd
 import numpy as np
 
 
+class BreakpointException(Exception):
+    def __init__(self, ret):
+        self.ret = ret
+
+
 class Transaction:
     def __init__(self,
                  session,
@@ -159,21 +164,30 @@ class Transaction:
         try:
             main_module = importlib.import_module(module_full_path)
             module = getattr(main_module, module_name)
-            return module(self.session, self)(**kwargs)
+            ret = module(self.session, self)(**kwargs)
+            return ret
         except Exception:
             error = f'Could not load module {module_name}'
             self.log.error(error)
             raise
+        else:
+            if self.hmd['breakpoint'] is not None:
+                if isinstance(self.hmd['breakpoint'], str):
+                    if module_name == self.hmd['breakpoint']:
+                        raise BreakpointException(ret=ret)
+                elif isinstance(self.hmd['breakpoint'], dict):
+                    if module_name in self.hmd['breakpoint']:
+                        if callable(self.hmd['breakpoint'][module_name]):
+                            self.hmd['breakpoint'][module_name]()
+                        else:
+                            raise ValueError('breakpoint dict must have callable values')
         finally:
             self.lmd['phase'] = module_name
             self.lmd['is_active'] = False
 
-            if  self.hmd['breakpoint'] is not None:
-                 if module_name in self.hmd['breakpoint']:
-                     self.hmd['breakpoint'][module_name]()
 
     def run(self):
-        pass
+        raise NotImplementedError
 
 
 class LearnTransaction(Transaction):

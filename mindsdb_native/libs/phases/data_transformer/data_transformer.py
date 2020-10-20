@@ -84,7 +84,6 @@ def _clean_float_or_none(val):
         return None
 
 
-
 class DataTransformer(BaseModule):
     def _apply_to_all_data(self, input_data, column, func, transaction_type):
         if transaction_type == TRANSACTION_LEARN:
