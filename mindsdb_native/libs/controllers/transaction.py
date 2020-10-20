@@ -8,6 +8,8 @@ from mindsdb_native.libs.data_types.transaction_output_data import (
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.config import CONFIG
 
+from lightwood.api.predictor import Predictor
+
 import _thread
 import traceback
 import importlib
@@ -79,8 +81,12 @@ class Transaction:
             with open(icp_fn, 'rb') as fp:
                 self.hmd['icp'] = dill.load(fp)
                 # restore MDB predictors in ICP objects
-                # for col in self.lmd['predict_columns']:
-                #     self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
+                for col in self.lmd['predict_columns']:
+                    try:
+                        self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
+                    except AttributeError:
+                        model_path = self.lmd['lightwood_data']['save_path']
+                        self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
         except FileNotFoundError as e:
             self.hmd['icp'] = {'active': False}
             self.log.warning(f'Could not find mindsdb conformal predictor.')
@@ -127,20 +133,19 @@ class Transaction:
                 mdb_predictors = {}
                 with open(icp_fn, 'wb') as fp:
                     # clear data cache
-                    # TODO: restore model clearing as soon as we can access a loaded predictor from a session
                     for key in self.hmd['icp'].keys():
                         if key != 'active':
-                            # mdb_predictors[key] = self.hmd['icp'][key].nc_function.model.model
-                            # self.hmd['icp'][key].nc_function.model.model = None
+                            mdb_predictors[key] = self.hmd['icp'][key].nc_function.model.model
+                            self.hmd['icp'][key].nc_function.model.model = None
                             self.hmd['icp'][key].nc_function.model.last_x = None
                             self.hmd['icp'][key].nc_function.model.last_y = None
 
                     dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
 
-                    # restore predictor
-                    # for key in self.hmd['icp'].keys():
-                    #     if key != 'active':
-                    #         self.hmd['icp'][key].nc_function.model.model = mdb_predictors[key]
+                    # restore predictor in ICP
+                    for key in self.hmd['icp'].keys():
+                        if key != 'active':
+                            self.hmd['icp'][key].nc_function.model.model = mdb_predictors[key]
 
             except Exception as e:
                 self.log.error(e)
