@@ -222,10 +222,8 @@ class ModelAnalyzer(BaseModule):
                     X, _ = self.transaction.model_backend._create_timeseries_df(X)
                 y = X.pop(target)
 
-                if is_classification:
-                    self.transaction.hmd['icp'][target] = icp_class(nc, smoothing=False)
-                else:
-                    self.transaction.hmd['icp'][target] = icp_class(nc)
+                self.transaction.hmd['icp'][target] = icp_class(nc)
+                if not is_classification:
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 
                 X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns)

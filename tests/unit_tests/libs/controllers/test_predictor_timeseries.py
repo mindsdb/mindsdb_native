@@ -31,7 +31,7 @@ from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class TestPredictorTimeseries:
-    # @pytest.mark.slow
+    @pytest.mark.slow
     def test_timeseries(self, tmp_path):
         ts_hours = 12
         data_len = 120
