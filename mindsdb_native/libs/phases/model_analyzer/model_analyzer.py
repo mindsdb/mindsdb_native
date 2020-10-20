@@ -2,7 +2,7 @@ from mindsdb_native.libs.helpers.general_helpers import pickle_obj, disable_cons
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
-from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter, clean_df
+from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter, SelfawareNormalizer, clean_df, filter_cols
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from sklearn.metrics import balanced_accuracy_score, r2_score
@@ -11,6 +11,7 @@ import inspect
 import numpy as np
 from copy import deepcopy
 from sklearn.preprocessing import OneHotEncoder
+from lightwood.mixers.nn import NnMixer
 from nonconformist.icp import IcpRegressor, IcpClassifier
 from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, MarginErrFunc
 
@@ -183,7 +184,7 @@ class ModelAnalyzer(BaseModule):
                 'target': deepcopy(target),
                 'all_columns': deepcopy(self.transaction.lmd['columns']),
                 'columns_to_ignore': [],
-                'use_previous_target': (self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['use_previous_target'])
+                'use_previous_target': (self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['use_previous_target']),
             }
             fit_params['columns_to_ignore'].extend(self.transaction.lmd['columns_to_ignore'])
             fit_params['columns_to_ignore'].extend([col for col in output_columns if col != target])
@@ -215,7 +216,13 @@ class ModelAnalyzer(BaseModule):
 
             if (data_type == DATA_TYPES.NUMERIC or (is_classification and data_subtype != DATA_SUBTYPES.TAGS)):
                 model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
-                nc = nc_class(model, nc_function)
+
+                if isinstance(self.transaction.model_backend.predictor._mixer, NnMixer) and self.transaction.model_backend.predictor._mixer.selfaware:  # Should really be .is_selfaware, but this is bc currently Lightwood not always triggers the SA, but if we wanna use it as normalizer, it should
+                    normalizer = SelfawareNormalizer(self.transaction.model_backend.predictor)
+                    nc = nc_class(model, nc_function, normalizer=normalizer)
+                else:
+                    normalizer = None
+                    nc = nc_class(model, nc_function)
 
                 X = deepcopy(self.transaction.input_data.train_df)
                 if self.transaction.lmd['tss']['is_timeseries']:
@@ -223,6 +230,8 @@ class ModelAnalyzer(BaseModule):
                 y = X.pop(target)
 
                 self.transaction.hmd['icp'][target] = icp_class(nc)
+                if normalizer is not None:
+                    normalizer.cols = filter_cols(model.columns, model.target, model.ignore_columns)
                 if not is_classification:
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 

@@ -1,5 +1,6 @@
 from nonconformist.base import RegressorAdapter
 from nonconformist.base import ClassifierAdapter
+from nonconformist.nc import BaseScorer
 from mindsdb_native.libs.constants.mindsdb import *
 
 import pandas as pd
@@ -11,6 +12,13 @@ def _df_from_x(x, columns):
     x = pd.DataFrame(x)
     x.columns = columns
     return x
+
+
+def filter_cols(columns, target, ignore):
+    cols = deepcopy(columns)
+    for col in [target] + ignore:
+        cols.remove(col)
+    return cols
 
 
 def clean_df(df, stats, output_columns):
@@ -52,9 +60,7 @@ class ConformalRegressorAdapter(RegressorAdapter):
         :return: output compatible with nonconformity function. For default
         ones, this should a numpy.array of shape (n_test) with predicted values
         """
-        cols = deepcopy(self.columns)
-        for col in [self.target] + self.ignore_columns:
-            cols.remove(col)
+        cols = filter_cols(self.columns, self.target, self.ignore_columns)
         x = _df_from_x(x, cols)
         predictions = self.model.predict(when_data=x)
         ys = np.array(predictions[self.target]['predictions'])
@@ -88,9 +94,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         ones, this should a numpy.array of shape (n_test, n_classes) with
         class probability estimates
         """
-        cols = deepcopy(self.columns)
-        for col in [self.target] + self.ignore_columns:
-            cols.remove(col)
+        cols = filter_cols(self.columns, self.target, self.ignore_columns)
         x = _df_from_x(x, cols)
         predictions = self.model.predict(when_data=x)
         ys = np.array(predictions[self.target]['predictions'])
@@ -98,3 +102,22 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         if self.classes is None:
             self.classes = self.fit_params['one_hot_enc'].categories_[0]
         return ys
+
+
+class SelfawareNormalizer(BaseScorer):
+    def __init__(self, model):
+        super(SelfawareNormalizer, self).__init__()
+        self.model = model
+        self.cols = None  # has to be set after initializing the ICP
+
+    def fit(self, x, y):
+        """No fitting is needed, as we instantiate this object
+        once the self-aware NN is already trained in Lightwood."""
+        pass
+
+    def score(self, true_input, y=None):
+        df = _df_from_x(true_input, self.cols)
+        ds = self.model.ds_from_df(df)
+        model_output = self.model.predict(df)
+        sa_score = self.model._mixer.selfaware_net.forward(ds, model_output)
+        return sa_score
