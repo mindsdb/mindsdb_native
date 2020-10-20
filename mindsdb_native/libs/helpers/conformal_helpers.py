@@ -4,7 +4,7 @@ from mindsdb_native.libs.constants.mindsdb import *
 
 import pandas as pd
 import numpy as np
-import copy
+from copy import deepcopy
 
 
 def _df_from_x(x, columns):
@@ -30,6 +30,9 @@ class ConformalRegressorAdapter(RegressorAdapter):
         self.target = fit_params['target']
         self.columns = fit_params['all_columns']
         self.ignore_columns = fit_params['columns_to_ignore']
+        self.ar = fit_params['use_previous_target']
+        if self.ar:
+            self.columns.append(f'previous_{self.target}')
 
     def fit(self, x, y):
         """
@@ -49,7 +52,7 @@ class ConformalRegressorAdapter(RegressorAdapter):
         :return: output compatible with nonconformity function. For default
         ones, this should a numpy.array of shape (n_test) with predicted values
         """
-        cols = copy.deepcopy(self.columns)
+        cols = deepcopy(self.columns)
         for col in [self.target] + self.ignore_columns:
             cols.remove(col)
         x = _df_from_x(x, cols)
@@ -85,7 +88,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         ones, this should a numpy.array of shape (n_test, n_classes) with
         class probability estimates
         """
-        cols = copy.deepcopy(self.columns)
+        cols = deepcopy(self.columns)
         for col in [self.target] + self.ignore_columns:
             cols.remove(col)
         x = _df_from_x(x, cols)

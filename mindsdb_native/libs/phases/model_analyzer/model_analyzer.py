@@ -180,9 +180,10 @@ class ModelAnalyzer(BaseModule):
             is_classification = data_type == DATA_TYPES.CATEGORICAL
 
             fit_params = {
-                'target': target,
-                'all_columns': self.transaction.lmd['columns'],
-                'columns_to_ignore': []
+                'target': deepcopy(target),
+                'all_columns': deepcopy(self.transaction.lmd['columns']),
+                'columns_to_ignore': [],
+                'use_previous_target': (self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['use_previous_target'])
             }
             fit_params['columns_to_ignore'].extend(self.transaction.lmd['columns_to_ignore'])
             fit_params['columns_to_ignore'].extend([col for col in output_columns if col != target])
@@ -212,11 +213,13 @@ class ModelAnalyzer(BaseModule):
                 nc_class = RegressorNc
                 icp_class = IcpRegressor
 
-            if (data_type == DATA_TYPES.NUMERIC or (is_classification and data_subtype != DATA_SUBTYPES.TAGS)) and not self.transaction.lmd['tss']['is_timeseries']:
+            if (data_type == DATA_TYPES.NUMERIC or (is_classification and data_subtype != DATA_SUBTYPES.TAGS)):
                 model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
                 nc = nc_class(model, nc_function)
 
                 X = deepcopy(self.transaction.input_data.train_df)
+                if self.transaction.lmd['tss']['is_timeseries']:
+                    X, _ = self.transaction.model_backend._create_timeseries_df(X)
                 y = X.pop(target)
 
                 if is_classification:
@@ -231,6 +234,8 @@ class ModelAnalyzer(BaseModule):
 
                 # calibrate conformal estimator on test set
                 X = deepcopy(validation_df)
+                if self.transaction.lmd['tss']['is_timeseries']:
+                    X, _ = self.transaction.model_backend._create_timeseries_df(X)
                 y = X.pop(target).values
 
                 if is_classification:
