@@ -24,6 +24,7 @@ VOCAB = ['remember', 'men', 'pretty', 'break', 'know', 'an', 'forward', 'whose',
 SMALL_VOCAB = random.sample(VOCAB, 20)
 LARGE_VOCAB = random.sample(VOCAB, 800)
 
+
 def generate_short_sentences(n):
     return [' '.join(random.sample(VOCAB, random.randint(2, 6))) for _ in range(n)]
 
@@ -32,10 +33,12 @@ def generate_rich_sentences(n):
     return [' '.join(random.sample(VOCAB, random.randint(7, 16))) for _ in range(n)]
 
 
-def generate_timeseries(length,
-                        bounds=(0,1852255420),
-                        _type='timestamp',
-                        period=24*3600):
+def generate_timeseries(
+        length,
+        bounds=(0, 1852255420),
+        _type='timestamp',
+        period=24*3600
+    ):
     column = []
 
     for n in range(*bounds, period):

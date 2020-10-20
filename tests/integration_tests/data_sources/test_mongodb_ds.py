@@ -16,10 +16,12 @@ def test_mongodb_ds():
     COLLECTION_NAME = 'test_mindsdb'
     PORT = 27017
 
-    con = MongoClient(host=HOST,
-                      port=PORT,
-                      username=USER,
-                      password=PASSWORD)
+    con = MongoClient(
+        host=HOST,
+        port=PORT,
+        username=USER,
+        password=PASSWORD
+    )
 
     db = con[DATABASE]
     
@@ -35,13 +37,15 @@ def test_mongodb_ds():
             'col_3': (i % 2) == 0
         })
 
-    mongodb_ds = MongoDS(collection=COLLECTION_NAME,
-                         query={},
-                         host=HOST,
-                         port=PORT,
-                         user=USER,
-                         password=PASSWORD,
-                         database=DATABASE)
+    mongodb_ds = MongoDS(
+        collection=COLLECTION_NAME,
+        query={},
+        host=HOST,
+        port=PORT,
+        user=USER,
+        password=PASSWORD,
+        database=DATABASE
+    )
 
     assert mongodb_ds.name() == 'MongoDS: database/test_mindsdb'
 

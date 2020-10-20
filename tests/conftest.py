@@ -34,8 +34,10 @@ def transaction(logger):
     lmd, hmd = {}, {}
 
     lmd['type'] = 'foobar'
-    transaction = Transaction(session=session,
-                              light_transaction_metadata=lmd,
-                              heavy_transaction_metadata=hmd,
-                              logger=logger)
+    transaction = Transaction(
+        session=session,
+        light_transaction_metadata=lmd,
+        heavy_transaction_metadata=hmd,
+        logger=logger
+    )
     return transaction

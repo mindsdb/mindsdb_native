@@ -17,11 +17,13 @@ def test_maria_ds():
     DATABASE = 'mysql'
     PORT = 4306
 
-    con = mysql.connector.connect(host=HOST,
-                                  port=PORT,
-                                  user=USER,
-                                  password=PASSWORD,
-                                  database=DATABASE)
+    con = mysql.connector.connect(
+        host=HOST,
+        port=PORT,
+        user=USER,
+        password=PASSWORD,
+        database=DATABASE
+    )
     cur = con.cursor()
 
     cur.execute('DROP TABLE IF EXISTS test_mindsdb')
