@@ -38,7 +38,7 @@ jobs:
         if [ "$RUNNER_OS" == "Linux" ]; then
           docker-compose up -d
           sleep 20
-          cd tests & python -m unittest ci_tests
+          cd tests & python -m unittest integration_tests
           docker-compose down
         fi
       shell: bash
