@@ -338,10 +338,12 @@ class PredictTransaction(Transaction):
                 self.lmd['all_conformal_ranges'] = {}
                 for predicted_col in self.lmd['predict_columns']:
                     X = deepcopy(predictions_df)
+                    if self.lmd['tss']['is_timeseries']:
+                        X, _ = self.model_backend._create_timeseries_df(X)
                     for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                         X.pop(col)
 
-                    if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.NUMERIC and not self.lmd['tss']['is_timeseries']:
+                    if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.NUMERIC:
                         tol_const = 2  # std devs
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
@@ -360,7 +362,7 @@ class PredictTransaction(Transaction):
                                 sigma = (bounds[1] - bounds[0]) / 2
                                 output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
 
-                    elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL and not self.lmd['tss']['is_timeseries']:
+                    elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL:
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
                             if not output_data.get(f'{predicted_col}_confidence_range', None):
                                 output_data[f'{predicted_col}_confidence_range'] = {}
