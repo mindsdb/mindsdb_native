@@ -24,6 +24,13 @@ def clean_df(df, stats, output_columns):
     return df
 
 
+def filter_cols(columns, target, ignore):
+    cols = deepcopy(columns)
+    for col in [target] + ignore:
+        cols.remove(col)
+    return cols
+
+
 class ConformalRegressorAdapter(RegressorAdapter):
     def __init__(self, model, fit_params=None):
         super(ConformalRegressorAdapter, self).__init__(model, fit_params)
@@ -52,9 +59,7 @@ class ConformalRegressorAdapter(RegressorAdapter):
         :return: output compatible with nonconformity function. For default
         ones, this should a numpy.array of shape (n_test) with predicted values
         """
-        cols = deepcopy(self.columns)
-        for col in [self.target] + self.ignore_columns:
-            cols.remove(col)
+        cols = filter_cols(self.columns, self.target, self.ignore_columns)
         x = _df_from_x(x, cols)
         predictions = self.model.predict(when_data=x)
         ys = np.array(predictions[self.target]['predictions'])
@@ -88,9 +93,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         ones, this should a numpy.array of shape (n_test, n_classes) with
         class probability estimates
         """
-        cols = deepcopy(self.columns)
-        for col in [self.target] + self.ignore_columns:
-            cols.remove(col)
+        cols = filter_cols(self.columns, self.target, self.ignore_columns)
         x = _df_from_x(x, cols)
         predictions = self.model.predict(when_data=x)
         ys = np.array(predictions[self.target]['predictions'])
