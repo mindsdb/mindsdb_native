@@ -64,6 +64,7 @@ def _prepare_timeseries_settings(user_provided_settings):
         ,keep_order_column=True
         ,nr_predictions=1
         ,historical_columns=[]
+        ,use_database_history=True
     )
 
     if len(user_provided_settings) > 0:

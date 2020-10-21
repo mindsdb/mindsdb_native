@@ -91,7 +91,7 @@ class DataExtractor(BaseModule):
                 # if no data frame yet, make one
                 df = self._data_from_when()
 
-            if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries']:
+            if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['use_database_history']:
                 if 'make_predictions' not in df.columns:
                     df['make_predictions'] = [True] * len(df)
 
