@@ -19,6 +19,7 @@ from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
                                                    TRANSACTION_ANALYSE)
 from mindsdb_native.libs.helpers.locking import MDBLock
 
+
 def validate(to_predict, from_data, accuracy_score_functions, learn_args=None, test_args=None):
             if learn_args is None: learn_args = {}
             if test_args is None: test_args = {}
@@ -35,6 +36,7 @@ def validate(to_predict, from_data, accuracy_score_functions, learn_args=None, t
 
             return accuracy
 
+
 def cross_validate(to_predict, from_data, accuracy_score_functions, k=5, learn_args=None, test_args=None):
     '''
         Probably required a change to generate a split into `k` folds, then manually setting those folds as train/test/predict.
@@ -46,6 +48,7 @@ def cross_validate(to_predict, from_data, accuracy_score_functions, k=5, learn_a
         Same problem with timeseries argument support though.
     '''
     raise NotImplementedError('Cross validation is not implemented yet')
+
 
 def analyse_dataset(from_data, sample_settings=None):
     """
@@ -93,6 +96,8 @@ def analyse_dataset(from_data, sample_settings=None):
         heavy_transaction_metadata=heavy_transaction_metadata,
         logger=log
     )
+
+    tx.run()
 
     return get_model_data(lmd=tx.lmd)
 

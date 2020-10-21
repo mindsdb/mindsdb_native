@@ -56,12 +56,12 @@ class TestTypeDeductor(unittest.TestCase):
             predictor.learn(
                 from_data=df,
                 to_predict='categorical_int',
-                advanced_args={'force_column_usage': df.columns}
+                advanced_args={'force_column_usage': list(df.columns)}
             )
         except BreakpointException:
             pass
         else:
-            assert False
+            raise AssertionError
 
         stats_v2 = predictor.transaction.lmd['stats_v2']
 
@@ -80,31 +80,32 @@ class TestTypeDeductor(unittest.TestCase):
 
         assert DATA_SUBTYPES.INT in stats_v2['categorical_int']['additional_info']['other_potential_subtypes']
 
-        assert isinstance(json.dumps(predictor.transaction.lmd), str)
+        try:
+            json.dumps(predictor.transaction.lmd)
+        except Exception:
+            raise AssertionError
+
         assert set(predictor.transaction.lmd['stats_v2']['columns']) == set(df.columns)
 
     def test_deduce_foreign_key(self):
         """Tests that basic cases of type deduction work correctly"""
         predictor = Predictor(name='test_deduce_foreign_key')
-        predictor.breakpoint = 'TypeDeductor'
+        predictor.breakpoint = 'DataAnalyzer'
   
         n_points = 100
 
         df = pd.DataFrame({
             'numeric_id': list(range(n_points)),
-            'uuid': [str(uuid4()) for i in range(n_points)]
+            'uuid': [str(uuid4()) for i in range(n_points)],
+            'to_predict': [i % 5 for i in range(n_points)]
         })
 
         try:
-            predictor.learn(
-                from_data=df,
-                to_predict='uuid',
-                advanced_args={'force_column_usage': df.columns}
-            )
+            predictor.learn(from_data=df, to_predict='to_predict')
         except BreakpointException:
             pass
         else:
-            assert False
+            raise AssertionError
 
         stats_v2 = predictor.transaction.lmd['stats_v2']
 
@@ -130,14 +131,14 @@ class TestTypeDeductor(unittest.TestCase):
             predictor.learn(
                 from_data=df,
                 to_predict='numeric_float_3',
-                advanced_args={'force_column_usage': df.columns}
+                advanced_args={'force_column_usage': list(df.columns)}
             )
         except BreakpointException:
             pass
         else:
-            assert False
+            raise AssertionError
 
-        stats_v2 = lmd['stats_v2']
+        stats_v2 = predictor.transaction.lmd['stats_v2']
         assert stats_v2['numeric_float_1']['typing']['data_type'] == DATA_TYPES.NUMERIC
         assert stats_v2['numeric_float_1']['typing']['data_subtype'] == DATA_SUBTYPES.FLOAT
         assert stats_v2['numeric_float_1']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 50
@@ -159,15 +160,15 @@ class TestTypeDeductor(unittest.TestCase):
             predictor.learn(
                 from_data=df,
                 to_predict='numeric_float_3',
-                advanced_args={'force_column_usage': df.columns}
+                advanced_args={'force_column_usage': list(df.columns)}
             )
         except BreakpointException:
             pass
         else:
-            assert False
+            raise AssertionError
 
 
-        stats_v2 = lmd['stats_v2']
+        stats_v2 = predictor.transaction.lmd['stats_v2']
         assert stats_v2['numeric_float_1']['typing']['data_type'] == DATA_TYPES.NUMERIC
         assert stats_v2['numeric_float_1']['typing']['data_subtype'] == DATA_SUBTYPES.FLOAT
         assert stats_v2['numeric_float_1']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 98
@@ -194,13 +195,13 @@ class TestTypeDeductor(unittest.TestCase):
             predictor.learn(
                 from_data=df,
                 to_predict='numeric_int_2',
-                advanced_args={'force_column_usage': df.columns},
+                advanced_args={'force_column_usage': list(df.columns)},
                 sample_settings=sample_settings
             )
         except BreakpointException:
             pass
         else:
-            assert False
+            raise AssertionError
 
         assert sample_settings['sample_function'].called
 
@@ -211,7 +212,7 @@ class TestTypeDeductor(unittest.TestCase):
         assert stats_v2['numeric_int_1']['typing']['data_subtype_dist'][DATA_SUBTYPES.INT] <= n_points
 
         sample_settings = {
-            'sample_for_analysis': True,
+            'sample_for_analysis': False,
             'sample_function': sample_data
         }
         sample_settings['sample_function'] = mock.MagicMock(wraps=sample_data)
@@ -224,24 +225,21 @@ class TestTypeDeductor(unittest.TestCase):
             predictor.learn(
                 from_data=df,
                 to_predict='numeric_int_2',
-                advanced_args={'force_column_usage': df.columns},
+                advanced_args={'force_column_usage': list(df.columns)},
                 sample_settings=sample_settings
             )
         except BreakpointException:
             pass
         else:
-            assert False
-
+            raise AssertionError
 
         assert not sample_settings['sample_function'].called
 
     def test_small_dataset_no_sampling(self):
         sample_settings = {
-            'sample_for_analysis': True,
-            'sample_margin_of_error': 0.95,
-            'sample_confidence_level': 0.05
+            'sample_for_analysis': False,
+            'sample_function': mock.MagicMock(wraps=sample_data)
         }
-        sample_settings['sample_function'] = mock.MagicMock(wraps=sample_data)
         setattr(sample_settings['sample_function'], '__name__', 'sample_data')
 
         predictor = Predictor(name='test_small_dataset_no_sampling')
@@ -249,28 +247,29 @@ class TestTypeDeductor(unittest.TestCase):
 
         n_points = 50
         df = pd.DataFrame({
-            'numeric_int_1': [x % 10 for x in list(range(n_points))],
-            'numeric_int_2': [x % 10 for x in list(range(n_points))],
+            'numeric_int_1': [*range(n_points)],
+            'numeric_int_2': [*range(n_points)],
         })
 
         try:
             predictor.learn(
                 from_data=df,
                 to_predict='numeric_int_2',
-                advanced_args={'force_column_usage': df.columns},
+                advanced_args={'force_column_usage': list(df.columns)},
                 sample_settings=sample_settings
             )
         except BreakpointException:
             pass
         else:
-            assert False
+            raise AssertionError
 
-        assert sample_settings['sample_function'].called
+        assert not sample_settings['sample_function'].called
 
         stats_v2 = predictor.transaction.lmd['stats_v2']
+
         assert stats_v2['numeric_int_1']['typing']['data_type'] == DATA_TYPES.NUMERIC
         assert stats_v2['numeric_int_1']['typing']['data_subtype'] == DATA_SUBTYPES.INT
 
         # This ensures that no sampling was applied
-        assert stats_v2['numeric_int_1']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == 50
-        assert stats_v2['numeric_int_1']['typing']['data_subtype_dist'][DATA_SUBTYPES.INT] == 50
+        assert stats_v2['numeric_int_1']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == n_points
+        assert stats_v2['numeric_int_1']['typing']['data_subtype_dist'][DATA_SUBTYPES.INT] == n_points

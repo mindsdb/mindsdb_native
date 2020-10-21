@@ -30,7 +30,7 @@ class TestDataSplitter:
         except BreakpointException as e:
             all_indexes, *_ = e.ret
         else:
-            assert False
+            raise AssertionError
 
         assert len(all_indexes[(1, 1)]) == 25
         assert len(all_indexes[(1, 2)]) == 25

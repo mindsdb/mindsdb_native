@@ -55,8 +55,6 @@ class Transaction:
 
         self.log = logger
 
-        self.run()
-
     def load_metadata(self):
         try:
             import resource
@@ -156,6 +154,7 @@ class Transaction:
         """
         Loads the module and runs it
         """
+        
         self.lmd['is_active'] = True
         self.lmd['phase'] = module_name
         module_path = convert_cammelcase_to_snake_string(module_name)
@@ -164,18 +163,24 @@ class Transaction:
             main_module = importlib.import_module(module_full_path)
             module = getattr(main_module, module_name)
             ret = module(self.session, self)(**kwargs)
-            return ret
         except Exception:
             error = f'Could not load module {module_name}'
             self.log.error(error)
             raise
         else:
-            if module_name == self.session.breakpoint:
-                raise BreakpointException(ret=ret)
+            if isinstance(self.hmd['breakpoint'], str):
+                if module_name == self.hmd['breakpoint']:
+                    raise BreakpointException(ret=ret)
+            elif isinstance(self.hmd['breakpoint'], dict):
+                if module_name in self.hmd['breakpoint']:
+                    if callable(self.hmd['breakpoint'][module_name]):
+                        self.hmd['breakpoint'][module_name]()
+                    else:
+                        raise ValueError('breakpoint dict must have callable values')
+            return ret
         finally:
             self.lmd['phase'] = module_name
             self.lmd['is_active'] = False
-
 
     def run(self):
         raise NotImplementedError

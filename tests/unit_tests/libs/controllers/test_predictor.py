@@ -33,38 +33,38 @@ from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class TestPredictor(unittest.TestCase):
-    @unittest.skip('TOFIX')
-    @unittest.mock.patch('mindsdb_native.libs.controllers.predictor.sample_data')
-    def test_sample_for_training(self, sample_data_function):
-        setattr(mindsdb_native.libs.controllers.predictor.sample_data, '__name__', 'sample_data')
-
-        predictor = Predictor(name='test')
+    def test_sample_for_training(self):
+        predictor = Predictor(name='test_sample_for_training')
 
         n_points = 100
         input_dataframe = pd.DataFrame({
             'numeric_int': [x % 10 for x in list(range(n_points))],
             'categorical_binary': [0, 1] * (n_points // 2),
-        }, index=list(range(n_points)))
+        })
         input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int * input_dataframe.categorical_binary
+
+        sample_settings = {
+            'sample_for_training': True,
+            'sample_for_analysis': True,
+            'sample_function': mock.MagicMock(wraps=sample_data),
+        }
+        setattr(sample_settings['sample_function'], '__name__', 'sample_data')
 
         predictor.learn(
             from_data=input_dataframe,
             to_predict='y',
             backend='lightwood',
-            sample_settings={
-                'sample_for_training': True,
-                'sample_for_analysis': True
-            },
+            sample_settings=sample_settings,
             stop_training_in_x_seconds=1,
             use_gpu=False
         )
 
-        assert sample_data_function.called
+        assert sample_settings['sample_function'].called
 
         # 1 call when sampling for analysis
         # 1 call when sampling training data for lightwood
         # 1 call when sampling testing data for lightwood
-        assert sample_data_function.call_count == 3
+        assert sample_settings['sample_function'].call_count == 3
 
     def test_analyze_dataset(self):
         n_points = 100
@@ -171,14 +171,12 @@ class TestPredictor(unittest.TestCase):
             use_gpu=False
         )
 
-        transaction = predictor.transaction
-
-        assert 'do_use' in transaction.input_data.train_df.columns
+        assert 'do_use' in predictor.transaction.input_data.train_df.columns
         # Foreign key is ignored and removed from data frames
-        assert 'numeric_id' not in transaction.input_data.train_df.columns
-        assert 'numeric_id' in transaction.lmd['columns_to_ignore']
-        assert 'malicious_naming' not in transaction.input_data.train_df.columns
-        assert 'malicious_naming' in transaction.lmd['columns_to_ignore']
+        assert 'numeric_id' not in predictor.transaction.input_data.train_df.columns
+        assert 'numeric_id' in predictor.transaction.lmd['columns_to_ignore']
+        assert 'malicious_naming' not in predictor.transaction.input_data.train_df.columns
+        assert 'malicious_naming' in predictor.transaction.lmd['columns_to_ignore']
 
         predictor = Predictor(name='test')
         predictor.learn(
@@ -189,11 +187,9 @@ class TestPredictor(unittest.TestCase):
             use_gpu=False
         )
 
-        transaction = predictor.transaction
-
-        assert 'do_use' in transaction.input_data.train_df.columns
-        assert 'numeric_id' in transaction.input_data.train_df.columns
-        assert 'numeric_id' not in transaction.lmd['columns_to_ignore']
+        assert 'do_use' in predictor.transaction.input_data.train_df.columns
+        assert 'numeric_id' in predictor.transaction.input_data.train_df.columns
+        assert 'numeric_id' not in predictor.transaction.lmd['columns_to_ignore']
 
     def test_analyze_dataset_empty_column(self):
         n_points = 100
@@ -478,13 +474,17 @@ class TestPredictor(unittest.TestCase):
                 for col in expect_columns:
                     assert col in row
 
-    def test_house_pricing(self):
-        self._test_house_pricing('home_rentals_1', use_gpu=False)
+    def test_house_pricing_gpu(self):
+        self._test_house_pricing('home_rentals_cpu', use_gpu=False)
         if torch.cuda.is_available():
-            self._test_house_pricing('home_rentals_2', use_gpu=True)
+            self._test_house_pricing('home_rentals_gpu', use_gpu=True)
         else:
             with self.assertRaises(Exception):
-                self._test_house_pricing('home_rentals_2', use_gpu=True)
+                self._test_house_pricing('home_rentals_gpu_exception', use_gpu=True)
+
+    def assert_prediction_interface(self, predictions):
+        for prediction in predictions:
+            assert hasattr(prediction, 'explanation')
 
     def _test_house_pricing(self, name, use_gpu):
         """
@@ -500,10 +500,6 @@ class TestPredictor(unittest.TestCase):
             use_gpu=use_gpu
         )
 
-        def assert_prediction_interface(predictions):
-            for prediction in predictions:
-                assert hasattr(prediction, 'explanation')
-
         test_results = predictor.test(
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             accuracy_score_functions=r2_score,
@@ -515,9 +511,9 @@ class TestPredictor(unittest.TestCase):
             when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             use_gpu=use_gpu
         )
-        assert_prediction_interface(predictions)
+        self.assert_prediction_interface(predictions)
         predictions = predictor.predict(when_data={'sqft': 300}, use_gpu=use_gpu)
-        assert_prediction_interface(predictions)
+        self.assert_prediction_interface(predictions)
 
         amd = F.get_model_data(name)
         assert isinstance(json.dumps(amd), str)
@@ -558,16 +554,15 @@ class TestPredictor(unittest.TestCase):
             assert (importance >= 0 and importance <= 10)
 
         # Test confidence estimation after save -> load
-        p = None
         F.export_predictor(name)
-        F.import_model(f"{name}.zip", f"{name}-new")
+        F.import_model(f'{name}.zip', f'{name}-new')
         p = Predictor(name=f'{name}-new')
         predictions = p.predict(
             when_data={'sqft': 1000},
             use_gpu=use_gpu,
             run_confidence_variation_analysis=True
         )
-        assert_prediction_interface(predictions)
+        self.assert_prediction_interface(predictions)
 
     def test_category_tags_input(self):
         vocab = random.sample(SMALL_VOCAB, 10)

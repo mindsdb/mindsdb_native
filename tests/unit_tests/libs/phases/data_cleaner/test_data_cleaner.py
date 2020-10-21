@@ -27,7 +27,7 @@ class TestDataCleaner(unittest.TestCase):
         except BreakpointException:
             pass
         else:
-            assert False
+            raise AssertionError
 
         assert 'do_use' in predictor.transaction.input_data.data_frame.columns
         assert 'ignore_this' not in predictor.transaction.input_data.data_frame.columns
@@ -54,12 +54,6 @@ class TestDataCleaner(unittest.TestCase):
         except BreakpointException:
             pass
         else:
-            assert False
-
-        assert predictor.transaction.input_data.data_frame['my_column'].iloc[0] == 'a'
-        assert predictor.transaction.input_data.data_frame['my_column'].iloc[1] == 'b'
-        assert pd.isna(predictor.transaction.input_data.data_frame['my_column'].iloc[2])
-        assert predictor.transaction.input_data.data_frame['my_column'].iloc[3] == 'c'
-        assert pd.isna(predictor.transaction.input_data.data_frame['my_column'].iloc[4])
-        assert pd.isna(predictor.transaction.input_data.data_frame['my_column'].iloc[5])
-        assert pd.isna(predictor.transaction.input_data.data_frame['my_column'].iloc[6])
+            raise AssertionError
+        
+        assert set(predictor.transaction.input_data.data_frame['my_column']) == set(['a', 'b', 'c', np.nan])
