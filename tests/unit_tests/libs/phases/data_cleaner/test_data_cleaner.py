@@ -11,13 +11,12 @@ from mindsdb_native.libs.phases.data_cleaner.data_cleaner import DataCleaner
 class TestDataCleaner(unittest.TestCase):
     def test_ignore_columns(self):
         predictor = Predictor(name='test_ignore_columns')
+        predictor.breakpoint = 'DataCleaner'
 
         df = pd.DataFrame({
             'do_use': [1, 2, 3],
             'ignore_this': [0, 1, 100]
         })
-
-        predictor.breakpoint = 'DataCleaner'
 
         try:
             predictor.learn(
@@ -34,22 +33,28 @@ class TestDataCleaner(unittest.TestCase):
         assert 'ignore_this' not in predictor.transaction.input_data.data_frame.columns
 
     def test_user_provided_null_values(self):
-        predictor = Predictor(name='test_null_values')
+        predictor = Predictor(name='test_user_provided_null_values')
+        predictor.breakpoint = 'DataCleaner'
 
         df = pd.DataFrame({
-            'my_column': ['a', 'b', 'NULL', 'c', 'null', 'none', 'Null']
+            'my_column': ['a', 'b', 'NULL', 'c', 'null', 'none', 'Null'],
             'to_predict': [1, 2, 3, 1, 2, 3, 1]
         })
 
-        predictor.learn(
-            from_data=df,
-            to_predict='to_predict',
-            advanced_args={
-                'null_values': {
-                    'my_column': ['NULL', 'null', 'none', 'Null']
+        try:
+            predictor.learn(
+                from_data=df,
+                to_predict='to_predict',
+                advanced_args={
+                    'null_values': {
+                        'my_column': ['NULL', 'null', 'none', 'Null']
+                    }
                 }
-            }
-        )
+            )
+        except BreakpointException:
+            pass
+        else:
+            assert False
 
         assert predictor.transaction.input_data.data_frame['my_column'].iloc[0] == 'a'
         assert predictor.transaction.input_data.data_frame['my_column'].iloc[1] == 'b'

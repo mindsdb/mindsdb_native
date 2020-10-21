@@ -14,7 +14,7 @@ Run unit tests.
 
 # Integration tests
 Run integration tests.
-```cd tests & python -m unittest ci_tests```
+```cd tests & python -m unittest integration_tests```
 
 # Run all tests
 Run all tests.

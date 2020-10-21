@@ -156,7 +156,6 @@ class Transaction:
         """
         Loads the module and runs it
         """
-        
         self.lmd['is_active'] = True
         self.lmd['phase'] = module_name
         module_path = convert_cammelcase_to_snake_string(module_name)
@@ -171,16 +170,8 @@ class Transaction:
             self.log.error(error)
             raise
         else:
-            if self.hmd['breakpoint'] is not None:
-                if isinstance(self.hmd['breakpoint'], str):
-                    if module_name == self.hmd['breakpoint']:
-                        raise BreakpointException(ret=ret)
-                elif isinstance(self.hmd['breakpoint'], dict):
-                    if module_name in self.hmd['breakpoint']:
-                        if callable(self.hmd['breakpoint'][module_name]):
-                            self.hmd['breakpoint'][module_name]()
-                        else:
-                            raise ValueError('breakpoint dict must have callable values')
+            if module_name == self.session.breakpoint:
+                raise BreakpointException(ret=ret)
         finally:
             self.lmd['phase'] = module_name
             self.lmd['is_active'] = False

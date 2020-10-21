@@ -32,7 +32,11 @@ def test_clickhouse_ds():
         r = requests.post(clickhouse_url, data=q)
         assert r.status_code == 200
 
-    clickhouse_ds = ClickhouseDS('SELECT * FROM test.mock ORDER BY col2 DESC LIMIT 2', host=HOST, port=PORT)
+    clickhouse_ds = ClickhouseDS(
+        'SELECT * FROM test.mock ORDER BY col2 DESC LIMIT 2',
+        host=HOST,
+        port=PORT
+    )
 
     assert (len(clickhouse_ds.df) == 2)
     assert (sum(map(int, clickhouse_ds.df['col2'])) == 5)

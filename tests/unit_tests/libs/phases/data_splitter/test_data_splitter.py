@@ -28,7 +28,7 @@ class TestDataSplitter:
         try:
             predictor.learn(from_data=df, to_predict='ob')
         except BreakpointException as e:
-            all_indexes, *_ =  = e.ret
+            all_indexes, *_ = e.ret
         else:
             assert False
 

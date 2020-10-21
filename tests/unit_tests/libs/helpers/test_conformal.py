@@ -28,7 +28,7 @@ def test_regressor():
     target = 'medv'
 
     x_tr = _df_from_xy(X_train, Y_train, target)
-    p = Predictor("ConformalTest")
+    p = Predictor('ConformalTest')
     p.learn(from_data=x_tr, to_predict=target)
 
     x_te = _df_from_xy(X_test, Y_test, target)
