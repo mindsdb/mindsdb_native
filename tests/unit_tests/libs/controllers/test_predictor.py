@@ -265,7 +265,7 @@ class TestPredictor(unittest.TestCase):
                 for col in expect_columns:
                     assert col in row
 
-    def test_house_pricing_gpu(self):
+    def test_house_pricing(self):
         self._test_house_pricing('home_rentals_cpu', use_gpu=False)
         if torch.cuda.is_available():
             self._test_house_pricing('home_rentals_gpu', use_gpu=True)
@@ -452,3 +452,81 @@ class TestPredictor(unittest.TestCase):
         score = f1_score(test_tags_encoded, pred_labels_encoded, average='weighted')
 
         assert score >= 0.3
+
+    def test_predictor_deduplicate_data_true(self):
+        n_points = 100
+        df = pd.DataFrame({
+            'numeric_int': [x % 44 for x in list(range(n_points))],
+            'numeric_int_2': [x % 20 for x in list(range(n_points))],
+        })
+        df['y'] = df['numeric_int'] % 10
+
+        # Add duplicate row
+        df = df.append(
+            df.iloc[99],
+            ignore_index=True
+        )
+
+        predictor = Predictor(name='test_predictor_deduplicate_data_true')
+        predictor.learn(
+            from_data=df,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False
+        )
+
+        model_data = F.get_model_data('test_predictor_deduplicate_data_true')
+
+        # Ensure duplicate row was not used for training, or analysis
+
+        assert model_data['data_preparation']['total_row_count'] == n_points
+        assert model_data['data_preparation']['used_row_count'] <= n_points
+
+        assert sum([model_data['data_preparation']['train_row_count'],
+                    model_data['data_preparation']['validation_row_count'],
+                    model_data['data_preparation']['test_row_count']]) == n_points
+
+        assert sum([predictor.transaction.input_data.train_df.shape[0],
+                    predictor.transaction.input_data.test_df.shape[0],
+                    predictor.transaction.input_data.validation_df.shape[0]]) == n_points
+
+    def test_predictor_deduplicate_data_false(self):
+        n_points = 100
+        df = pd.DataFrame({
+            'numeric_int': [x % 44 for x in list(range(n_points))],
+            'numeric_int_2': [x % 20 for x in list(range(n_points))],
+        })
+        df['y'] = df['numeric_int'] % 10
+
+        # Add duplicate row
+        df = df.append(
+            df.iloc[99],
+            ignore_index=True
+        )
+
+        # Disable deduplication and ensure the duplicate row is used
+        predictor = Predictor(name='test_predictor_deduplicate_data_false')
+        predictor.learn(
+            from_data=df,
+            to_predict='y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False,
+            advanced_args={
+                'deduplicate_data': False
+            }
+        )
+
+        model_data = F.get_model_data('test_predictor_deduplicate_data_false')
+
+        # Duplicate row was used for analysis and training
+
+        assert model_data['data_preparation']['total_row_count'] == n_points + 1
+        assert model_data['data_preparation']['used_row_count'] <= n_points + 1
+
+        assert sum([model_data['data_preparation']['train_row_count'],
+                    model_data['data_preparation']['validation_row_count'],
+                    model_data['data_preparation']['test_row_count']]) == n_points + 1
+
+        assert sum([predictor.transaction.input_data.train_df.shape[0],
+                    predictor.transaction.input_data.test_df.shape[0],
+                    predictor.transaction.input_data.validation_df.shape[0]]) == n_points + 1

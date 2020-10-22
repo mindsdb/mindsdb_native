@@ -14,7 +14,8 @@ from mindsdb_native.libs.phases.data_analyzer.data_analyzer import DataAnalyzer
 from unit_tests.utils import (
     test_column_types,
     generate_short_sentences,
-    generate_rich_sentences
+    generate_rich_sentences,
+    PickableMock
 )
 
 
