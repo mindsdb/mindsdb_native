@@ -32,14 +32,14 @@ jobs:
     - name: Run unit tests
       run: |
           cd tests
-          python -m unittest unit_tests
-          cd ../..
+          python -m unittest discover unit_tests
+          cd ..
       shell: bash
     - name: Run integration tests
       run: |
           cd tests
-          python -m unittest integration_tests
-          cd ../..
+          python -m unittest discover integration_tests
+          cd ..
       shell: bash
       env:
         CHECK_FOR_UPDATES: False

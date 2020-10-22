@@ -24,6 +24,7 @@ from unit_tests.utils import (
     test_column_types,
     generate_value_cols,
     generate_timeseries_labels,
+    generate_timeseries,
     generate_log_labels,
     columns_to_file,
     PickableMock,
@@ -134,10 +135,10 @@ class TestPredictorTimeseries(unittest.TestCase):
             assert isinstance(row[label_headers[0]], list)
             assert len(row[label_headers[0]]) == 6
 
-    def test_keep_id_orderby(self, tmp_path):
+    def test_keep_id_orderby(self):
         data_len = 100
-        train_file_name = os.path.join(str(tmp_path), 'train_data.csv')
-        test_file_name = os.path.join(str(tmp_path), 'test_data.csv')
+        train_file_name = os.path.join(str(self.tmp_path), 'train_data.csv')
+        test_file_name = os.path.join(str(self.tmp_path), 'test_data.csv')
         col_name = 'id'
 
         features = [generate_timeseries(data_len, period=1)]
