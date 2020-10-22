@@ -51,13 +51,13 @@ def test_classifier():
     x_tr = _df_from_xy(X_train, Y_train, target)
     x_te = _df_from_xy(X_test, Y_test, target)
 
-    for label_type in [int, float, str]:
+    for label_type, type_name in zip([int, float, str], ['int', 'float', 'str']):
         tr = deepcopy(x_tr)
         te = deepcopy(x_te)
         tr[target] = tr[target].astype(label_type)
         te[target] = te[target].astype(label_type)
 
-        p = Predictor(f"ConformalTest_{label_type}")
+        p = Predictor(f"ConformalTest_{type_name}")
         p.learn(from_data=tr, to_predict=target, stop_training_in_x_seconds=1)
 
         r = p.predict(when_data=te)
