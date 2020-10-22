@@ -31,16 +31,15 @@ jobs:
           pip install git+https://github.com/mindsdb/lightwood.git@staging --upgrade --no-cache-dir
     - name: Run unit tests
       run: |
-          cd tests & python -m unittest unit_tests
+          cd tests
+          python -m unittest unit_tests
+          cd ../..
       shell: bash
     - name: Run integration tests
       run: |
-        if [ "$RUNNER_OS" == "Linux" ]; then
-          docker-compose up -d
-          sleep 20
-          cd tests & python -m unittest integration_tests
-          docker-compose down
-        fi
+          cd tests
+          python -m unittest integration_tests
+          cd ../..
       shell: bash
       env:
         CHECK_FOR_UPDATES: False
