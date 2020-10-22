@@ -30,11 +30,11 @@ from unit_tests.utils import (
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
-@unittest.skip(reason='PermissionError in columns_to_file()')
 class TestPredictorTimeseries(unittest.TestCase):
     def setUp(self):
         self.tmp_path = tempfile.mkdtemp()
 
+    @unittest.skip(reason='PermissionError in columns_to_file()')
     def test_timeseries(self):
         ts_hours = 12
         data_len = 120
@@ -88,6 +88,7 @@ class TestPredictorTimeseries(unittest.TestCase):
         model_data = F.get_model_data(models[0]['name'])
         assert model_data
 
+    @unittest.skip(reason='PermissionError in columns_to_file()')
     def test_timeseries_stepahead(self):
         ts_hours = 12
         data_len = 120
@@ -139,6 +140,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             assert isinstance(row[label_headers[0]], list)
             assert len(row[label_headers[0]]) == 6
 
+    @unittest.skip(reason='PermissionError in columns_to_file()')
     def test_keep_id_orderby(self):
         data_len = 100
         train_file_name = os.path.join(self.tmp_path, 'train_data.csv')
