@@ -71,7 +71,8 @@ class LightwoodBackend():
 
         # Make type `object` so that dataframe cells can be python lists
         for group in ts_groups:
-            ts_groups[group] = ts_groups[group].astype(object)
+            for order_col in order_by + self.transaction.lmd['tss']['historical_columns']::
+                ts_groups[group][order_col] = ts_groups[group][order_col].astype(object)
 
         # Make all order column cells lists
         for group in ts_groups:
