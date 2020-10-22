@@ -126,13 +126,16 @@ class LightwoodBackend():
                     # Remove rows without full historical data
                     # Don't do this if the `make_predictions` is explicitly specified
                     # Only really relevant for inference (predict) time
-                    if 'make_predictions' not in ts_groups[k]:
+                    print(ts_groups[k].keys())
+                    if 'make_predictions' not in ts_groups[k] and not self.transaction.lmd['allow_incomplete_history']:
                         # Pick and arbitrary order by column
                         idx = 0
                         while idx < len(ts_groups[k][order_by[0]]):
+                            print(f'At index: {idx}')
                             if len(ts_groups[k][order_by[0]]) < window:
                                 for col in list(ts_groups[k].keys()):
                                     del ts_groups[k][col][idx]
+                                    print(idx)
                             else:
                                 idx += 1
 
