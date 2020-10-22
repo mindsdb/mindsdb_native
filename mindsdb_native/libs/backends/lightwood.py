@@ -73,7 +73,6 @@ class LightwoodBackend():
 
             ts_groups[tuple(row[group_by])].append(row)
             self.timeseries_row_mapping[i] = prev_group_len + group_current_length
-            timeseries_row_nullout.append(prev_group_len + group_current_length)
 
         # Convert each group to pandas.DataFrame
         for group in group_by_order_list:
@@ -109,6 +108,11 @@ class LightwoodBackend():
                             ts_groups[group][order_col].iloc[prev_i][-1]
                         )
 
+                    # Zero pad
+                    # @TODO: Remove since RNN encoder can do without (???)
+                    ts_groups[group].iloc[i][order_col].extend(
+                        [0] * (1 + window - len(ts_groups[group].iloc[i][order_col]))
+                    )
                     ts_groups[group].iloc[i][order_col].reverse()
 
         if self.transaction.lmd['tss']['use_previous_target']:
