@@ -341,13 +341,13 @@ class PredictTransaction(Transaction):
             # confidence estimation
             if self.hmd['icp']['active']:
                 self.lmd['all_conformal_ranges'] = {}
-                for predicted_col in self.lmd['predict_columns']:
-                    X = deepcopy(predictions_df)
-                    if self.lmd['tss']['is_timeseries']:
-                        X, _ = self.model_backend._create_timeseries_df(X)
-                    for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
-                        X.pop(col)
+                X = deepcopy(predictions_df)
+                if self.lmd['tss']['is_timeseries']:
+                    X, _ = self.model_backend._create_timeseries_df(X)
+                for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
+                    X.pop(col)
 
+                for predicted_col in self.lmd['predict_columns']:
                     if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.NUMERIC:
                         tol_const = 2  # std devs
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
@@ -369,21 +369,10 @@ class PredictTransaction(Transaction):
 
                     elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL:
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                            if not output_data.get(f'{predicted_col}_confidence_range', None):
-                                output_data[f'{predicted_col}_confidence_range'] = {}
-                            all_classes = self.hmd['icp'][predicted_col].nc_function.model.classes
-                            all_ranges = np.array([self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100) for s in range(1, 100)])
-                            self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+                            self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
                             for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
-                                sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
-                                for idx in range(sample.shape[1]):
-                                    significance = (99 - idx) / 100
-                                    if np.sum(sample[:, idx]) == 1:
-                                        output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                        output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(all_classes[sample[:, idx]])
-                                        break
-                                else:
-                                    output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
+                                sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :]
+                                output_data[f'{predicted_col}_confidence'][sample_idx] = sample.max()
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
