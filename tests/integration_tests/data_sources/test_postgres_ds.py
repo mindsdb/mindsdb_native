@@ -1,23 +1,33 @@
-import pytest
+import unittest
 import datetime
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
 
 
-@pytest.mark.integration
 def test_postgres_ds():
     import pg8000
     from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
 
-    HOST = 'localhost'
-    USER = 'postgres'
-    PASSWORD = ''
-    DBNAME = 'postgres'
-    PORT = 5432
+    HOST = os.getenv('POSTGRES_HOST')
+    USER = os.getenv('POSTGRES_USER')
+    PASSWORD = os.getenv('POSTGRES_PASSWORD')
+    DBNAME = os.getenv('POSTGRES_DBNAME')
+    PORT = os.getenv('POSTGRES_PORT')
 
-    con = pg8000.connect(database=DBNAME, user=USER, password=PASSWORD,
-                         host=HOST, port=PORT)
+    assert HOST is not None, 'missing environment variable'
+    assert USER is not None, 'missing environment variable'
+    assert PASSWORD is not None, 'missing environment variable'
+    assert DBNAME is not None, 'missing environment variable'
+    assert PORT is not None, 'missing environment variable'
+
+    con = pg8000.connect(
+        database=DBNAME,
+        user=USER,
+        password=PASSWORD,
+        host=HOST,
+        port=PORT
+    )
     cur = con.cursor()
 
     cur.execute('DROP TABLE IF EXISTS test_mindsdb')

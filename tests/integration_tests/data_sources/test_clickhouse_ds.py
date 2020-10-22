@@ -1,17 +1,19 @@
-import pytest
+import unittest
 import requests
 from mindsdb_native import Predictor
 from mindsdb_native import F
 
 
-@pytest.mark.integration
 def test_clickhouse_ds():
     from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
-    HOST = 'localhost'
-    PORT = 8123
+    USER = os.getenv('CLICKHOUSE_USER')
+    PASSWORD = os.getenv('CLICKHOUSE_PASSWORD')
+    HOST = os.getenv('CLICKHOUSE_HOST')
+    PORT = os.getenv('CLICKHOUSE_PORT')
 
-    clickhouse_url = f'http://{HOST}:{PORT}'
+    clickhouse_url = f'http://{USER}:{PASSWORD}@{HOST}:{PORT}'
+
     queries = [
         'CREATE DATABASE IF NOT EXISTS test',
         'DROP TABLE IF EXISTS test.mock',

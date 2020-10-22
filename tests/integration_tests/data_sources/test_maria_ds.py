@@ -1,4 +1,5 @@
-import pytest
+import os
+import unittest
 import datetime
 import logging
 from mindsdb_native import Predictor
@@ -6,16 +7,21 @@ from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 from mindsdb_native import F
 
 
-@pytest.mark.integration
 def test_maria_ds():
     import mysql.connector
     from mindsdb_native import MariaDS
 
-    HOST = 'localhost'
-    USER = 'root'
-    PASSWORD = ''
-    DATABASE = 'mysql'
-    PORT = 4306
+    HOST = os.getenv('MARIADB_HOST')
+    USER = os.getenv('MARIADB_USER')
+    PASSWORD = os.getenv('MARIADB_PASSWORD')
+    DATABASE = os.getenv('MARIADB_DATABASE')
+    PORT = os.getenv('MARIADB_PORT')
+
+    assert HOST is not None, 'missing environment variable'
+    assert USER is not None, 'missing environment variable'
+    assert PASSWORD is not None, 'missing environment variable'
+    assert DATABASE is not None, 'missing environment variable'
+    assert PORT is not None, 'missing environment variable'
 
     con = mysql.connector.connect(
         host=HOST,

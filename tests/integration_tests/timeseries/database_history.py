@@ -1,15 +1,23 @@
-import pytest
+import os
+import unittest
 import requests
 import mindsdb_native
 
-@pytest.mark.integration
+
 def test_database_history():
     from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
-    HOST = 'localhost'
-    PORT = 8123
+    USER = os.getenv('CLICKHOUSE_USER')
+    PASSWORD = os.getenv('CLICKHOUSE_PASSWORD')
+    HOST = os.getenv('CLICKHOUSE_HOST')
+    PORT = os.getenv('CLICKHOUSE_PORT')
 
-    clickhouse_url = f'http://{HOST}:{PORT}'
+    assert HOST is not None, 'missing environment variable'
+    assert USER is not None, 'missing environment variable'
+    assert PASSWORD is not None, 'missing environment variable'
+    assert PORT is not None, 'missing environment variable'
+
+    clickhouse_url = f'http://{USER}:{PASSWORD}@{HOST}:{PORT}'
 
     values = []
     for i in range(500):

@@ -1,24 +1,32 @@
-import pytest
+import unittest
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
 
-@pytest.mark.integration
+
 def test_mysql_ds():
     import mysql.connector
     from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
 
-    HOST = 'localhost'
-    USER = 'root'
-    PASSWORD = ''
-    DATABASE = 'mysql'
-    PORT = 3306
+    HOST = os.getenv('MYSQL_HOST')
+    USER = os.getenv('MYSQL_USER')
+    PASSWORD = os.getenv('MYSQL_PASSWORD')
+    DATABASE = os.getenv('MYSQL_DATABASE')
+    PORT = os.getenv('MYSQL_PORT')
 
-    con = mysql.connector.connect(host=HOST,
-                                  port=PORT,
-                                  user=USER,
-                                  password=PASSWORD,
-                                  database=DATABASE)
+    assert HOST is not None, 'missing environment variable'
+    assert USER is not None, 'missing environment variable'
+    assert PASSWORD is not None, 'missing environment variable'
+    assert DATABASE is not None, 'missing environment variable'
+    assert PORT is not None, 'missing environment variable'
+
+    con = mysql.connector.connect(
+        host=HOST,
+        port=PORT,
+        user=USER,
+        password=PASSWORD,
+        database=DATABASE
+    )
     cur = con.cursor()
 
     cur.execute('DROP TABLE IF EXISTS test_mindsdb')

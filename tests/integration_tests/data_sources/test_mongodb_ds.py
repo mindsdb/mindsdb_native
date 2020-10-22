@@ -1,20 +1,25 @@
-import pytest
+import unittest
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
 
 
-@pytest.mark.integration
 def test_mongodb_ds():
     from pymongo import MongoClient
     from mindsdb_native.libs.data_sources.mongodb_ds import MongoDS
 
-    HOST = 'localhost'
-    USER = 'root'
-    PASSWORD = '123'
-    DATABASE = 'database'
+    HOST = os.getenv('MONGODB_HOST')
+    USER = os.getenv('MONGODB_USER')
+    PASSWORD = os.getenv('MONGODB_PASSWORD')
+    DATABASE = os.getenv('MONGODB_DATABASE')
+    PORT = os.getenv('MONGODB_PORT')
     COLLECTION_NAME = 'test_mindsdb'
-    PORT = 27017
+
+    assert HOST is not None, 'missing environment variable'
+    assert USER is not None, 'missing environment variable'
+    assert PASSWORD is not None, 'missing environment variable'
+    assert DATABASE is not None, 'missing environment variable'
+    assert PORT is not None, 'missing environment variable'
 
     con = MongoClient(
         host=HOST,

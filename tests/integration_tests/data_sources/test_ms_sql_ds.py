@@ -1,10 +1,10 @@
-import pytest
+import unittest
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
 
 
-@pytest.mark.integration
+@unittest.skip('No remote MSSQL Server yet')
 def test_mssql_ds():
     import pytds
     from mindsdb_native.libs.data_sources.ms_sql_ds import MSSQLDS
