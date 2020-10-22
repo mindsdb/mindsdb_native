@@ -50,4 +50,4 @@ def test_database_history():
     ts_predictor.predict(when_data={
         'col2': 800
         ,'col1': '2'
-    })
+    }, advanced_args={'use_database_history': True})

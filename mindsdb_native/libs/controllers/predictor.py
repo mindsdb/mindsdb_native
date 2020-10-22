@@ -64,7 +64,6 @@ def _prepare_timeseries_settings(user_provided_settings):
         ,keep_order_column=True
         ,nr_predictions=1
         ,historical_columns=[]
-        ,use_database_history=True
     )
 
     if len(user_provided_settings) > 0:
@@ -250,7 +249,8 @@ class Predictor:
                 force_predict = advanced_args.get('force_predict', False),
                 mixer_class = advanced_args.get('use_mixers', None),
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
-                debug = advanced_args.get('debug', False)
+                debug = advanced_args.get('debug', False),
+                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False)
             )
 
             if rebuild_model is False:
@@ -374,7 +374,9 @@ class Predictor:
                 use_gpu = use_gpu,
                 data_preparation = {},
                 run_confidence_variation_analysis = run_confidence_variation_analysis,
-                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache)
+                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
+                use_database_history = advanced_args.get('use_database_history', False),
+                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False)
             )
 
             self.transaction = PredictTransaction(

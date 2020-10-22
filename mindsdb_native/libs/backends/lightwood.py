@@ -123,11 +123,28 @@ class LightwoodBackend():
                         # @TODO: Maybe ignore the rows with `None` next targets for training
                         ts_groups[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
 
+                    # Remove rows without full historical data
+                    # Don't do this if the `make_predictions` is explicitly specified
+                    # Only really relevant for inference (predict) time
+                    if 'make_predictions' not in ts_groups[k]:
+                        # Pick and arbitrary order by column
+                        idx = 0
+                        while idx < len(ts_groups[k][order_by[0]]):
+                            if len(ts_groups[k][order_by[0]]) < window:
+                                for col in list(ts_groups[k].keys()):
+                                    del ts_groups[k][col][idx]
+                            else:
+                                idx += 1
+
+
         combined_df = pd.concat(list(ts_groups.values()))
 
         if 'make_predictions' in combined_df.columns:
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
             del combined_df['make_predictions']
+
+        if len(combined_df) == 0:
+            raise Exception(f'Not enough historical context to make a timeseries prediction. Please provide a number of rows greater or equal to the window size. If you can\'t get enough rows, consider lowering your window size. If you want to force timeseries predictions lacking historical context please set the `allow_incomplete_history` advanced argument to `True`, but this might lead to subpar predictions.')
 
         return combined_df, secondary_type_dict
 
@@ -387,7 +404,7 @@ class LightwoodBackend():
 
             validation_accuracy = evaluate_accuracy(
                 validation_predictions,
-                self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df, 
+                self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df,
                 self.transaction.lmd['stats_v2'],
                 self.transaction.lmd['predict_columns'],
                 backend=self,
