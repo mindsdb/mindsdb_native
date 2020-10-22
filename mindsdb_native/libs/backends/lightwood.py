@@ -21,6 +21,8 @@ class LightwoodBackend():
         self.predictor = None
         self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
         self.nn_mixer_only = False
+        self.timeseries_row_mapping = {}
+        self.timeseries_incomplete_rows = []
 
     def _create_timeseries_df(self, original_df):
         group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
@@ -35,7 +37,13 @@ class LightwoodBackend():
                 secondary_type_dict[col] = ColumnDataTypes.NUMERIC
 
         # Convert order_by columns to numbers
+        group_by_order_list = []
+        group_len = defaultdict(int)
         for _, row in original_df.iterrows():
+            if tuple(row[group_by]) not in group_by_order_list:
+                group_by_order_list.append(tuple(row[group_by]))
+            group_len[tuple(row[group_by])] += 1
+
             for col in order_by:
                 if row[col] is None:
                     row[col] = 0.0
@@ -55,26 +63,41 @@ class LightwoodBackend():
         # (when no ['tss']['group_by'] is provided)
         # Make groups
         ts_groups = defaultdict(list)
-        for _, row in original_df.iterrows():
+        for i, row in original_df.iterrows():
+            prev_group_len = 0
+            for group in group_by_order_list:
+                prev_group_len += group_len[group]
+            try:
+                group_current_length = len(ts_groups[tuple(row[group_by])])
+            except:
+                group_current_length = 0
+
+            if 'make_predictions' not in row:
+                if group_current_length >= window:
+                    row['make_predictions'] = True
+                else:
+                    row['make_predictions'] = False
+                    
             ts_groups[tuple(row[group_by])].append(row)
+            self.timeseries_row_mapping[prev_group_len + group_current_length] = i
 
         # Convert each group to pandas.DataFrame
-        for group in ts_groups:
+        for group in group_by_order_list:
             ts_groups[group] = pd.DataFrame.from_records(
                 ts_groups[group],
                 columns=original_df.columns
             )
 
         # Sort each group by order_by columns
-        for group in ts_groups:
+        for group in group_by_order_list:
             ts_groups[group].sort_values(by=order_by, inplace=True)
 
         # Make type `object` so that dataframe cells can be python lists
-        for group in ts_groups:
+        for group in group_by_order_list:
             ts_groups[group] = ts_groups[group].astype(object)
 
         # Make all order column cells lists
-        for group in ts_groups:
+        for group in group_by_order_list:
             for order_col in order_by + self.transaction.lmd['tss']['historical_columns']:
                 for i in range(len(ts_groups[group])):
                     ts_groups[group][order_col].iloc[i] = [
@@ -82,7 +105,7 @@ class LightwoodBackend():
                     ]
 
         # Add previous rows
-        for group in ts_groups:
+        for group in group_by_order_list:
             for order_col in order_by + self.transaction.lmd['tss']['historical_columns']:
                 for i in range(len(ts_groups[group])):
                     previous_indexes = [*range(max(0, i - window), i)]
@@ -92,17 +115,11 @@ class LightwoodBackend():
                             ts_groups[group][order_col].iloc[prev_i][-1]
                         )
 
-                    # Zeor pad
-                    # @TODO: Remove since RNN encoder can do without (???)
-                    ts_groups[group].iloc[i][order_col].extend(
-                        [0] * (1 + window - len(ts_groups[group].iloc[i][order_col]))
-                    )
-
                     ts_groups[group].iloc[i][order_col].reverse()
 
         if self.transaction.lmd['tss']['use_previous_target']:
             for target_column in self.transaction.lmd['predict_columns']:
-                for k in ts_groups:
+                for k in group_by_order_list:
                     previous_target_values = list(ts_groups[k][target_column])
                     del previous_target_values[-1]
                     previous_target_values = [None] + previous_target_values
@@ -123,24 +140,26 @@ class LightwoodBackend():
                         # @TODO: Maybe ignore the rows with `None` next targets for training
                         ts_groups[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
 
-                    # Remove rows without full historical data
-                    # Don't do this if the `make_predictions` is explicitly specified
-                    # Only really relevant for inference (predict) time
-                    print(ts_groups[k].keys())
-                    if 'make_predictions' not in ts_groups[k] and not self.transaction.lmd['allow_incomplete_history']:
-                        # Pick and arbitrary order by column
-                        idx = 0
-                        while idx < len(ts_groups[k][order_by[0]]):
-                            print(f'At index: {idx}')
-                            if len(ts_groups[k][order_by[0]]) < window:
-                                for col in list(ts_groups[k].keys()):
-                                    del ts_groups[k][col][idx]
-                                    print(idx)
-                            else:
-                                idx += 1
+        nr_rows_itter = -1
+        for k in group_by_order_list:
+            # Remove rows without full historical data
+            # Don't do this if the `make_predictions` is explicitly specified
+            # Only really relevant for inference (predict) time
+            if 'make_predictions' not in ts_groups[k] and not self.transaction.lmd['allow_incomplete_history']:
+                # Pick and arbitrary order by column
+                idx = 0
+                while idx < len(ts_groups[k][order_by[0]]):
+                    nr_rows_itter += 1
+                    if len(ts_groups[k][order_by[0]]) < window:
+                        for col in list(ts_groups[k].keys()):
+                            print(f'Deleting: {idx}')
+                            del ts_groups[k][col][idx]
+                            timeseries_incomplete_rows.append(nr_rows_itter)
+                    else:
+                        idx += 1
 
 
-        combined_df = pd.concat(list(ts_groups.values()))
+        combined_df = pd.concat([ts_groups[k] for k in group_by_order_list])
 
         if 'make_predictions' in combined_df.columns:
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
