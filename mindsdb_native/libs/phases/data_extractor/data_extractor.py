@@ -129,7 +129,9 @@ class DataExtractor(BaseModule):
 
                 df = pd.concat([df,historical_df])
 
-        df = self._apply_sort_conditions_to_df(df)
+        # Sorting here *should* only be needed at learn time
+        if self.transaction.lmd['type'] == TRANSACTION_LEARN:
+            df = self._apply_sort_conditions_to_df(df)
 
         # Mutable lists -> immutable tuples
         # (lists caused TypeError: uhashable type 'list' in TypeDeductor phase)
