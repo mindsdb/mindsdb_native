@@ -12,6 +12,37 @@ from mindsdb_native.libs.constants.mindsdb import TRANSACTION_LEARN
 
 
 class TestDataSplitter:
+    def test_user_provided_split_indices(self):
+        predictor = Predictor('test_user_provided_split_indices')
+
+        df = pd.DataFrame({
+            'col_a': [*range(100)],
+            'col_b': [*range(100)]
+        })
+
+        try:
+            predictor.learn(
+                from_data=df,
+                to_predict='col_b',
+                advanced_args={
+                    'data_split_indexes': {
+                        'validation_indexes': [*range(0, 30)],
+                        'train_indexes': [*range(30, 60)],
+                        'test_indexes': [*range(60, 100)]
+                    },
+                    'force_column_usage': ['col_a', 'col_b']
+                },
+                use_gpu=False
+            )
+        except BreakpointException:
+            pass
+        else:
+            raise AssertionError
+
+        assert set(predictor.transaction.input_data.train_df['col_a'].tolist()) == set(range(30, 60))
+        assert set(predictor.transaction.input_data.test_df['col_a'].tolist()) == set(range(60, 100))
+        assert set(predictor.transaction.input_data.validation_df['col_a'].tolist()) == set(range(0, 30))
+
     def test_groups(self):
         predictor = Predictor('test_groups')
         predictor.breakpoint = 'DataSplitter'
