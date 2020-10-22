@@ -19,6 +19,7 @@ def _df_from_xy(x, y, target):
     x[target] = pd.DataFrame(y)
     return x
 
+
 def test_regressor():
     """
     Sanity check. MindsDB point predictions should be within range
@@ -42,7 +43,7 @@ def test_regressor():
 
 def test_classifier():
     """
-    Sanity check. MindsDB class predictions should be inside the subset predicted by the inductive conformal predictor.
+    Sanity check. Confidence should be a valid probability value.
     """
     X, y = load_iris(return_X_y=True)
     X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.1, random_state=5)
@@ -64,4 +65,4 @@ def test_classifier():
         r = [x.explanation[target] for x in r]
 
         for x in r:
-            assert x['predicted_value'] in x['confidence_interval']
+            assert 0 <= x['confidence'] <= 1
