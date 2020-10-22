@@ -7,108 +7,109 @@ from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 from mindsdb_native import F
 
 
-def test_maria_ds():
-    import mysql.connector
-    from mindsdb_native import MariaDS
+class TestMariaDB(unittest.TestCase):
+    def test_maria_ds(self):
+        import mysql.connector
+        from mindsdb_native import MariaDS
 
-    HOST = os.getenv('MARIADB_HOST')
-    USER = os.getenv('MARIADB_USER')
-    PASSWORD = os.getenv('MARIADB_PASSWORD')
-    DATABASE = os.getenv('MARIADB_DATABASE')
-    PORT = os.getenv('MARIADB_PORT')
+        HOST = os.getenv('MARIADB_HOST')
+        USER = os.getenv('MARIADB_USER')
+        PASSWORD = os.getenv('MARIADB_PASSWORD')
+        DATABASE = os.getenv('MARIADB_DATABASE')
+        PORT = os.getenv('MARIADB_PORT')
 
-    assert HOST is not None, 'missing environment variable'
-    assert USER is not None, 'missing environment variable'
-    assert PASSWORD is not None, 'missing environment variable'
-    assert DATABASE is not None, 'missing environment variable'
-    assert PORT is not None, 'missing environment variable'
+        assert HOST is not None, 'missing environment variable'
+        assert USER is not None, 'missing environment variable'
+        assert PASSWORD is not None, 'missing environment variable'
+        assert DATABASE is not None, 'missing environment variable'
+        assert PORT is not None, 'missing environment variable'
 
-    con = mysql.connector.connect(
-        host=HOST,
-        port=PORT,
-        user=USER,
-        password=PASSWORD,
-        database=DATABASE
-    )
-    cur = con.cursor()
-
-    cur.execute('DROP TABLE IF EXISTS test_mindsdb')
-    cur.execute("""CREATE TABLE test_mindsdb (
-                                col_int BIGINT,
-                                col_float FLOAT,
-                                col_categorical Text,
-                                col_bool BOOL,
-                                col_text Text,
-                                col_date DATE,
-                                col_datetime DATETIME,
-                                col_timestamp TIMESTAMP,
-                                col_time TIME
-                                )
-                                """)
-    for i in range(0, 200):
-        dt = datetime.datetime.now() - datetime.timedelta(days=i)
-
-        query = f"""INSERT INTO test_mindsdb (col_int,
-                                col_float,
-                                col_categorical,
-                                col_bool,
-                                col_text,
-                                col_date,
-                                col_datetime,
-                                col_timestamp,
-                                col_time)
-                                VALUES (%s, %s,  %s,  %s,  %s, %s, %s, %s, %s)
-                                """
-        ci = i % 5
-        values = (
-            i,
-            i + 0.01,
-            f"Cat {ci}",
-            i % 2 == 0,
-            f"long long long text {i}",
-            dt.date(),
-            dt,
-            dt.strftime('%Y-%m-%d %H:%M:%S.%f'),
-            dt.strftime('%H:%M:%S.%f')
+        con = mysql.connector.connect(
+            host=HOST,
+            port=PORT,
+            user=USER,
+            password=PASSWORD,
+            database=DATABASE
         )
-        cur.execute(query, values)
-    con.commit()
-    con.close()
+        cur = con.cursor()
 
-    maria_ds = MariaDS(table='test_mindsdb', host=HOST, user=USER,
-                       password=PASSWORD, database=DATABASE, port=PORT)
+        cur.execute('DROP TABLE IF EXISTS test_mindsdb')
+        cur.execute("""CREATE TABLE test_mindsdb (
+                                    col_int BIGINT,
+                                    col_float FLOAT,
+                                    col_categorical Text,
+                                    col_bool BOOL,
+                                    col_text Text,
+                                    col_date DATE,
+                                    col_datetime DATETIME,
+                                    col_timestamp TIMESTAMP,
+                                    col_time TIME
+                                    )
+                                    """)
+        for i in range(0, 200):
+            dt = datetime.datetime.now() - datetime.timedelta(days=i)
 
-    assert maria_ds.name() == 'MariaDS: mysql/test_mindsdb'
+            query = f"""INSERT INTO test_mindsdb (col_int,
+                                    col_float,
+                                    col_categorical,
+                                    col_bool,
+                                    col_text,
+                                    col_date,
+                                    col_datetime,
+                                    col_timestamp,
+                                    col_time)
+                                    VALUES (%s, %s,  %s,  %s,  %s, %s, %s, %s, %s)
+                                    """
+            ci = i % 5
+            values = (
+                i,
+                i + 0.01,
+                f"Cat {ci}",
+                i % 2 == 0,
+                f"long long long text {i}",
+                dt.date(),
+                dt,
+                dt.strftime('%Y-%m-%d %H:%M:%S.%f'),
+                dt.strftime('%H:%M:%S.%f')
+            )
+            cur.execute(query, values)
+        con.commit()
+        con.close()
 
-    assert (len(maria_ds._df) == 200)
+        maria_ds = MariaDS(table='test_mindsdb', host=HOST, user=USER,
+                        password=PASSWORD, database=DATABASE, port=PORT)
 
-    mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
-    model_data = F.analyse_dataset(from_data=maria_ds)
-    analysis = model_data['data_analysis_v2']
-    assert model_data
-    assert analysis
+        assert maria_ds.name() == 'MariaDS: mysql/test_mindsdb'
 
-    def assert_expected_type(column_typing, expected_type, expected_subtype):
-        assert column_typing['data_type'] == expected_type
-        assert column_typing['data_subtype'] == expected_subtype
-        assert column_typing['data_type_dist'][expected_type] == 200
-        assert column_typing['data_subtype_dist'][expected_subtype] == 200
+        assert (len(maria_ds._df) == 200)
 
+        mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
+        model_data = F.analyse_dataset(from_data=maria_ds)
+        analysis = model_data['data_analysis_v2']
+        assert model_data
+        assert analysis
 
-    assert_expected_type(analysis['col_categorical']['typing'], DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.MULTIPLE)
-    assert_expected_type(analysis['col_bool']['typing'], DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.SINGLE)
-    assert_expected_type(analysis['col_int']['typing'], DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT)
-    assert_expected_type(analysis['col_float']['typing'], DATA_TYPES.NUMERIC, DATA_SUBTYPES.FLOAT)
-    assert_expected_type(analysis['col_date']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.DATE)
-    assert_expected_type(analysis['col_datetime']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP)
-    assert_expected_type(analysis['col_timestamp']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP)
-
-    # Subtype is expected to be either .SHORT or .RICH
-    try:
-        assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT)
-    except AssertionError:
-        assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.RICH)
+        def assert_expected_type(column_typing, expected_type, expected_subtype):
+            assert column_typing['data_type'] == expected_type
+            assert column_typing['data_subtype'] == expected_subtype
+            assert column_typing['data_type_dist'][expected_type] == 200
+            assert column_typing['data_subtype_dist'][expected_subtype] == 200
 
 
-    # @TODO Timedeltas not supported yet
-    # assert_expected_type((analysis['col_time']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMEDELTA)
+        assert_expected_type(analysis['col_categorical']['typing'], DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.MULTIPLE)
+        assert_expected_type(analysis['col_bool']['typing'], DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.SINGLE)
+        assert_expected_type(analysis['col_int']['typing'], DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT)
+        assert_expected_type(analysis['col_float']['typing'], DATA_TYPES.NUMERIC, DATA_SUBTYPES.FLOAT)
+        assert_expected_type(analysis['col_date']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.DATE)
+        assert_expected_type(analysis['col_datetime']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP)
+        assert_expected_type(analysis['col_timestamp']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP)
+
+        # Subtype is expected to be either .SHORT or .RICH
+        try:
+            assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT)
+        except AssertionError:
+            assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.RICH)
+
+
+        # @TODO Timedeltas not supported yet
+        # assert_expected_type((analysis['col_time']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMEDELTA)
