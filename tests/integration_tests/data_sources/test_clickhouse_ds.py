@@ -15,6 +15,13 @@ class TestClickhouse(unittest.TestCase):
         HOST = os.getenv('CLICKHOUSE_HOST')
         PORT = os.getenv('CLICKHOUSE_PORT')
 
+        assert USER is not None, 'missing environment variable'
+        assert PASSWORD is not None, 'missing environment variable'
+        assert HOST is not None, 'missing environment variable'
+        assert PORT is not None, 'missing environment variable'
+
+        PORT = int(PORT)
+
         clickhouse_url = f'http://{USER}:{PASSWORD}@{HOST}:{PORT}'
 
         queries = [

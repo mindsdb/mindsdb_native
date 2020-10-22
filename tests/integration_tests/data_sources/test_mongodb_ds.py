@@ -23,6 +23,8 @@ class TestMongoDB(unittest.TestCase):
         assert DATABASE is not None, 'missing environment variable'
         assert PORT is not None, 'missing environment variable'
 
+        PORT = int(PORT)
+
         con = MongoClient(
             host=HOST,
             port=PORT,

@@ -22,6 +22,8 @@ class TestMYSQL(unittest.TestCase):
         assert DATABASE is not None, 'missing environment variable'
         assert PORT is not None, 'missing environment variable'
 
+        PORT = int(PORT)
+
         con = mysql.connector.connect(
             host=HOST,
             port=PORT,

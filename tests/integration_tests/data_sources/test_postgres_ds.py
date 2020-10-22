@@ -23,6 +23,8 @@ class TestPostgres(unittest.TestCase):
         assert DBNAME is not None, 'missing environment variable'
         assert PORT is not None, 'missing environment variable'
 
+        PORT = int(PORT)
+
         con = pg8000.connect(
             database=DBNAME,
             user=USER,
