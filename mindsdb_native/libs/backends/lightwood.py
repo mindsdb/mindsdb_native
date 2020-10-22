@@ -22,7 +22,6 @@ class LightwoodBackend():
         self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
         self.nn_mixer_only = False
         self.timeseries_row_mapping = {}
-        self.timeseries_incomplete_rows = []
 
     def _create_timeseries_df(self, original_df):
         group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
@@ -72,14 +71,9 @@ class LightwoodBackend():
             except:
                 group_current_length = 0
 
-            if 'make_predictions' not in row:
-                if group_current_length >= window:
-                    row['make_predictions'] = True
-                else:
-                    row['make_predictions'] = False
-                    
             ts_groups[tuple(row[group_by])].append(row)
-            self.timeseries_row_mapping[prev_group_len + group_current_length] = i
+            self.timeseries_row_mapping[i] = prev_group_len + group_current_length
+            timeseries_row_nullout.append(prev_group_len + group_current_length)
 
         # Convert each group to pandas.DataFrame
         for group in group_by_order_list:
@@ -139,24 +133,6 @@ class LightwoodBackend():
                             next_target_value_arr.append(0)
                         # @TODO: Maybe ignore the rows with `None` next targets for training
                         ts_groups[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
-
-        nr_rows_itter = -1
-        for k in group_by_order_list:
-            # Remove rows without full historical data
-            # Don't do this if the `make_predictions` is explicitly specified
-            # Only really relevant for inference (predict) time
-            if 'make_predictions' not in ts_groups[k] and not self.transaction.lmd['allow_incomplete_history']:
-                # Pick and arbitrary order by column
-                idx = 0
-                while idx < len(ts_groups[k][order_by[0]]):
-                    nr_rows_itter += 1
-                    if len(ts_groups[k][order_by[0]]) < window:
-                        for col in list(ts_groups[k].keys()):
-                            print(f'Deleting: {idx}')
-                            del ts_groups[k][col][idx]
-                            timeseries_incomplete_rows.append(nr_rows_itter)
-                    else:
-                        idx += 1
 
 
         combined_df = pd.concat([ts_groups[k] for k in group_by_order_list])
@@ -535,5 +511,13 @@ class LightwoodBackend():
 
             if 'confidence_range' in predictions[k]:
                 formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
+
+        if len(self.timeseries_row_mapping):
+            ordered_formated_predictions = {}
+            for k in list(formated_predictions.keys()):
+                ordered_values = []
+                for i in timeseries_row_mapping:
+                    ordered_values.append(formated_predictions[k][timeseries_row_mapping[i]])
+                formated_predictions[k] = ordered_values
 
         return formated_predictions
