@@ -1,12 +1,10 @@
+import unittest
 import pandas as pd
 import numpy as np
-import unittest
 
 from mindsdb_native import functional as F
 from mindsdb_native import Predictor
 from mindsdb_native.libs.controllers.transaction import BreakpointException
-from mindsdb_native.libs.data_types.transaction_data import TransactionData
-from mindsdb_native.libs.phases.data_cleaner.data_cleaner import DataCleaner
 
 
 class TestDataCleaner(unittest.TestCase):

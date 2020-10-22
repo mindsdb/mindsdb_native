@@ -6,30 +6,26 @@ from unittest import mock
 import os
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
 
 import torch
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, f1_score, accuracy_score
 
-import mindsdb_native
 from mindsdb_native import F
 from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.controllers.predictor import Predictor
+from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
 from unit_tests.utils import (
-    test_column_types,
     generate_value_cols,
     generate_timeseries_labels,
     generate_log_labels,
     columns_to_file,
-    PickableMock,
     SMALL_VOCAB
 )
 
-from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class TestPredictor(unittest.TestCase):

@@ -7,10 +7,7 @@ import numpy as np
 import pandas as pd
 
 from mindsdb_native.libs.controllers.functional import analyse_dataset
-from mindsdb_native.libs.controllers.transaction import BreakpointException
-from mindsdb_native.libs.data_types.transaction_data import TransactionData
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
-from mindsdb_native.libs.phases.data_analyzer.data_analyzer import DataAnalyzer
 from unit_tests.utils import (
     test_column_types,
     generate_short_sentences,

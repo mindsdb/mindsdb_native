@@ -11,9 +11,7 @@ import pandas as pd
 from mindsdb_native import Predictor
 from mindsdb_native.libs.controllers.transaction import BreakpointException
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
-from mindsdb_native.libs.data_types.transaction_data import TransactionData
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
-from mindsdb_native.libs.phases.type_deductor.type_deductor import TypeDeductor
 from unit_tests.utils import (
     test_column_types,
     generate_short_sentences,

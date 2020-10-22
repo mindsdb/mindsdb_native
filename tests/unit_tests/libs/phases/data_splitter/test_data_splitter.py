@@ -1,14 +1,8 @@
 import pandas as pd
-import numpy as np
 import random
-import pytest
 
-from mindsdb_native.config import CONFIG
 from mindsdb_native import Predictor
 from mindsdb_native.libs.controllers.transaction import BreakpointException
-from mindsdb_native.libs.data_types.transaction_data import TransactionData
-from mindsdb_native.libs.phases.data_splitter.data_splitter import DataSplitter
-from mindsdb_native.libs.constants.mindsdb import TRANSACTION_LEARN
 
 
 class TestDataSplitter:
