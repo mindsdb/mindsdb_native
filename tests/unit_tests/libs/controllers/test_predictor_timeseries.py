@@ -35,9 +35,6 @@ from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 
 class TestPredictorTimeseries(unittest.TestCase):
-    def setUp(self):
-        self.tmp_path = tempfile.mkdtemp()
-
     def test_timeseries(self):
         ts_hours = 12
         data_len = 120
@@ -51,16 +48,20 @@ class TestPredictorTimeseries(unittest.TestCase):
         label_headers = list(map(lambda col: col[0], labels))
 
         # Create the training dataset and save it to a file
-        columns_train = list(
-            map(lambda col: col[1:int(len(col) * 3 / 4)], features))
-        columns_train.extend(
-            list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
-        columns_to_file(columns_train, train_file_name, headers=[*feature_headers,
-                                                                 *label_headers])
+        columns_train = list(map(lambda col: col[1:int(len(col) * 3 / 4)], features))
+        columns_train.extend(list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
+        columns_to_file(
+            columns_train,
+            train_file_name,
+            headers=[*feature_headers, *label_headers]
+        )
         # Create the testing dataset and save it to a file
-        columns_test = list(
-            map(lambda col: col[int(len(col) * 3 / 4):], features))
-        columns_to_file(columns_test, test_file_name, headers=feature_headers)
+        columns_test = list(map(lambda col: col[int(len(col) * 3 / 4):], features))
+        columns_to_file(
+            columns_test,
+            test_file_name,
+            headers=feature_headers
+        )
 
         mdb = Predictor(name='test_timeseries')
 
@@ -68,8 +69,8 @@ class TestPredictorTimeseries(unittest.TestCase):
             from_data=train_file_name,
             to_predict=label_headers,
             timeseries_settings={
-                'order_by': [feature_headers[0]]
-                ,'window': 3
+                'order_by': [feature_headers[0]],
+                'window': 3
             },
             stop_training_in_x_seconds=10,
             use_gpu=False,
@@ -101,16 +102,20 @@ class TestPredictorTimeseries(unittest.TestCase):
         label_headers = list(map(lambda col: col[0], labels))
 
         # Create the training dataset and save it to a file
-        columns_train = list(
-            map(lambda col: col[1:int(len(col) * 3 / 4)], features))
-        columns_train.extend(
-            list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
-        columns_to_file(columns_train, train_file_name, headers=[*feature_headers,
-                                                                 *label_headers])
+        columns_train = list(map(lambda col: col[1:int(len(col) * 3 / 4)], features))
+        columns_train.extend(list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
+        columns_to_file(
+            columns_train,
+            train_file_name,
+            headers=[*feature_headers, *label_headers]
+        )
         # Create the testing dataset and save it to a file
-        columns_test = list(
-            map(lambda col: col[int(len(col) * 3 / 4):], features))
-        columns_to_file(columns_test, test_file_name, headers=feature_headers)
+        columns_test = list(map(lambda col: col[int(len(col) * 3 / 4):], features))
+        columns_to_file(
+            columns_test,
+            test_file_name,
+            headers=feature_headers
+        )
 
         mdb = Predictor(name='test_timeseries')
 
@@ -150,16 +155,20 @@ class TestPredictorTimeseries(unittest.TestCase):
         label_headers = list(map(lambda col: col[0], labels))
 
         # Create the training dataset and save it to a file
-        columns_train = list(
-            map(lambda col: col[1:int(len(col) * 3 / 4)], features))
-        columns_train.extend(
-            list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
-        columns_to_file(columns_train, train_file_name, headers=[*feature_headers,
-                                                                 *label_headers])
+        columns_train = list(map(lambda col: col[1:int(len(col) * 3 / 4)], features))
+        columns_train.extend(list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
+        columns_to_file(
+            columns_train,
+            train_file_name,
+            headers=[*feature_headers, *label_headers]
+        )
         # Create the testing dataset and save it to a file
-        columns_test = list(
-            map(lambda col: col[int(len(col) * 3 / 4):], features))
-        columns_to_file(columns_test, test_file_name, headers=feature_headers)
+        columns_test = list(map(lambda col: col[int(len(col) * 3 / 4):], features))
+        columns_to_file(
+            columns_test,
+            test_file_name,
+            headers=feature_headers
+        )
 
         mdb = Predictor(name='test_timeseries')
 
@@ -168,7 +177,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             to_predict=label_headers,
             timeseries_settings={
                 'order_by': [feature_headers[0]]
-                , 'window': 2
+                ,'window': 2
             },
             stop_training_in_x_seconds=1,
             use_gpu=False,
