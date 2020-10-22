@@ -73,6 +73,9 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         self.classes = None
         self.columns = fit_params['all_columns']
         self.ignore_columns = fit_params['columns_to_ignore']
+        self.ar = fit_params['use_previous_target']
+        if self.ar:
+            self.columns.append(f'previous_{self.target}')
 
     def fit(self, x, y):
         """
