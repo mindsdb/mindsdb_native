@@ -141,7 +141,7 @@ def generate_timeseries_labels(columns):
 
 def columns_to_file(columns, filename, headers=None):
     separator = ','
-    with open(filename, 'w+', encoding='utf-8') as fp:
+    with open(filename, 'w', encoding='utf-8') as fp:
         fp.write('')
 
     with open(filename, 'a', encoding='utf-8') as fp:
