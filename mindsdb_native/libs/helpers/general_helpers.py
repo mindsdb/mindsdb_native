@@ -210,7 +210,7 @@ def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backen
         elif col_type == DATA_TYPES.SEQUENTIAL:
             evaluator = evaluate_array_accuracy
             kwargs['categorical'] = True if DATA_TYPES.CATEGORICAL in \
-                                            col_stats[column]['typing']['data_type_dist'] else False
+                                            col_stats[column]['typing'].get('data_type_dist', []) else False
         else:
             evaluator = evaluate_generic_accuracy
         column_score = evaluator(
