@@ -21,9 +21,9 @@ class LightwoodBackend():
         self.predictor = None
         self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
         self.nn_mixer_only = False
-        self.timeseries_row_mapping = {}
 
     def _create_timeseries_df(self, original_df):
+        timeseries_row_mapping = {}
         group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
         order_by = self.transaction.lmd['tss']['order_by']
         window = self.transaction.lmd['tss']['window']
@@ -76,7 +76,7 @@ class LightwoodBackend():
                 group_current_length = 0
 
             ts_groups[group_key].append(row)
-            self.timeseries_row_mapping[i] = prev_group_len + group_current_length
+            timeseries_row_mapping[i] = prev_group_len + group_current_length
 
         # Convert each group to pandas.DataFrame
         for group in group_by_order_list:
@@ -152,7 +152,7 @@ class LightwoodBackend():
         if len(combined_df) == 0:
             raise Exception(f'Not enough historical context to make a timeseries prediction. Please provide a number of rows greater or equal to the window size. If you can\'t get enough rows, consider lowering your window size. If you want to force timeseries predictions lacking historical context please set the `allow_incomplete_history` advanced argument to `True`, but this might lead to subpar predictions.')
 
-        return combined_df, secondary_type_dict
+        return combined_df, secondary_type_dict, timeseries_row_mapping
 
     def _create_lightwood_config(self, secondary_type_dict):
         config = {}
@@ -286,8 +286,8 @@ class LightwoodBackend():
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
-            train_df, secondary_type_dict = self._create_timeseries_df(self.transaction.input_data.train_df)
-            test_df, _ = self._create_timeseries_df(self.transaction.input_data.test_df)
+            train_df, secondary_type_dict, _ = self._create_timeseries_df(self.transaction.input_data.train_df)
+            test_df, _, _ = self._create_timeseries_df(self.transaction.input_data.test_df)
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
             if self.transaction.lmd['sample_settings']['sample_for_training']:
@@ -465,7 +465,7 @@ class LightwoodBackend():
             raise Exception(f'Unknown mode specified: "{mode}"')
 
         if self.transaction.lmd['tss']['is_timeseries']:
-            df, _ = self._create_timeseries_df(df)
+            df, _, timeseries_row_mapping = self._create_timeseries_df(df)
 
         if self.predictor is None:
             self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
@@ -520,13 +520,13 @@ class LightwoodBackend():
             if 'confidence_range' in predictions[k]:
                 formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
 
-        print(self.timeseries_row_mapping)
-        if len(self.timeseries_row_mapping):
+        if len(timeseries_row_mapping):
             ordered_formated_predictions = {}
             for k in list(formated_predictions.keys()):
                 ordered_values = []
-                for i in self.timeseries_row_mapping:
-                    ordered_values.append(formated_predictions[k][self.timeseries_row_mapping[i]])
+                for i in timeseries_row_mapping:
+                    print(k, len(formated_predictions[k]))
+                    ordered_values.append(formated_predictions[k][timeseries_row_mapping[i]])
                 formated_predictions[k] = ordered_values
 
         return formated_predictions
