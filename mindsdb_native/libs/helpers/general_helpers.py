@@ -182,12 +182,13 @@ def evaluate_generic_accuracy(column, predictions, true_values, **kwargs):
 def evaluate_array_accuracy(column, predictions, true_values, **kwargs):
     accuracy = 0
     true_values = list(true_values)
+    acc_f = balanced_accuracy_score if kwargs['categorical'] else r2_score
     for i in range(len(predictions[column])):
         if isinstance(true_values[i],list):
-            accuracy += r2_score(predictions[column][i],true_values[i])
+            accuracy += acc_f(predictions[column][i],true_values[i])
         else:
             # For the T+1 usecase
-            accuracy = r2_score([x[0] for x in predictions[column]], true_values)
+            accuracy = acc_f([x[0] for x in predictions[column]], true_values)
             return accuracy
 
     accuracy = accuracy/len(predictions[column])
@@ -208,6 +209,8 @@ def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backen
                 evaluator = evaluate_classification_accuracy
         elif col_type == DATA_TYPES.SEQUENTIAL:
             evaluator = evaluate_array_accuracy
+            kwargs['categorical'] = True if DATA_TYPES.CATEGORICAL in \
+                                            col_stats[column]['typing']['data_type_dist'] else False
         else:
             evaluator = evaluate_generic_accuracy
         column_score = evaluator(
