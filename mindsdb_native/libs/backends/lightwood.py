@@ -63,15 +63,19 @@ class LightwoodBackend():
         # Make groups
         ts_groups = defaultdict(list)
         for i, row in original_df.iterrows():
+            group_key = tuple(row[group_by])
             prev_group_len = 0
             for group in group_by_order_list:
+                if group == group_key:
+                    break
                 prev_group_len += group_len[group]
+
             try:
-                group_current_length = len(ts_groups[tuple(row[group_by])])
+                group_current_length = len(ts_groups[group_key])
             except:
                 group_current_length = 0
 
-            ts_groups[tuple(row[group_by])].append(row)
+            ts_groups[group_key].append(row)
             self.timeseries_row_mapping[i] = prev_group_len + group_current_length
 
         # Convert each group to pandas.DataFrame
@@ -516,12 +520,13 @@ class LightwoodBackend():
             if 'confidence_range' in predictions[k]:
                 formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
 
+        print(self.timeseries_row_mapping)
         if len(self.timeseries_row_mapping):
             ordered_formated_predictions = {}
             for k in list(formated_predictions.keys()):
                 ordered_values = []
-                for i in timeseries_row_mapping:
-                    ordered_values.append(formated_predictions[k][timeseries_row_mapping[i]])
+                for i in self.timeseries_row_mapping:
+                    ordered_values.append(formated_predictions[k][self.timeseries_row_mapping[i]])
                 formated_predictions[k] = ordered_values
 
         return formated_predictions

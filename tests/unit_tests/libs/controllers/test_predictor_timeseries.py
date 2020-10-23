@@ -75,7 +75,7 @@ class TestPredictorTimeseries:
 
         # Results should only be given for the rows with full history
         print(results)
-        assert len(results) == len(columns_test[-1]) - 2
+        assert len(results) == len(columns_test[-1])
         for row in results:
             expect_columns = [label_headers[0],
                               label_headers[0] + '_confidence']
@@ -130,7 +130,7 @@ class TestPredictorTimeseries:
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
 
         # Results should only be given for the rows with full history
-        assert len(results) == len(columns_test[-1]) - 2
+        assert len(results) == len(columns_test[-1])
 
         for row in results:
             assert label_headers[0] + '_confidence' in row
