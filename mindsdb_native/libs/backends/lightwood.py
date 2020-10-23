@@ -525,7 +525,6 @@ class LightwoodBackend():
             for k in list(formated_predictions.keys()):
                 ordered_values = []
                 for i in timeseries_row_mapping:
-                    print(k, len(formated_predictions[k]))
                     ordered_values.append(formated_predictions[k][timeseries_row_mapping[i]])
                 formated_predictions[k] = ordered_values
 
