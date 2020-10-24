@@ -36,7 +36,7 @@ jobs:
           cd ..
       shell: bash
     - name: Run integration tests
-      if: toJson(secrets.DATABASE_CREDENTIALS) != '{}'
+      if: ${{ toJson(secrets.DATABASE_CREDENTIALS) }} != '{}'
       run: |
           cd tests
           python -m unittest discover integration_tests
