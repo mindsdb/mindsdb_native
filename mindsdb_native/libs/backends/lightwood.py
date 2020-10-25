@@ -504,12 +504,11 @@ class LightwoodBackend():
             if 'confidence_range' in predictions[k]:
                 formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
 
-        if len(timeseries_row_mapping):
-            ordered_formated_predictions = {}
+        if self.transaction.lmd['tss']['is_timeseries']:
             for k in list(formated_predictions.keys()):
-                ordered_values = []
-                for i in timeseries_row_mapping:
-                    ordered_values.append(formated_predictions[k][timeseries_row_mapping[i]])
+                ordered_values = [None] * len(formated_predictions[k])
+                for i, value in enumerate(formated_predictions[k]):
+                    ordered_values[[timeseries_row_mapping[i]] = valuje
                 formated_predictions[k] = ordered_values
 
         return formated_predictions
