@@ -68,8 +68,7 @@ def _prepare_timeseries_settings(user_provided_settings):
     if len(user_provided_settings) > 0:
         if 'order_by' not in user_provided_settings:
             raise Exception('Invalid timeseries settings, please provide `order_by` key [a list of columns]')
-
-        elif 'window' not in user_provided_settings
+        elif 'window' not in user_provided_settings:
             raise Exception(f'Invalid timeseries settings, you must specify a window size')
         else:
             timeseries_settings['is_timeseries'] = True
