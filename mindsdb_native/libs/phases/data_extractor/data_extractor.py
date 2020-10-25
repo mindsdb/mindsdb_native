@@ -57,7 +57,7 @@ class DataExtractor(BaseModule):
         if self.transaction.lmd['tss']['is_timeseries']:
             asc_values = [True for _ in self.transaction.lmd['tss']['order_by']]
             sort_by = self.transaction.lmd['tss']['order_by']
-
+            
             if self.transaction.lmd['tss']['group_by'] is not None:
                 sort_by = self.transaction.lmd['tss']['group_by'] + sort_by
                 asc_values = [True for _ in self.transaction.lmd['tss']['group_by']] + asc_values

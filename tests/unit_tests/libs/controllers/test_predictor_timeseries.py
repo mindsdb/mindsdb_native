@@ -221,7 +221,7 @@ class TestPredictorTimeseries:
                 'order_by': ['order_ai_id']
                 ,'window': 3
                 ,'nr_predictions': 6
-                ,'group_by': '3_valued_group_by'
+                ,'group_by': ['3_valued_group_by']
             },
             stop_training_in_x_seconds=10,
             use_gpu=False,

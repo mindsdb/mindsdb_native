@@ -59,7 +59,6 @@ def _prepare_timeseries_settings(user_provided_settings):
         ,group_by=None
         ,order_by=None
         ,window=None
-        ,dynamic_window=None
         ,use_previous_target=True
         ,keep_order_column=True
         ,nr_predictions=1
@@ -70,11 +69,8 @@ def _prepare_timeseries_settings(user_provided_settings):
         if 'order_by' not in user_provided_settings:
             raise Exception('Invalid timeseries settings, please provide `order_by` key [a list of columns]')
 
-        elif 'window' not in user_provided_settings and 'dynamic_window' not in user_provided_settings:
-            raise Exception(f'Invalid timeseries settings, you must specify a window size with either `window` or `dynamic_window` key')
-
-        elif 'window' in user_provided_settings and 'dynamic_window' in user_provided_settings:
-            raise Exception(f'Invalid timeseries settings, you must specify a window size with *EITHER* `window` or `dynamic_window` key, not both!')
+        elif 'window' not in user_provided_settings
+            raise Exception(f'Invalid timeseries settings, you must specify a window size')
         else:
             timeseries_settings['is_timeseries'] = True
 
