@@ -130,7 +130,7 @@ class LightwoodBackend():
         combined_df = pd.concat(df_arr)
 
         timeseries_row_mapping = {}
-        for i, row in combined_df:
+        for i, row in combined_df.iterrows():
             timeseries_row_mapping[i] = row['original_index']
 
         del combined_df['original_index']
