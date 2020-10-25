@@ -59,7 +59,7 @@ class LightwoodBackend():
                     row[col] = row[col].timestamp()
                 except Exception:
                     pass
-                
+
                 try:
                     row[col] = float(row[col])
                 except Exception:
@@ -67,10 +67,13 @@ class LightwoodBackend():
                     self.transaction.log.error(err_msg)
                     raise ValueError(f'Failed to order based on column: "{col}" due to faulty value: {row[col]}')
 
-        df_arr = []
-        for _, df in row.groupby(gb_arr):
-            df.sort_values(by=ob_arr, inplace=True)
-            df_arr.append(df)
+        if len(gb_arr) > 0:
+            df_arr = []
+            for _, df in original_df.groupby(gb_arr):
+                df.sort_values(by=ob_arr, inplace=True)
+                df_arr.append(df)
+        else:
+            df_arr = [original_df]
 
         # Make type `object` so that dataframe cells can be python lists
         for i in range(len(df_arr)):
@@ -102,8 +105,8 @@ class LightwoodBackend():
 
         if self.transaction.lmd['tss']['use_previous_target']:
             for target_column in self.transaction.lmd['predict_columns']:
-                for k in group_by_order_list:
-                    previous_target_values = list(ts_groups[k][target_column])
+                for k in range(len(df_arr)):
+                    previous_target_values = list(df_arr[k][target_column])
                     del previous_target_values[-1]
                     previous_target_values = [None] + previous_target_values
 
@@ -114,14 +117,14 @@ class LightwoodBackend():
                             arr = [None] + arr
                         previous_target_values_arr.append(arr)
 
-                    ts_groups[k][f'previous_{target_column}'] = previous_target_values_arr
+                    df_arr[k][f'previous_{target_column}'] = previous_target_values_arr
                     for timestep_index in range(1, self.nr_predictions):
-                        next_target_value_arr = list(ts_groups[k][target_column])
+                        next_target_value_arr = list(df_arr[k][target_column])
                         for del_index in range(0,timestep_index):
                             del next_target_value_arr[del_index]
                             next_target_value_arr.append(0)
                         # @TODO: Maybe ignore the rows with `None` next targets for training
-                        ts_groups[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
+                        df_arr[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
 
 
         combined_df = pd.concat(df_arr)
