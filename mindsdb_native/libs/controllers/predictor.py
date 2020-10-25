@@ -60,7 +60,6 @@ def _prepare_timeseries_settings(user_provided_settings):
         ,order_by=None
         ,window=None
         ,use_previous_target=True
-        ,keep_order_column=True
         ,nr_predictions=1
         ,historical_columns=[]
     )
