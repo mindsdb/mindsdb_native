@@ -32,7 +32,7 @@ class LightwoodBackend():
 
         original_index_list = []
         idx = 0
-        for row in original_df:
+        for _, row in original_df.iterrows():
             if _make_pred(row):
                 original_index_list.append(idx)
                 idx += 1
@@ -55,10 +55,13 @@ class LightwoodBackend():
                 if row[col] is None:
                     row[col] = 0.0
 
-                if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
-                    row[col] = float(row[col].timestamp())
                 try:
-                    float(row[col])
+                    row[col] = row[col].timestamp()
+                except Exception:
+                    pass
+                
+                try:
+                    row[col] = float(row[col])
                 except Exception:
                     err_msg = f
                     self.transaction.log.error(err_msg)
