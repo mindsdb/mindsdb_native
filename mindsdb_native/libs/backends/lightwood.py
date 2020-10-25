@@ -507,7 +507,7 @@ class LightwoodBackend():
             for k in list(formated_predictions.keys()):
                 ordered_values = [None] * len(formated_predictions[k])
                 for i, value in enumerate(formated_predictions[k]):
-                    ordered_values[[timeseries_row_mapping[i]] = valuje
+                    ordered_values[timeseries_row_mapping[i]] = value
                 formated_predictions[k] = ordered_values
 
         return formated_predictions
