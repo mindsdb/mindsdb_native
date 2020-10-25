@@ -135,10 +135,12 @@ class LightwoodBackend():
             del combined_df['make_predictions']
 
         timeseries_row_mapping = {}
-        for i, row in combined_df.iterrows():
-            timeseries_row_mapping[i] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+        idx = 0
+        for _, row in combined_df.iterrows():
+            timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+            idx += 1
         del combined_df['original_index']
-        
+
         if len(combined_df) == 0:
             raise Exception(f'Not enough historical context to make a timeseries prediction. Please provide a number of rows greater or equal to the window size. If you can\'t get enough rows, consider lowering your window size. If you want to force timeseries predictions lacking historical context please set the `allow_incomplete_history` advanced argument to `True`, but this might lead to subpar predictions.')
 
@@ -398,7 +400,6 @@ class LightwoodBackend():
             if self.transaction.lmd['tss']['is_timeseries']:
                 validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
 
-            print(validation_predictions)
             validation_accuracy = evaluate_accuracy(
                 validation_predictions,
                 self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df,
@@ -516,7 +517,6 @@ class LightwoodBackend():
                 ordered_values = [None] * len(formated_predictions[k])
                 for i, value in enumerate(formated_predictions[k]):
                     if timeseries_row_mapping[i] is not None:
-                        print(len(ordered_values), timeseries_row_mapping[i])
                         ordered_values[timeseries_row_mapping[i]] = value
                 formated_predictions[k] = ordered_values
 

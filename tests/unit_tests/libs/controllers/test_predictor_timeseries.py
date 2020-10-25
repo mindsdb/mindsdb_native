@@ -220,7 +220,7 @@ class TestPredictorTimeseries:
             timeseries_settings={
                 'order_by': ['order_ai_id']
                 ,'window': 3
-                ,'nr_predictions': 6
+                ,'nr_predictions': 1
                 ,'group_by': ['3_valued_group_by']
             },
             stop_training_in_x_seconds=10,
@@ -231,6 +231,7 @@ class TestPredictorTimeseries:
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
 
         for i, row in enumerate(results):
+            print(row['order_ai_id'], row['3_valued_group_by'], columns_test[2][i], columns_test[3][i])
             # Need to somehow test the internal ordering here (??)
-            assert row['order_ai_id'] == features[2][i]
-            assert row['3_valued_group_by'] == features[3][i]
+            assert str(row['order_ai_id']) == str(columns_test[2][i])
+            assert str(row['3_valued_group_by']) == str(columns_test[3][i])
