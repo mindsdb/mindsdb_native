@@ -57,7 +57,6 @@ class LightwoodBackend():
 
                 if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
                     row[col] = float(row[col].timestamp())
-:
                 try:
                     float(row[col])
                 except Exception:
