@@ -47,7 +47,9 @@ def test_database_history():
 
 
     ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
-    ts_predictor.predict(when_data={
+    predictions = ts_predictor.predict(when_data={
         'col2': 800
         ,'col1': '2'
     }, advanced_args={'use_database_history': True})
+
+    assert predictions[0]['col3'] is not None
