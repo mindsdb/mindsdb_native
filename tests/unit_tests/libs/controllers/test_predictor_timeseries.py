@@ -231,7 +231,6 @@ class TestPredictorTimeseries:
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
 
         for i, row in enumerate(results):
-            print(row['order_ai_id'], row['3_valued_group_by'], columns_test[2][i], columns_test[3][i])
             # Need to somehow test the internal ordering here (??)
             assert str(row['order_ai_id']) == str(columns_test[2][i])
             assert str(row['3_valued_group_by']) == str(columns_test[3][i])

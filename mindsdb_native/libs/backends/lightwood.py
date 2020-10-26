@@ -32,7 +32,7 @@ class LightwoodBackend():
 
         original_index_list = []
         idx = 0
-        for _, row in original_df.iterrows():
+        for row in original_df.itertuples():
             if _make_pred(row):
                 original_index_list.append(idx)
                 idx += 1
@@ -49,7 +49,7 @@ class LightwoodBackend():
                 secondary_type_dict[col] = ColumnDataTypes.NUMERIC
 
         # Convert order_by columns to numbers (note, rows are references to mutable rows in `original_df`)
-        for _, row in original_df.iterrows():
+        for row in original_df.itertuples():
             for col in ob_arr:
                 # @TODO: Remove if the TS encoder can handle `None`
                 if row[col] is None:
@@ -137,7 +137,7 @@ class LightwoodBackend():
 
         timeseries_row_mapping = {}
         idx = 0
-        for _, row in combined_df.iterrows():
+        for row in combined_df.itertuples():
             timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
             idx += 1
         del combined_df['original_index']
