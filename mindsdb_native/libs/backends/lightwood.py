@@ -26,6 +26,7 @@ class LightwoodBackend():
         self.nn_mixer_only = False
 
     def _ts_reshape(self, original_df):
+        original_df = copy.deepcopy(original_df)
         gb_arr = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
         ob_arr = self.transaction.lmd['tss']['order_by']
         window = self.transaction.lmd['tss']['window']
@@ -63,8 +64,6 @@ class LightwoodBackend():
                 try:
                     row[col] = float(row[col])
                 except Exception:
-                    err_msg = f
-                    self.transaction.log.error(err_msg)
                     raise ValueError(f'Failed to order based on column: "{col}" due to faulty value: {row[col]}')
 
         if len(gb_arr) > 0:
@@ -78,7 +77,7 @@ class LightwoodBackend():
         # Make type `object` so that dataframe cells can be python lists
         for i in range(len(df_arr)):
             for hist_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
-                df_arr[i] = df_arr[i][hist_col].astype(object)
+                df_arr[i][hist_col] = df_arr[i][hist_col].astype(object)
 
         # Make all order column cells lists
         for i in range(len(df_arr)):
