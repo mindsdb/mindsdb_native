@@ -83,7 +83,7 @@ class TestClickhouse(unittest.TestCase):
 
         for q in queries:
             r = requests.post(clickhouse_url, data=q)
-            assert r.status_code == 200
+            assert r.status_code == 200, r.text
 
         clickhouse_ds = ClickhouseDS(
             'SELECT * FROM test.mock',
