@@ -6,30 +6,23 @@ from mindsdb_native import F
 
 
 class TestMYSQL(unittest.TestCase):
+    def setUp(self):
+        self.USER = DB_CREDENTIALS['mysql']['user']
+        self.PASSWORD = DB_CREDENTIALS['mysql']['password']
+        self.HOST = DB_CREDENTIALS['mysql']['host']
+        self.DATABASE = DB_CREDENTIALS['mysql']['database']
+        self.PORT = int(DB_CREDENTIALS['mysql']['port'])
+
     def test_mysql_ds(self):
         import mysql.connector
         from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
 
-        HOST = os.getenv('MYSQL_HOST')
-        USER = os.getenv('MYSQL_USER')
-        PASSWORD = os.getenv('MYSQL_PASSWORD')
-        DATABASE = os.getenv('MYSQL_DATABASE')
-        PORT = os.getenv('MYSQL_PORT')
-
-        assert HOST is not None, 'missing environment variable'
-        assert USER is not None, 'missing environment variable'
-        assert PASSWORD is not None, 'missing environment variable'
-        assert DATABASE is not None, 'missing environment variable'
-        assert PORT is not None, 'missing environment variable'
-
-        PORT = int(PORT)
-
         con = mysql.connector.connect(
-            host=HOST,
-            port=PORT,
-            user=USER,
-            password=PASSWORD,
-            database=DATABASE
+            host=self.HOST,
+            port=self.PORT,
+            user=self.USER,
+            password=self.PASSWORD,
+            database=self.DATABASE
         )
         cur = con.cursor()
 
@@ -40,8 +33,14 @@ class TestMYSQL(unittest.TestCase):
         con.commit()
         con.close()
 
-        mysql_ds = MySqlDS(table='test_mindsdb', host=HOST, user=USER,
-                        password=PASSWORD, database=DATABASE, port=PORT)
+        mysql_ds = MySqlDS(
+            table='test_mindsdb',
+            host=self.HOST,
+            user=self.USER,
+            password=self.PASSWORD,
+            database=self.DATABASE,
+            port=self.PORT
+        )
 
         assert mysql_ds.name() == 'MySqlDS: mysql/test_mindsdb'
 

@@ -1,28 +1,24 @@
 import os
+import json
 import unittest
 import requests
 import mindsdb_native
 from mindsdb_native import Predictor
 from mindsdb_native import F
+from . import DB_CREDENTIALS
 
 
 class TestClickhouse(unittest.TestCase):
+    def setUp(self):
+        self.USER = DB_CREDENTIALS['clickhouse']['user']
+        self.PASSWORD = DB_CREDENTIALS['clickhouse']['password']
+        self.HOST = DB_CREDENTIALS['clickhouse']['host']
+        self.PORT = int(DB_CREDENTIALS['clickhouse']['port'])
+
     def test_clickhouse_ds(self):
         from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
-        USER = os.getenv('CLICKHOUSE_USER')
-        PASSWORD = os.getenv('CLICKHOUSE_PASSWORD')
-        HOST = os.getenv('CLICKHOUSE_HOST')
-        PORT = os.getenv('CLICKHOUSE_PORT')
-
-        assert USER is not None, 'missing environment variable'
-        assert PASSWORD is not None, 'missing environment variable'
-        assert HOST is not None, 'missing environment variable'
-        assert PORT is not None, 'missing environment variable'
-
-        PORT = int(PORT)
-
-        clickhouse_url = f'http://{USER}:{PASSWORD}@{HOST}:{PORT}'
+        clickhouse_url = f'http://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}'
 
         queries = [
             'CREATE DATABASE IF NOT EXISTS test',
@@ -46,8 +42,8 @@ class TestClickhouse(unittest.TestCase):
 
         clickhouse_ds = ClickhouseDS(
             'SELECT * FROM test.mock ORDER BY col2 DESC LIMIT 2',
-            host=HOST,
-            port=PORT
+            host=self.HOST,
+            port=self.PORT
         )
 
         assert (len(clickhouse_ds.df) == 2)
@@ -61,17 +57,7 @@ class TestClickhouse(unittest.TestCase):
     def test_database_history(self):
         from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
-        USER = os.getenv('CLICKHOUSE_USER')
-        PASSWORD = os.getenv('CLICKHOUSE_PASSWORD')
-        HOST = os.getenv('CLICKHOUSE_HOST')
-        PORT = os.getenv('CLICKHOUSE_PORT')
-
-        assert HOST is not None, 'missing environment variable'
-        assert USER is not None, 'missing environment variable'
-        assert PASSWORD is not None, 'missing environment variable'
-        assert PORT is not None, 'missing environment variable'
-
-        clickhouse_url = f'http://{USER}:{PASSWORD}@{HOST}:{PORT}'
+        clickhouse_url = f'http://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}'
 
         values = []
         for i in range(500):
@@ -99,14 +85,22 @@ class TestClickhouse(unittest.TestCase):
             r = requests.post(clickhouse_url, data=q)
             assert r.status_code == 200
 
-        clickhouse_ds = ClickhouseDS('SELECT * FROM test.mock', host=HOST, port=PORT)
+        clickhouse_ds = ClickhouseDS(
+            'SELECT * FROM test.mock',
+            host=self.HOST,
+            port=self.PORT
+        )
 
-        mindsdb_native.Predictor(name='query_history_based_ts_predictor').learn(to_predict='col3', from_data=clickhouse_ds, timeseries_settings={
-            'order_by': ['col2']
-            ,'window': 6
-            ,'group_by': ['col1']
-        }, stop_training_in_x_seconds=5)
-
+        mindsdb_native.Predictor(name='query_history_based_ts_predictor').learn(
+            to_predict='col3',
+            from_data=clickhouse_ds,
+            stop_training_in_x_seconds=5,
+            timeseries_settings={
+                'order_by': ['col2']
+                ,'window': 6
+                ,'group_by': ['col1']
+            }
+        )
 
         ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
         ts_predictor.predict(when_data={

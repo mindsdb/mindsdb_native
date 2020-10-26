@@ -7,30 +7,23 @@ from mindsdb_native import F
 
 
 class TestPostgres(unittest.TestCase):
+    def setUp(self):
+        self.USER = DB_CREDENTIALS['postgres']['user']
+        self.PASSWORD = DB_CREDENTIALS['postgres']['password']
+        self.HOST = DB_CREDENTIALS['postgres']['host']
+        self.DATABASE = DB_CREDENTIALS['postgres']['database']
+        self.PORT = int(DB_CREDENTIALS['postgres']['port'])
+
     def test_postgres_ds(self):
         import pg8000
         from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
 
-        HOST = os.getenv('POSTGRES_HOST')
-        USER = os.getenv('POSTGRES_USER')
-        PASSWORD = os.getenv('POSTGRES_PASSWORD')
-        DBNAME = os.getenv('POSTGRES_DBNAME')
-        PORT = os.getenv('POSTGRES_PORT')
-
-        assert HOST is not None, 'missing environment variable'
-        assert USER is not None, 'missing environment variable'
-        assert PASSWORD is not None, 'missing environment variable'
-        assert DBNAME is not None, 'missing environment variable'
-        assert PORT is not None, 'missing environment variable'
-
-        PORT = int(PORT)
-
         con = pg8000.connect(
-            database=DBNAME,
-            user=USER,
-            password=PASSWORD,
-            host=HOST,
-            port=PORT
+            database=self.DATABASE,
+            user=self.USER,
+            password=self.PASSWORD,
+            host=self.HOST,
+            port=self.PORT
         )
         cur = con.cursor()
 
@@ -45,8 +38,14 @@ class TestPostgres(unittest.TestCase):
         con.commit()
         con.close()
 
-        postgres_ds = PostgresDS(table='test_mindsdb', host=HOST, user=USER,
-                            password=PASSWORD, database=DBNAME, port=PORT)
+        postgres_ds = PostgresDS(
+            table='test_mindsdb',
+            host=self.HOST,
+            user=self.USER,
+            password=self.PASSWORD,
+            database=self.DATABASE,
+            port=self.PORT
+        )
                             
         assert postgres_ds.name() == 'PostgresDS: postgres/test_mindsdb'
 

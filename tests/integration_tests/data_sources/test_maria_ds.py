@@ -5,33 +5,27 @@ import logging
 from mindsdb_native import Predictor
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 from mindsdb_native import F
+from . import DB_CREDENTIALS
 
 
 class TestMariaDB(unittest.TestCase):
+    def setUp(self):
+        self.USER = DB_CREDENTIALS['mariadb']['user']
+        self.PASSWORD = DB_CREDENTIALS['mariadb']['password']
+        self.HOST = DB_CREDENTIALS['mariadb']['host']
+        self.DATABASE = DB_CREDENTIALS['mariadb']['database']
+        self.PORT = int(DB_CREDENTIALS['mariadb']['port'])
+
     def test_maria_ds(self):
         import mysql.connector
         from mindsdb_native import MariaDS
 
-        HOST = os.getenv('MARIADB_HOST')
-        USER = os.getenv('MARIADB_USER')
-        PASSWORD = os.getenv('MARIADB_PASSWORD')
-        DATABASE = os.getenv('MARIADB_DATABASE')
-        PORT = os.getenv('MARIADB_PORT')
-
-        assert HOST is not None, 'missing environment variable'
-        assert USER is not None, 'missing environment variable'
-        assert PASSWORD is not None, 'missing environment variable'
-        assert DATABASE is not None, 'missing environment variable'
-        assert PORT is not None, 'missing environment variable'
-
-        PORT = int(PORT)
-
         con = mysql.connector.connect(
-            host=HOST,
-            port=PORT,
-            user=USER,
-            password=PASSWORD,
-            database=DATABASE
+            host=self.HOST,
+            port=self.PORT,
+            user=self.USER,
+            password=self.PASSWORD,
+            database=self.DATABASE
         )
         cur = con.cursor()
 
@@ -78,8 +72,14 @@ class TestMariaDB(unittest.TestCase):
         con.commit()
         con.close()
 
-        maria_ds = MariaDS(table='test_mindsdb', host=HOST, user=USER,
-                        password=PASSWORD, database=DATABASE, port=PORT)
+        maria_ds = MariaDS(
+            table='test_mindsdb',
+            host=self.HOST,
+            user=self.USER,
+            password=self.PASSWORD,
+            database=self.DATABASE,
+            port=self.PORT
+        )
 
         assert maria_ds.name() == 'MariaDS: mysql/test_mindsdb'
 

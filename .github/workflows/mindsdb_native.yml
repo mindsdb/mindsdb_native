@@ -43,35 +43,8 @@ jobs:
       shell: bash
       env:
         CHECK_FOR_UPDATES: False
-
-        CLICKHOUSE_USER: ${{ fromJson(secrets.DATABASE_CREDENTIALS).clickhouse.user }}
-        CLICKHOUSE_PORT: ${{ fromJson(secrets.DATABASE_CREDENTIALS).clickhouse.port }}
-        CLICKHOUSE_PASSWORD: ${{ fromJson(secrets.DATABASE_CREDENTIALS).clickhouse.password }}
-        CLICKHOUSE_HOST: ${{ fromJson(secrets.DATABASE_CREDENTIALS).clickhouse.host }}
-
-        MARIADB_USER: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mariadb.user }}
-        MARIADB_PORT: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mariadb.port }}
-        MARIADB_PASSWORD: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mariadb.password }}
-        MARIADB_HOST: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mariadb.host }}
-        MARIADB_DATABASE: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mariadb.database }}
-
-        MYSQL_USER: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mysql.user }}
-        MYSQL_PORT: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mysql.port }}
-        MYSQL_PASSWORD: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mysql.password }}
-        MYSQL_HOST: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mysql.host }}
-        MYSQL_DATABASE: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mysql.database }}
-
-        POSTGRES_USER: ${{ fromJson(secrets.DATABASE_CREDENTIALS).postgres.user }}
-        POSTGRES_PORT: ${{ fromJson(secrets.DATABASE_CREDENTIALS).postgres.port }}
-        POSTGRES_PASSWORD: ${{ fromJson(secrets.DATABASE_CREDENTIALS).postgres.password }}
-        POSTGRES_HOST: ${{ fromJson(secrets.DATABASE_CREDENTIALS).postgres.host }}
-        POSTGRES_DATABASE: ${{ fromJson(secrets.DATABASE_CREDENTIALS).postgres.database }}
-
-        MONGODB_USER: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mongodb.user }}
-        MONGODB_PORT: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mongodb.port }}
-        MONGODB_PASSWORD: ${{ fromJson(secrets.DATABASE_CREDENTIALS).mongodb.password }}
-        MONGODB_HOST:  ${{ fromJson(secrets.DATABASE_CREDENTIALS).mongodb.host }}
-
+        DATABASE_CREDENTIALS_STRINGIFIED_JSON: secrets.DATABASE_CREDENTIALS
+       
   deploy:
     runs-on: ubuntu-latest
     needs: test

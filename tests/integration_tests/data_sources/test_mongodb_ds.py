@@ -3,41 +3,35 @@ import unittest
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
+from . import DB_CREDENTIALS
 
 
 class TestMongoDB(unittest.TestCase):
+    def setUp(self):
+        self.USER = DB_CREDENTIALS['mongodb']['user']
+        self.PASSWORD = DB_CREDENTIALS['mongodb']['password']
+        self.HOST = DB_CREDENTIALS['mongodb']['host']
+        self.DATABASE = DB_CREDENTIALS['mongodb']['database']
+        self.PORT = int(DB_CREDENTIALS['mongodb']['port'])
+        self.COLLECTION_NAME = 'test_mindsdb'
+
     def test_mongodb_ds(self):
         from pymongo import MongoClient
         from mindsdb_native.libs.data_sources.mongodb_ds import MongoDS
 
-        HOST = os.getenv('MONGODB_HOST')
-        USER = os.getenv('MONGODB_USER')
-        PASSWORD = os.getenv('MONGODB_PASSWORD')
-        DATABASE = os.getenv('MONGODB_DATABASE')
-        PORT = os.getenv('MONGODB_PORT')
-        COLLECTION_NAME = 'test_mindsdb'
-
-        assert HOST is not None, 'missing environment variable'
-        assert USER is not None, 'missing environment variable'
-        assert PASSWORD is not None, 'missing environment variable'
-        assert DATABASE is not None, 'missing environment variable'
-        assert PORT is not None, 'missing environment variable'
-
-        PORT = int(PORT)
-
         con = MongoClient(
-            host=HOST,
-            port=PORT,
-            username=USER,
-            password=PASSWORD
+            host=self.HOST,
+            port=self.PORT,
+            username=self.USER,
+            password=self.PASSWORD
         )
 
-        db = con[DATABASE]
+        db = con[self.DATABASE]
         
-        if COLLECTION_NAME in db.list_collection_names():
-            db[COLLECTION_NAME].drop()
+        if self.COLLECTION_NAME in db.list_collection_names():
+            db[self.COLLECTION_NAME].drop()
 
-        collection = db[COLLECTION_NAME]
+        collection = db[self.COLLECTION_NAME]
 
         for i in range(0, 200):
             collection.insert_one({
@@ -47,13 +41,13 @@ class TestMongoDB(unittest.TestCase):
             })
 
         mongodb_ds = MongoDS(
-            collection=COLLECTION_NAME,
+            collection=self.COLLECTION_NAME,
             query={},
-            host=HOST,
-            port=PORT,
-            user=USER,
-            password=PASSWORD,
-            database=DATABASE
+            host=self.HOST,
+            port=self.PORT,
+            user=self.USER,
+            password=self.PASSWORD,
+            database=self.DATABASE
         )
 
         assert mongodb_ds.name() == 'MongoDS: database/test_mindsdb'
