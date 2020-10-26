@@ -77,7 +77,8 @@ class LightwoodBackend():
 
         # Make type `object` so that dataframe cells can be python lists
         for i in range(len(df_arr)):
-            df_arr[i] = df_arr[i].astype(object)
+            for hist_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
+                df_arr[i] = df_arr[i][hist_col].astype(object)
 
         # Make all order column cells lists
         for i in range(len(df_arr)):
