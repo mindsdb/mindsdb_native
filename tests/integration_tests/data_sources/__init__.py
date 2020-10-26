@@ -1,3 +1,4 @@
+import os
 import json
 
 _var_name = 'DATABASE_CREDENTIALS_STRINGIFIED_JSON'
