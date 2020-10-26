@@ -2,24 +2,5 @@ boto3 >= 1.9.0
 pg8000 >= 1.15.3
 python-tds >= 1.10.0
 pymongo >= 3.10.1
-cachetools==4.1.1
-certifi==2020.6.20
-cffi==1.14.3
-chardet==3.0.4
-google-api-core==1.23.0
-google-auth==1.22.1
-google-cloud-core==1.4.3
-google-cloud-storage==1.32.0
-google-crc32c==1.0.0
-google-resumable-media==1.1.0
-googleapis-common-protos==1.52.0
-idna==2.10
-protobuf==3.13.0
-pyasn1==0.4.8
-pyasn1-modules==0.2.8
-pycparser==2.20
-pytz==2020.1
-requests==2.24.0
-rsa==4.6
-six==1.15.0
-urllib3==1.25.11
+google-cloud-storage
+google-auth
