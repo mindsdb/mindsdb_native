@@ -15,7 +15,7 @@ from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
 def _make_pred(row):
-    return 'make_predictions' not in row or row['make_predictions'] == True
+    return not hasattr(row, "make_predictions") or row.make_predictions
 
 class LightwoodBackend():
 
@@ -32,7 +32,7 @@ class LightwoodBackend():
 
         original_index_list = []
         idx = 0
-        for _, row in original_df.iterrows():
+        for row in original_df.itertuples():
             if _make_pred(row):
                 original_index_list.append(idx)
                 idx += 1
