@@ -12,6 +12,7 @@ class TestMongoDB(unittest.TestCase):
         self.PASSWORD = DB_CREDENTIALS['mongodb']['password']
         self.HOST = DB_CREDENTIALS['mongodb']['host']
         self.PORT = int(DB_CREDENTIALS['mongodb']['port'])
+        self.DATABASE = 'database'
         self.COLLECTION_NAME = 'test_mindsdb'
 
     def test_mongodb_ds(self):
