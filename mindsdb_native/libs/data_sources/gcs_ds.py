@@ -1,6 +1,8 @@
 import os 
 
 from google.cloud import storage
+from google.oauth2 import service_account
+import json
 
 from mindsdb_native.libs.data_types.data_source import DataSource
 from mindsdb_native.libs.data_sources.file_ds import FileDS
@@ -9,14 +11,20 @@ from mindsdb_native import F
 
 class GCSDS(DataSource):
 
-    def _setup(self, bucket_name, file_path, path_to_auth_json):
+    def _setup(self, bucket_name, file_path, project_id, auth_json):
 
         self._bucket_name = bucket_name
         self._file_name = os.path.basename(file_path)
 
-        gc_client = storage.Client.from_service_account_json(json_credentials_path=path_to_auth_json)
-        bucket = gc_client.get_bucket(bucket_name)
+        try: 
+            auth_info = json.loads(auth_json)
+            credentials = service_account.Credentials.from_service_account_info(info=auth_info)
+        except:
+            credentials = service_account.Credentials.from_service_account_file(filename=auth_json)
 
+
+        gc_client = storage.Client(credentials=credentials, project=project_id)
+        bucket = gc_client.get_bucket(bucket_name)
         blob = storage.Blob(file_path, bucket)
 
         self.tmp_file_name = '.tmp_mindsdb_data_file'
