@@ -3,6 +3,7 @@ import unittest
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
+from . import DB_CREDENTIALS
 
 
 class TestMYSQL(unittest.TestCase):

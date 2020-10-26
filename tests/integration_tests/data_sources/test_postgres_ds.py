@@ -4,6 +4,7 @@ import datetime
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
+from . import DB_CREDENTIALS
 
 
 class TestPostgres(unittest.TestCase):
