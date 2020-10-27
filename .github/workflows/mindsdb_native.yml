@@ -6,7 +6,7 @@ on:
     branches:
       - stable
       - staging
-      
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
@@ -35,6 +35,8 @@ jobs:
           python -m unittest discover unit_tests
           cd ..
       shell: bash
+      env:
+        CHECK_FOR_UPDATES: False
     - name: Run integration tests
       run: |
           cd tests

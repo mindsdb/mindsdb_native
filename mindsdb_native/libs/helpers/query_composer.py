@@ -55,7 +55,7 @@ def create_history_query(query, tss, stats, row):
                 query = split_query[0] + f' WHERE {merged_filter} GROUP BY ' + split_query[1]
             else:
                 query += f' WHERE {merged_filter}'
-                
+
         elif ' having ' in query:
             split_query = query.split(' group by ')
             if len(split_query) > 2:
@@ -79,11 +79,8 @@ def create_history_query(query, tss, stats, row):
         query += f' ORDER BY {order_by_list} DESC'
 
     # parse and append limit
-    if 'window' in tss:
-        limit = tss['window']
-        #query += f' LIMIT 1,{limit}' <--- if we assume the last row is the one we are predicting from
-        query += f' LIMIT {limit}'
-    else:
-        raise NotImplementedError('Historical queries not yet supported for `dynamic_window`')
+    limit = tss['window']
+    #query += f' LIMIT 1,{limit}' <--- if we assume the last row is the one we are predicting from
+    query += f' LIMIT {limit}'
 
     return query

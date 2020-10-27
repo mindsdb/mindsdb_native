@@ -61,7 +61,7 @@ class TestClickhouse(unittest.TestCase):
 
         values = []
         for i in range(500):
-            values.append([str(i%4),i,i*2])
+            values.append([str(i % 4), i, i * 2])
 
         queries = [
             'CREATE DATABASE IF NOT EXISTS test',
@@ -83,7 +83,7 @@ class TestClickhouse(unittest.TestCase):
 
         for q in queries:
             r = requests.post(clickhouse_url, data=q)
-            assert r.status_code == 200, r.text
+            assert r.status_code == 200
 
         clickhouse_ds = ClickhouseDS(
             'SELECT * FROM test.mock',
@@ -96,14 +96,21 @@ class TestClickhouse(unittest.TestCase):
             from_data=clickhouse_ds,
             stop_training_in_x_seconds=5,
             timeseries_settings={
-                'order_by': ['col2']
-                ,'window': 6
-                ,'group_by': ['col1']
+                    'order_by': ['col2']
+                    ,'window': 6
+                    ,'group_by': ['col1']
+                }
+            )
+
+        ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
+        predictions = ts_predictor.predict(
+            when_data={
+                'col2': 800
+                ,'col1': '2'
+            },
+            advanced_args={
+                'use_database_history': True
             }
         )
 
-        ts_predictor = mindsdb_native.Predictor(name='query_history_based_ts_predictor')
-        ts_predictor.predict(when_data={
-            'col2': 800
-            ,'col1': '2'
-        })
+        assert predictions[0]['col3'] is not None
