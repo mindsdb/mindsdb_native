@@ -43,7 +43,10 @@ class TestMYSQL(unittest.TestCase):
             port=self.PORT
         )
 
-        assert (len(mysql_ds._df) == 200)
+        assert (len(mysql_ds._df) == 200), len(mysql_ds._df)
 
-        mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
+        mdb = Predictor(
+            name='analyse_dataset_test_predictor',
+            log_level=logging.ERROR
+        )
         F.analyse_dataset(from_data=mysql_ds)

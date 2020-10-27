@@ -95,7 +95,6 @@ class TestMariaDB(unittest.TestCase):
             assert column_typing['data_type_dist'][expected_type] == 200
             assert column_typing['data_subtype_dist'][expected_subtype] == 200
 
-
         assert_expected_type(analysis['col_categorical']['typing'], DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.MULTIPLE)
         assert_expected_type(analysis['col_bool']['typing'], DATA_TYPES.CATEGORICAL, DATA_SUBTYPES.SINGLE)
         assert_expected_type(analysis['col_int']['typing'], DATA_TYPES.NUMERIC, DATA_SUBTYPES.INT)
@@ -109,7 +108,6 @@ class TestMariaDB(unittest.TestCase):
             assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.SHORT)
         except AssertionError:
             assert_expected_type(analysis['col_text']['typing'], DATA_TYPES.TEXT, DATA_SUBTYPES.RICH)
-
 
         # @TODO Timedeltas not supported yet
         # assert_expected_type((analysis['col_time']['typing'], DATA_TYPES.DATE, DATA_SUBTYPES.TIMEDELTA)
