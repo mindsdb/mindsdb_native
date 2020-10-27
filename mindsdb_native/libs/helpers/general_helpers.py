@@ -35,7 +35,7 @@ class NumpyJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
-        elif isinstance(obj, np.float):
+        elif isinstance(obj, (np.float, np.float32, np.float64):
             return float(obj)
         else:
             return super().default(obj)
