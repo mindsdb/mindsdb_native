@@ -59,9 +59,7 @@ def _prepare_timeseries_settings(user_provided_settings):
         ,group_by=None
         ,order_by=None
         ,window=None
-        ,dynamic_window=None
         ,use_previous_target=True
-        ,keep_order_column=True
         ,nr_predictions=1
         ,historical_columns=[]
     )
@@ -69,12 +67,8 @@ def _prepare_timeseries_settings(user_provided_settings):
     if len(user_provided_settings) > 0:
         if 'order_by' not in user_provided_settings:
             raise Exception('Invalid timeseries settings, please provide `order_by` key [a list of columns]')
-
-        elif 'window' not in user_provided_settings and 'dynamic_window' not in user_provided_settings:
-            raise Exception(f'Invalid timeseries settings, you must specify a window size with either `window` or `dynamic_window` key')
-
-        elif 'window' in user_provided_settings and 'dynamic_window' in user_provided_settings:
-            raise Exception(f'Invalid timeseries settings, you must specify a window size with *EITHER* `window` or `dynamic_window` key, not both!')
+        elif 'window' not in user_provided_settings:
+            raise Exception(f'Invalid timeseries settings, you must specify a window size')
         else:
             timeseries_settings['is_timeseries'] = True
 
@@ -249,7 +243,8 @@ class Predictor:
                 force_predict = advanced_args.get('force_predict', False),
                 mixer_class = advanced_args.get('use_mixers', None),
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
-                debug = advanced_args.get('debug', False)
+                debug = advanced_args.get('debug', False),
+                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False)
             )
 
             if rebuild_model is False:
@@ -373,7 +368,9 @@ class Predictor:
                 use_gpu = use_gpu,
                 data_preparation = {},
                 run_confidence_variation_analysis = run_confidence_variation_analysis,
-                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache)
+                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
+                use_database_history = advanced_args.get('use_database_history', False),
+                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False)
             )
 
             self.transaction = PredictTransaction(
