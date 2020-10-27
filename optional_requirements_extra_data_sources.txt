@@ -2,3 +2,4 @@ boto3 >= 1.9.0
 pg8000 >= 1.15.3
 python-tds >= 1.10.0
 pymongo >= 3.10.1
+PyAthena >= 1.11.2
