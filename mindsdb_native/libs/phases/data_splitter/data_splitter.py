@@ -88,7 +88,7 @@ class DataSplitter(BaseModule):
                 self.transaction.input_data.test_df['make_predictions'] = [True] * len(self.transaction.input_data.test_df)
                 self.transaction.input_data.test_df = pd.concat([self.transaction.input_data.test_df,historical_train])
 
-                self.transaction.input_data.validation_df['make_predictions'] = [True] * (len(self.transaction.input_data.validation_df) - n_preds_cutoff) + [False] * n_preds_cutoff
+                self.transaction.input_data.validation_df['make_predictions'] = [True] * len(self.transaction.input_data.validation_df)
                 self.transaction.input_data.validation_df = pd.concat([self.transaction.input_data.validation_df,historical_test,deepcopy(historical_train)])
 
             self.transaction.input_data.data_frame = None
