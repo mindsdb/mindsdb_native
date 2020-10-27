@@ -471,8 +471,12 @@ class LightwoodBackend():
             run_df = df
 
         predictions = self.predictor.predict(when_data=run_df)
-
         formated_predictions = {}
+
+        if self.transaction.lmd['quick_predict']:
+            for k in predictions:
+                formated_predictions[k] = predictions[k]['predictions']
+            return formated_predictions
 
         for k in predictions:
             if '_timestep_' in k:

@@ -114,6 +114,27 @@ class Predictor:
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
+    def quick_learn(self,
+              to_predict,
+              from_data,
+              timeseries_settings=None,
+              ignore_columns=None,
+              stop_training_in_x_seconds=None,
+              backend='lightwood',
+              rebuild_model=True,
+              use_gpu=None,
+              equal_accuracy_for_all_output_categories=True,
+              output_categories_importance_dictionary=None,
+              advanced_args=None,
+              sample_settings=None):
+
+        if advanced_args is None:
+            advanced_args = {}
+        advanced_args['quick_learn'] = True
+
+        return self.learn(to_predict, from_data, timeseries_settings, ignore_columns, stop_training_in_x_seconds, backend, rebuild_model, use_gpu, equal_accuracy_for_all_output_categories, output_categories_importance_dictionary, advanced_args, sample_settings)
+
+
     def learn(self,
               to_predict,
               from_data,
@@ -244,7 +265,9 @@ class Predictor:
                 mixer_class = advanced_args.get('use_mixers', None),
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
                 debug = advanced_args.get('debug', False),
-                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False)
+                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
+                quick_learn = advanced_args.get('quick_learn', False),
+                quick_predict = advanced_args.get('quick_predict', False)
             )
 
             if rebuild_model is False:
@@ -314,6 +337,19 @@ class Predictor:
 
             return accuracy_dict
 
+    def quick_predict(self,
+                when_data,
+                use_gpu=None,
+                advanced_args=None,
+                backend=None,
+                run_confidence_variation_analysis=False):
+
+        if advanced_args is None:
+            advanced_args = {}
+        advanced_args['quick_predict'] = True
+
+        return self.predict(when_data, use_gpu, advanced_args, backend, run_confidence_variation_analysis)
+
     def predict(self,
                 when_data,
                 use_gpu=None,
@@ -370,7 +406,8 @@ class Predictor:
                 run_confidence_variation_analysis = run_confidence_variation_analysis,
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 use_database_history = advanced_args.get('use_database_history', False),
-                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False)
+                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
+                quick_predict = advanced_args.get('quick_predict', False)
             )
 
             self.transaction = PredictTransaction(

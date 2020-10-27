@@ -151,7 +151,7 @@ class Transaction:
         """
         Loads the module and runs it
         """
-        
+
         self.lmd['is_active'] = True
         self.lmd['phase'] = module_name
         module_path = convert_cammelcase_to_snake_string(module_name)
@@ -192,6 +192,7 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
+            #if not self.lmd['quick_learn']: <-- replace with histogram only if this ends up being heavily used
             self.lmd['current_phase'] = MODEL_STATUS_DATA_ANALYSIS
             self._call_phase_module(module_name='DataAnalyzer',
                                     input_data=self.input_data)
@@ -208,9 +209,10 @@ class LearnTransaction(Transaction):
             self.save_metadata()
             self._call_phase_module(module_name='ModelInterface', mode='train')
 
-            self.lmd['current_phase'] = MODEL_STATUS_ANALYZING
-            self.save_metadata()
-            self._call_phase_module(module_name='ModelAnalyzer')
+            if not self.lmd['quick_learn']:
+                self.lmd['current_phase'] = MODEL_STATUS_ANALYZING
+                self.save_metadata()
+                self._call_phase_module(module_name='ModelAnalyzer')
 
             self.lmd['current_phase'] = MODEL_STATUS_TRAINED
             self.save_metadata()
@@ -273,6 +275,12 @@ class PredictTransaction(Transaction):
             return
         if self.lmd['tss']['is_timeseries']:
             self._call_phase_module(module_name='DataSplitter')
+
+        if self.lmd['quick_predict']:
+            self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
+            self._call_phase_module(module_name='ModelInterface', mode='predict')
+            self.output_data = self.hmd['predictions']
+            return
 
         # @TODO Maybe move to a separate "PredictionAnalysis" phase ?
         if self.lmd['run_confidence_variation_analysis'] and not self.lmd['tss']['is_timeseries']:
