@@ -114,6 +114,25 @@ class Predictor:
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
+    def quick_learn(self,
+              to_predict,
+              from_data,
+              timeseries_settings=None,
+              ignore_columns=None,
+              stop_training_in_x_seconds=None,
+              backend='lightwood',
+              rebuild_model=True,
+              use_gpu=None,
+              equal_accuracy_for_all_output_categories=True,
+              output_categories_importance_dictionary=None,
+              advanced_args=None,
+              sample_settings=None):
+        if advanced_args is None:
+            advanced_args = {}
+        advanced_args['quick_learn'] = True
+        return self.learn(to_predict, from_data, timeseries_settings, ignore_columns)
+
+
     def learn(self,
               to_predict,
               from_data,
@@ -244,7 +263,8 @@ class Predictor:
                 mixer_class = advanced_args.get('use_mixers', None),
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
                 debug = advanced_args.get('debug', False),
-                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False)
+                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
+                quick_learn = advanced_args.get('quick_learn', False)
             )
 
             if rebuild_model is False:
