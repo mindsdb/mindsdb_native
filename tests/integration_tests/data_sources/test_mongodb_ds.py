@@ -21,7 +21,7 @@ class TestMongoDB(unittest.TestCase):
 
         con = MongoClient(
             host=self.HOST,
-            port=self.PORT,
+            port=int(self.PORT),
             username=self.USER,
             password=self.PASSWORD
         )

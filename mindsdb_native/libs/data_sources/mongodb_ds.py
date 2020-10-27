@@ -21,7 +21,7 @@ class MongoDS(DataSource):
 
         conn = MongoClient(
             host=host,
-            port=port,
+            port=int(port),
             username=user,
             password=password
         )
