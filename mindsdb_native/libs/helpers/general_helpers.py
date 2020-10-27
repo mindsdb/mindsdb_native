@@ -24,7 +24,6 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.constants.mindsdb import *
 
 
-# TODO: add test for this
 class NumpyJSONEncoder(json.JSONEncoder):
     """
     Use this encoder to avoid
