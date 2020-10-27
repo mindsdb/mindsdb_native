@@ -45,7 +45,9 @@ class TestClickhouse(unittest.TestCase):
         clickhouse_ds = ClickhouseDS(
             'SELECT * FROM test.mock ORDER BY col2 DESC LIMIT 2',
             host=self.HOST,
-            port=self.PORT
+            port=self.PORT,
+            user=self.USER,
+            password=self.PASSWORD
         )
 
         assert (len(clickhouse_ds.df) == 2)
@@ -92,7 +94,9 @@ class TestClickhouse(unittest.TestCase):
         clickhouse_ds = ClickhouseDS(
             'SELECT * FROM test.mock',
             host=self.HOST,
-            port=self.PORT
+            port=self.PORT,
+            user=self.USER,
+            password=self.PASSWORD
         )
 
         mindsdb_native.Predictor(name='query_history_based_ts_predictor').learn(
