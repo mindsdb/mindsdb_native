@@ -151,7 +151,7 @@ class Transaction:
         """
         Loads the module and runs it
         """
-        
+
         self.lmd['is_active'] = True
         self.lmd['phase'] = module_name
         module_path = convert_cammelcase_to_snake_string(module_name)
@@ -192,10 +192,11 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
-            self.lmd['current_phase'] = MODEL_STATUS_DATA_ANALYSIS
-            self._call_phase_module(module_name='DataAnalyzer',
-                                    input_data=self.input_data)
-            self.save_metadata()
+            if not self.lmd['quick_learn']:
+                self.lmd['current_phase'] = MODEL_STATUS_DATA_ANALYSIS
+                self._call_phase_module(module_name='DataAnalyzer',
+                                        input_data=self.input_data)
+                self.save_metadata()
 
             self._call_phase_module(module_name='DataCleaner')
             self.save_metadata()
@@ -208,9 +209,10 @@ class LearnTransaction(Transaction):
             self.save_metadata()
             self._call_phase_module(module_name='ModelInterface', mode='train')
 
-            self.lmd['current_phase'] = MODEL_STATUS_ANALYZING
-            self.save_metadata()
-            self._call_phase_module(module_name='ModelAnalyzer')
+            if not self.lmd['quick_learn']:
+                self.lmd['current_phase'] = MODEL_STATUS_ANALYZING
+                self.save_metadata()
+                self._call_phase_module(module_name='ModelAnalyzer')
 
             self.lmd['current_phase'] = MODEL_STATUS_TRAINED
             self.save_metadata()

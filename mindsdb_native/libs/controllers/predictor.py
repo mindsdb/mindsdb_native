@@ -127,10 +127,12 @@ class Predictor:
               output_categories_importance_dictionary=None,
               advanced_args=None,
               sample_settings=None):
+
         if advanced_args is None:
             advanced_args = {}
         advanced_args['quick_learn'] = True
-        return self.learn(to_predict, from_data, timeseries_settings, ignore_columns)
+        
+        return self.learn(to_predict, from_data, timeseries_settings, ignore_columns, stop_training_in_x_seconds, backend, rebuild_model, use_gpu, equal_accuracy_for_all_output_categories, output_categories_importance_dictionary, advanced_args, sample_settings)
 
 
     def learn(self,
