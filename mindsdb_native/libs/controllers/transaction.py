@@ -192,11 +192,11 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
-            if not self.lmd['quick_learn']:
-                self.lmd['current_phase'] = MODEL_STATUS_DATA_ANALYSIS
-                self._call_phase_module(module_name='DataAnalyzer',
-                                        input_data=self.input_data)
-                self.save_metadata()
+            #if not self.lmd['quick_learn']: <-- replace with histogram only if this ends up being heavily used
+            self.lmd['current_phase'] = MODEL_STATUS_DATA_ANALYSIS
+            self._call_phase_module(module_name='DataAnalyzer',
+                                    input_data=self.input_data)
+            self.save_metadata()
 
             self._call_phase_module(module_name='DataCleaner')
             self.save_metadata()
@@ -281,7 +281,7 @@ class PredictTransaction(Transaction):
             self._call_phase_module(module_name='ModelInterface', mode='predict')
             self.output_data = self.hmd['predictions']
             return
-        
+
         # @TODO Maybe move to a separate "PredictionAnalysis" phase ?
         if self.lmd['run_confidence_variation_analysis'] and not self.lmd['tss']['is_timeseries']:
             nulled_out_data = []
