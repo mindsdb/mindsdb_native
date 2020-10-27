@@ -41,7 +41,7 @@ class ClickhouseDS(DataSource):
 
         try:
             data = response.json()['data']
-        except:
+        except Exception:
             log.error(f'Got an invalid response from the database: {response.text}')
             raise Exception(response.text)
 

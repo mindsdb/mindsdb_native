@@ -18,7 +18,9 @@ class TestClickhouse(unittest.TestCase):
     def test_clickhouse_ds(self):
         from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
-        clickhouse_url = f'http://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}'
+        params = {'user': self.USER, 'password': self.PASSWORD}
+
+        clickhouse_url = f'http://{self.HOST}:{self.PORT}'
 
         queries = [
             'CREATE DATABASE IF NOT EXISTS test',
@@ -37,7 +39,7 @@ class TestClickhouse(unittest.TestCase):
             "INSERT INTO test.mock VALUES ('c',3,[3,1,2])"
         ]
         for q in queries:
-            r = requests.post(clickhouse_url, data=q)
+            r = requests.post(clickhouse_url, data=q, params=params)
             assert r.status_code == 200
 
         clickhouse_ds = ClickhouseDS(
@@ -57,7 +59,9 @@ class TestClickhouse(unittest.TestCase):
     def test_database_history(self):
         from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
-        clickhouse_url = f'http://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}'
+        params = {'user': self.USER, 'password': self.PASSWORD}
+
+        clickhouse_url = f'http://{self.HOST}:{self.PORT}'
 
         values = []
         for i in range(500):
@@ -82,7 +86,7 @@ class TestClickhouse(unittest.TestCase):
             queries.append(f"INSERT INTO test.mock VALUES ({value_ins_str})")
 
         for q in queries:
-            r = requests.post(clickhouse_url, data=q)
+            r = requests.post(clickhouse_url, data=q, params=params)
             assert r.status_code == 200
 
         clickhouse_ds = ClickhouseDS(
