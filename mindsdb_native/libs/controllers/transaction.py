@@ -276,6 +276,11 @@ class PredictTransaction(Transaction):
         if self.lmd['tss']['is_timeseries']:
             self._call_phase_module(module_name='DataSplitter')
 
+        if self.lmd['quick_predict']:
+            self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
+            self._call_phase_module(module_name='ModelInterface', mode='predict')
+            return self.hmd['predictions']
+
         # @TODO Maybe move to a separate "PredictionAnalysis" phase ?
         if self.lmd['run_confidence_variation_analysis'] and not self.lmd['tss']['is_timeseries']:
             nulled_out_data = []
