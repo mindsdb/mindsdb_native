@@ -81,7 +81,7 @@ class TestMariaDB(unittest.TestCase):
             port=self.PORT
         )
 
-        assert (len(maria_ds._df) == 200)
+        assert (len(maria_ds._df) == 200), len(maria_ds._df)
 
         mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
         model_data = F.analyse_dataset(from_data=maria_ds)
