@@ -6,7 +6,7 @@ on:
     branches:
       - stable
       - staging
-      
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
@@ -33,6 +33,8 @@ jobs:
       run: |
           pytest --run-slow --durations=20 tests/unit_tests
       shell: bash
+      env:
+        CHECK_FOR_UPDATES: False
     - name: Run integration tests
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then

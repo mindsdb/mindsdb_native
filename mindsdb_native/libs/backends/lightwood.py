@@ -14,6 +14,9 @@ from mindsdb_native.config import *
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
+def _make_pred(row):
+    return not hasattr(row, "make_predictions") or row.make_predictions
+
 class LightwoodBackend():
 
     def __init__(self, transaction):
@@ -22,88 +25,88 @@ class LightwoodBackend():
         self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
         self.nn_mixer_only = False
 
-    def _create_timeseries_df(self, original_df):
-        group_by = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
-        order_by = self.transaction.lmd['tss']['order_by']
+    def _ts_reshape(self, original_df):
+        original_df = copy.deepcopy(original_df)
+        gb_arr = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
+        ob_arr = self.transaction.lmd['tss']['order_by']
         window = self.transaction.lmd['tss']['window']
 
+        original_index_list = []
+        idx = 0
+        for row in original_df.itertuples():
+            if _make_pred(row):
+                original_index_list.append(idx)
+                idx += 1
+            else:
+                original_index_list.append(None)
+
+        original_df['original_index'] = original_index_list
+
         secondary_type_dict = {}
-        for col in order_by:
+        for col in ob_arr:
             if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
                 secondary_type_dict[col] = ColumnDataTypes.DATETIME
             else:
                 secondary_type_dict[col] = ColumnDataTypes.NUMERIC
 
-        # Convert order_by columns to numbers
+        # Convert order_by columns to numbers (note, rows are references to mutable rows in `original_df`)
         for _, row in original_df.iterrows():
-            for col in order_by:
+            for col in ob_arr:
+                # @TODO: Remove if the TS encoder can handle `None`
                 if row[col] is None:
                     row[col] = 0.0
+
+                try:
+                    row[col] = row[col].timestamp()
+                except Exception:
+                    pass
+
                 try:
                     row[col] = float(row[col])
                 except Exception:
-                    try:
-                        row[col] = float(row[col].timestamp())
-                        secondary_type_dict[col] = ColumnDataTypes.DATETIME
-                    except Exception:
-                        error_msg = f'Backend Lightwood does not support ordering by the column: {col} !, Faulty value: {row[col]}'
-                        self.transaction.log.error(error_msg)
-                        raise ValueError(error_msg)
+                    raise ValueError(f'Failed to order based on column: "{col}" due to faulty value: {row[col]}')
 
-        # TODO: use pandas.DataFrame.groupby, the issue is that it raises
-        # an exception when len(group_by) is equal to 0
-        # (when no ['tss']['group_by'] is provided)
-        # Make groups
-        ts_groups = defaultdict(list)
-        for _, row in original_df.iterrows():
-            ts_groups[tuple(row[group_by])].append(row)
-
-        # Convert each group to pandas.DataFrame
-        for group in ts_groups:
-            ts_groups[group] = pd.DataFrame.from_records(
-                ts_groups[group],
-                columns=original_df.columns
-            )
-
-        # Sort each group by order_by columns
-        for group in ts_groups:
-            ts_groups[group].sort_values(by=order_by, inplace=True)
+        if len(gb_arr) > 0:
+            df_arr = []
+            for _, df in original_df.groupby(gb_arr):
+                df.sort_values(by=ob_arr, inplace=True)
+                df_arr.append(df)
+        else:
+            df_arr = [original_df]
 
         # Make type `object` so that dataframe cells can be python lists
-        for group in ts_groups:
-            ts_groups[group] = ts_groups[group].astype(object)
+        for i in range(len(df_arr)):
+            for hist_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
+                df_arr[i][hist_col] = df_arr[i][hist_col].astype(object)
 
         # Make all order column cells lists
-        for group in ts_groups:
-            for order_col in order_by + self.transaction.lmd['tss']['historical_columns']:
-                for i in range(len(ts_groups[group])):
-                    ts_groups[group][order_col].iloc[i] = [
-                        ts_groups[group][order_col].iloc[i]
-                    ]
+        for i in range(len(df_arr)):
+            for order_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
+                for ii in range(len(df_arr[i])):
+                    df_arr[i][order_col].iloc[ii] = [df_arr[i][order_col].iloc[ii]]
 
         # Add previous rows
-        for group in ts_groups:
-            for order_col in order_by + self.transaction.lmd['tss']['historical_columns']:
-                for i in range(len(ts_groups[group])):
+        for n in range(len(df_arr)):
+            for order_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
+                for i in range(len(df_arr[n])):
                     previous_indexes = [*range(max(0, i - window), i)]
 
                     for prev_i in reversed(previous_indexes):
-                        ts_groups[group][order_col].iloc[i].append(
-                            ts_groups[group][order_col].iloc[prev_i][-1]
+                        df_arr[n][order_col].iloc[i].append(
+                            df_arr[n][order_col].iloc[prev_i][-1]
                         )
 
-                    # Zeor pad
+                    # Zero pad
                     # @TODO: Remove since RNN encoder can do without (???)
-                    ts_groups[group].iloc[i][order_col].extend(
-                        [0] * (1 + window - len(ts_groups[group].iloc[i][order_col]))
+                    df_arr[n].iloc[i][order_col].extend(
+                        [0] * (1 + window - len(df_arr[n].iloc[i][order_col]))
                     )
-
-                    ts_groups[group].iloc[i][order_col].reverse()
+                    df_arr[n].iloc[i][order_col].reverse()
 
         if self.transaction.lmd['tss']['use_previous_target']:
             for target_column in self.transaction.lmd['predict_columns']:
-                for k in ts_groups:
-                    previous_target_values = list(ts_groups[k][target_column])
+                for k in range(len(df_arr)):
+                    previous_target_values = list(df_arr[k][target_column])
                     del previous_target_values[-1]
                     previous_target_values = [None] + previous_target_values
 
@@ -114,22 +117,34 @@ class LightwoodBackend():
                             arr = [None] + arr
                         previous_target_values_arr.append(arr)
 
-                    ts_groups[k][f'previous_{target_column}'] = previous_target_values_arr
+                    df_arr[k][f'previous_{target_column}'] = previous_target_values_arr
                     for timestep_index in range(1, self.nr_predictions):
-                        next_target_value_arr = list(ts_groups[k][target_column])
+                        next_target_value_arr = list(df_arr[k][target_column])
                         for del_index in range(0,timestep_index):
                             del next_target_value_arr[del_index]
                             next_target_value_arr.append(0)
                         # @TODO: Maybe ignore the rows with `None` next targets for training
-                        ts_groups[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
+                        df_arr[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
 
-        combined_df = pd.concat(list(ts_groups.values()))
+
+        combined_df = pd.concat(df_arr)
+
 
         if 'make_predictions' in combined_df.columns:
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
             del combined_df['make_predictions']
 
-        return combined_df, secondary_type_dict
+        timeseries_row_mapping = {}
+        idx = 0
+        for _, row in combined_df.iterrows():
+            timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+            idx += 1
+        del combined_df['original_index']
+
+        if len(combined_df) == 0:
+            raise Exception(f'Not enough historical context to make a timeseries prediction. Please provide a number of rows greater or equal to the window size. If you can\'t get enough rows, consider lowering your window size. If you want to force timeseries predictions lacking historical context please set the `allow_incomplete_history` advanced argument to `True`, but this might lead to subpar predictions.')
+
+        return combined_df, secondary_type_dict, timeseries_row_mapping
 
     def _create_lightwood_config(self, secondary_type_dict):
         config = {}
@@ -263,8 +278,8 @@ class LightwoodBackend():
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
-            train_df, secondary_type_dict = self._create_timeseries_df(self.transaction.input_data.train_df)
-            test_df, _ = self._create_timeseries_df(self.transaction.input_data.test_df)
+            train_df, secondary_type_dict, _ = self._ts_reshape(self.transaction.input_data.train_df)
+            test_df, _, _ = self._ts_reshape(self.transaction.input_data.test_df)
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
             if self.transaction.lmd['sample_settings']['sample_for_training']:
@@ -387,7 +402,7 @@ class LightwoodBackend():
 
             validation_accuracy = evaluate_accuracy(
                 validation_predictions,
-                self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df, 
+                self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df,
                 self.transaction.lmd['stats_v2'],
                 self.transaction.lmd['predict_columns'],
                 backend=self,
@@ -442,7 +457,7 @@ class LightwoodBackend():
             raise Exception(f'Unknown mode specified: "{mode}"')
 
         if self.transaction.lmd['tss']['is_timeseries']:
-            df, _ = self._create_timeseries_df(df)
+            df, _, timeseries_row_mapping = self._ts_reshape(df)
 
         if self.predictor is None:
             self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
@@ -496,5 +511,13 @@ class LightwoodBackend():
 
             if 'confidence_range' in predictions[k]:
                 formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
+
+        if self.transaction.lmd['tss']['is_timeseries']:
+            for k in list(formated_predictions.keys()):
+                ordered_values = [None] * len(formated_predictions[k])
+                for i, value in enumerate(formated_predictions[k]):
+                    if timeseries_row_mapping[i] is not None:
+                        ordered_values[timeseries_row_mapping[i]] = value
+                formated_predictions[k] = ordered_values
 
         return formated_predictions
