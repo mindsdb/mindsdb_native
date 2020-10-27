@@ -59,5 +59,10 @@ except ImportError:
     print("SnowflakeDS Datasource is not available by default. If you wish to use it, please install mindsdb_native[snowflake]")
     SnowflakeDS = None
 
+try:
+    from mindsdb_native.libs.data_sources.redshift_ds import RedshiftDS
+except ImportError:
+    print("Redshift Datasource is not available by default. If you wish to use it, please install mindsdb_native[extra_data_sources]")
+    RedshiftDS = None
 
 MindsDB = Predictor
