@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import platform
 import re
 import pickle
@@ -21,6 +22,25 @@ from mindsdb_native.__about__ import __version__
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.constants.mindsdb import *
+
+
+# TODO: add test for this
+class NumpyJSONEncoder(json.JSONEncoder):
+    """
+    Use this encoder to avoid
+    "TypeError: Object of type float32 is not JSON serializable"
+
+    Example:
+    x = np.float32(5)
+    json.dumps(x, cls=NumpyJSONEncoder)
+    """
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.float):
+            return float(obj)
+        else:
+            return super().default(obj)
 
 
 def check_for_updates():
