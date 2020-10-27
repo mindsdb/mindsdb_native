@@ -50,8 +50,6 @@ class TestMongoDB(unittest.TestCase):
             database=self.DATABASE
         )
 
-        assert mongodb_ds.name() == 'MongoDS: database/test_mindsdb'
-
         assert (len(mongodb_ds._df) == 200)
 
         mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)

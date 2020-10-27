@@ -43,8 +43,6 @@ class TestMYSQL(unittest.TestCase):
             port=self.PORT
         )
 
-        assert mysql_ds.name() == 'MySqlDS: mysql/test_mindsdb'
-
         assert (len(mysql_ds._df) == 200)
 
         mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)

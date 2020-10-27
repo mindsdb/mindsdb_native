@@ -6,7 +6,6 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
 class ClickhouseDS(DataSource):
-
     def _setup(self, query, host='localhost', user='default', password=None,
                port=8123, protocol='http'):
 
@@ -19,14 +18,13 @@ class ClickhouseDS(DataSource):
             raise Exception(err_msg)
 
         self.setup_args = {
-                'query' : query
-                ,'host' : host
-                ,'user' : user
-                ,'password' : password
-                ,'port' : port
-                ,'protocol' : protocol
+            'query' : query
+            ,'host' : host
+            ,'user' : user
+            ,'password' : password
+            ,'port' : port
+            ,'protocol' : protocol
         }
-
 
         query = '{} FORMAT JSON'.format(query.rstrip(" ;\n"))
         log.info(f'Getting data via the query: "{query}"')
@@ -35,7 +33,11 @@ class ClickhouseDS(DataSource):
         if password is not None:
             params['password'] = password
 
-        response = requests.post(f'{protocol}://{host}:{port}', data=query, params=params)
+        response = requests.post(
+            f'{protocol}://{host}:{port}',
+            data=query,
+            params=params
+        )
 
         try:
             data = response.json()['data']

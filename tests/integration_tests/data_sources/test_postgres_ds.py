@@ -48,9 +48,10 @@ class TestPostgres(unittest.TestCase):
             port=self.PORT
         )
                             
-        assert postgres_ds.name() == 'PostgresDS: postgres/test_mindsdb'
-
         assert (len(postgres_ds._df) == 200)
 
-        mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
+        mdb = Predictor(
+            name='analyse_dataset_test_predictor',
+            log_level=logging.ERROR
+        )
         F.analyse_dataset(from_data=postgres_ds)
