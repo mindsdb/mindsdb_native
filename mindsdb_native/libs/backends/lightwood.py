@@ -471,6 +471,11 @@ class LightwoodBackend():
             run_df = df
 
         predictions = self.predictor.predict(when_data=run_df)
+        if self.transaction.lmd['quick_predict']:
+            formated_predictions = {}
+            for k in predictions:
+                formated_predictions[k] = predictions[k]['predictions']
+            return formated_predictions
 
         formated_predictions = {}
 
