@@ -280,7 +280,8 @@ class PredictTransaction(Transaction):
             self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
             self._call_phase_module(module_name='ModelInterface', mode='predict')
             self.output_data = self.hmd['predictions']
-
+            return
+        
         # @TODO Maybe move to a separate "PredictionAnalysis" phase ?
         if self.lmd['run_confidence_variation_analysis'] and not self.lmd['tss']['is_timeseries']:
             nulled_out_data = []
