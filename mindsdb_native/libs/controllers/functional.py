@@ -483,7 +483,13 @@ def get_model_data(model_name=None, lmd=None):
 
 def get_models():
     models = []
-    for p in [x for x in Path(CONFIG.MINDSDB_STORAGE_PATH).iterdir() if x.is_dir()]:
+    predictors = [
+        x for x in Path(CONFIG.MINDSDB_STORAGE_PATH).iterdir() if
+            x.is_dir()
+            and x.joinpath('light_model_metadata.pickle').is_file()
+            and x.joinpath('heavy_model_metadata.pickle').is_file()
+    ]
+    for p in predictors:
         model_name = p.name
         try:
             amd = get_model_data(model_name)
