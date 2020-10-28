@@ -19,7 +19,7 @@ class TestMongoDB(unittest.TestCase):
             self.DATABASE += '_' + RUN_ID
             self.COLLECTION += '_' + RUN_ID
 
-    @unittest.skip('pymongo.errors.ServerSelectionTimeoutError')
+    # @unittest.skip('pymongo.errors.ServerSelectionTimeoutError')
     def test_mongodb_ds(self):
         from pymongo import MongoClient
         from mindsdb_native.libs.data_sources.mongodb_ds import MongoDS
@@ -33,7 +33,7 @@ class TestMongoDB(unittest.TestCase):
 
         db = con[self.DATABASE]
         
-        if self.COLLECTION in db.list_COLLECTIONs():
+        if self.COLLECTION in db.list_collections():
             db[self.COLLECTION].drop()
 
         collection = db[self.COLLECTION]

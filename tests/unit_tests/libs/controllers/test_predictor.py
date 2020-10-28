@@ -213,7 +213,6 @@ class TestPredictor(unittest.TestCase):
         assert (a2['existing_credits']['typing'][
                     'data_subtype'] == DATA_SUBTYPES.SINGLE)
 
-    # @unittest.skip(reason='PermissionError in columns_to_file()')
     def test_multilabel_prediction(self):
         train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
         test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
