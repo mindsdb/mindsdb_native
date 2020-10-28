@@ -1,4 +1,5 @@
 import unittest
+import tempfile
 import json
 import random
 from unittest import mock
@@ -27,10 +28,12 @@ from unit_tests.utils import (
 )
 
 
-
 class TestPredictor(unittest.TestCase):
     def setUp(self):
-        self.tmp_path = tempfile.mkdtemp()
+        self.tmp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        self.tmp_dir.close()
 
     def test_sample_for_training(self):
         predictor = Predictor(name='test_sample_for_training')
@@ -215,8 +218,8 @@ class TestPredictor(unittest.TestCase):
 
     # @unittest.skip(reason='PermissionError in columns_to_file()')
     def test_multilabel_prediction(self):
-        train_file_name = os.path.join(self.tmp_path, 'train_data.csv')
-        test_file_name = os.path.join(self.tmp_path, 'test_data.csv')
+        train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
+        test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
         data_len = 60
 
         features = generate_value_cols(['int', 'float', 'int', 'float'], data_len)

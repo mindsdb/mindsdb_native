@@ -32,14 +32,17 @@ from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
 class TestPredictorTimeseries(unittest.TestCase):
     def setUp(self):
-        self.tmp_path = tempfile.mkdtemp()
+        self.tmp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        self.tmp_dir.close()
 
     # @unittest.skip(reason='PermissionError in columns_to_file()')
     def test_timeseries(self):
         ts_hours = 12
         data_len = 120
-        train_file_name = os.path.join(self.tmp_path, 'train_data.csv')
-        test_file_name = os.path.join(self.tmp_path, 'test_data.csv')
+        train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
+        test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
 
         features = generate_value_cols(['date', 'int'], data_len, ts_hours * 3600)
         labels = [generate_timeseries_labels(features)]
@@ -94,8 +97,8 @@ class TestPredictorTimeseries(unittest.TestCase):
     def test_timeseries_stepahead(self):
         ts_hours = 12
         data_len = 120
-        train_file_name = os.path.join(self.tmp_path, 'train_data.csv')
-        test_file_name = os.path.join(self.tmp_path, 'test_data.csv')
+        train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
+        test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
 
         features = generate_value_cols(['date', 'int'], data_len, ts_hours * 3600)
         labels = [generate_timeseries_labels(features)]
@@ -148,8 +151,8 @@ class TestPredictorTimeseries(unittest.TestCase):
     # @unittest.skip(reason='PermissionError in columns_to_file()')
     def test_keep_id_orderby(self):
         data_len = 100
-        train_file_name = os.path.join(self.tmp_path, 'train_data.csv')
-        test_file_name = os.path.join(self.tmp_path, 'test_data.csv')
+        train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
+        test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
         col_name = 'id'
 
         features = [generate_timeseries(data_len, period=1)]
@@ -198,8 +201,8 @@ class TestPredictorTimeseries(unittest.TestCase):
     def test_keep_order(self):
         ts_hours = 12
         data_len = 120
-        train_file_name = os.path.join(self.tmp_path, 'train_data.csv')
-        test_file_name = os.path.join(self.tmp_path, 'test_data.csv')
+        train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
+        test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
 
         features = generate_value_cols(['date', 'int'], data_len, ts_hours * 3600)
         labels = [generate_timeseries_labels(features)]
