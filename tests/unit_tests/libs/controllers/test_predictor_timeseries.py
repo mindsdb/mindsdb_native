@@ -34,9 +34,6 @@ class TestPredictorTimeseries(unittest.TestCase):
     def setUp(self):
         self.tmp_dir = tempfile.mkdtemp()
 
-    def tearDown(self):
-        self.tmp_dir.close()
-
     # @unittest.skip(reason='PermissionError in columns_to_file()')
     def test_timeseries(self):
         ts_hours = 12

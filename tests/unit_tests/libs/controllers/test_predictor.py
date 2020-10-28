@@ -32,9 +32,6 @@ class TestPredictor(unittest.TestCase):
     def setUp(self):
         self.tmp_dir = tempfile.mkdtemp()
 
-    def tearDown(self):
-        self.tmp_dir.close()
-
     def test_sample_for_training(self):
         predictor = Predictor(name='test_sample_for_training')
 
