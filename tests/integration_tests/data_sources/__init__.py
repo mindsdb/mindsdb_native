@@ -11,6 +11,8 @@ assert _var_value is not None, _var_name + ' ' + 'is not set'
 
 DB_CREDENTIALS = json.loads(_var_value)
 
+# This ID is used for generating database and table names
+# in tests that use databases so different runs don't conflict with eachother
 # RUN_ID = os.getenv('GITHUB_RUN_ID')
 RUN_ID = ''.join(
     random.Random(int(time.time() * 1e6)).choices(
