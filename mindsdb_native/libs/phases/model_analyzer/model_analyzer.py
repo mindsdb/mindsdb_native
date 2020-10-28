@@ -219,7 +219,7 @@ class ModelAnalyzer(BaseModule):
 
                 X = deepcopy(self.transaction.input_data.train_df)
                 if self.transaction.lmd['tss']['is_timeseries']:
-                    X, _ = self.transaction.model_backend._create_timeseries_df(X)
+                    X, _ = self.transaction.model_backend._ts_reshape(X)
                 y = X.pop(target)
 
                 self.transaction.hmd['icp'][target] = icp_class(nc)
@@ -233,7 +233,7 @@ class ModelAnalyzer(BaseModule):
                 # calibrate conformal estimator on test set
                 X = deepcopy(validation_df)
                 if self.transaction.lmd['tss']['is_timeseries']:
-                    X, _ = self.transaction.model_backend._create_timeseries_df(X)
+                    X, _ = self.transaction.model_backend._ts_reshape(X)
                 y = X.pop(target).values
 
                 if is_classification:

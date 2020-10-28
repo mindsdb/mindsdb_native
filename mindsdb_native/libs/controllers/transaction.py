@@ -351,7 +351,7 @@ class PredictTransaction(Transaction):
                 self.lmd['all_conformal_ranges'] = {}
                 X = deepcopy(predictions_df)
                 if self.lmd['tss']['is_timeseries']:
-                    X, _ = self.model_backend._create_timeseries_df(X)
+                    X, _ = self.model_backend._ts_reshape(X)
                 for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                     X.pop(col)
 
