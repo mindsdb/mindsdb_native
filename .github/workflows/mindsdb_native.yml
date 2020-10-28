@@ -46,7 +46,11 @@ jobs:
       env:
         CHECK_FOR_UPDATES: False
         DATABASE_CREDENTIALS_STRINGIFIED_JSON: ${{ secrets.DATABASE_CREDENTIALS }}
-        GITHUB_RUN_ID: ${{ github.run_id }}_${{ github.run_number }}
+
+        # This is not uniqe per each run, haven't found a way
+        # to get check_run_id in github actions yet so integration tests
+        # generate a random number instead for now
+        # GITHUB_RUN_ID: ${{ github.run_id }}_${{ github.run_number }}
        
   deploy:
     runs-on: ubuntu-latest
