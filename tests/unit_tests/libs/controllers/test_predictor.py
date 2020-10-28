@@ -29,6 +29,9 @@ from unit_tests.utils import (
 
 
 class TestPredictor(unittest.TestCase):
+    def setUp(self):
+        self.tmp_path = tempfile.mkdtemp()
+
     def test_sample_for_training(self):
         predictor = Predictor(name='test_sample_for_training')
 
@@ -210,10 +213,10 @@ class TestPredictor(unittest.TestCase):
         assert (a2['existing_credits']['typing'][
                     'data_subtype'] == DATA_SUBTYPES.SINGLE)
 
-    @unittest.skip(reason='PermissionError in columns_to_file()')
-    def test_multilabel_prediction(self, tmp_path='/'):
-        train_file_name = os.path.join(str(tmp_path), 'train_data.csv')
-        test_file_name = os.path.join(str(tmp_path), 'test_data.csv')
+    # @unittest.skip(reason='PermissionError in columns_to_file()')
+    def test_multilabel_prediction(self):
+        train_file_name = os.path.join(self.tmp_path, 'train_data.csv')
+        test_file_name = os.path.join(self.tmp_path, 'test_data.csv')
         data_len = 60
 
         features = generate_value_cols(['int', 'float', 'int', 'float'], data_len)

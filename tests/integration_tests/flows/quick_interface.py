@@ -15,7 +15,11 @@ class TestQuickInterface(unittest.TestCase):
 
         # Train a predictor with quick_learn
         predictor = mindsdb_native.Predictor(name='test_quick_interface')
-        predictor.quick_learn(from_data=df_train, to_predict='hours-per-week', stop_training_in_x_seconds=20)
+        predictor.quick_learn(
+            from_data=df_train,
+            to_predict='hours-per-week',
+            stop_training_in_x_seconds=20
+        )
 
         # Reload with a different name to see if it's saved properly
         test_predictor = mindsdb_native.Predictor(name='test_quick_interface')
