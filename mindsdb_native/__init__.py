@@ -63,6 +63,6 @@ try:
     from mindsdb_native.libs.data_sources.gcs_ds import GCSDS
 except ImportError:
     print("Google Cloud Storage Datasource is not available by default. If you wish to use it, please install mindsdb_native[extra_data_sources]")
-    RedshiftDS = None
+    GCSDS = None
 
 MindsDB = Predictor
