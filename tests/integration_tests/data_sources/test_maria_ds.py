@@ -5,7 +5,7 @@ import logging
 from mindsdb_native import Predictor
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 from mindsdb_native import F
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, RUN_ID
 
 
 class TestMariaDB(unittest.TestCase):
@@ -15,6 +15,9 @@ class TestMariaDB(unittest.TestCase):
         self.HOST = DB_CREDENTIALS['mariadb']['host']
         self.DATABASE = DB_CREDENTIALS['mariadb']['database']
         self.PORT = int(DB_CREDENTIALS['mariadb']['port'])
+        self.TABLE = 'test_table'
+        if RUN_ID is not None:
+            self.TABLE += '_' + RUN_ID
 
     def test_maria_ds(self):
         import mysql.connector
@@ -29,8 +32,8 @@ class TestMariaDB(unittest.TestCase):
         )
         cur = con.cursor()
 
-        cur.execute('DROP TABLE IF EXISTS test_mindsdb')
-        cur.execute("""CREATE TABLE test_mindsdb (
+        cur.execute(f'DROP TABLE IF EXISTS {self.TABLE}')
+        cur.execute(f"""CREATE TABLE {self.TABLE} (
                                     col_int BIGINT,
                                     col_float FLOAT,
                                     col_categorical Text,
@@ -45,7 +48,7 @@ class TestMariaDB(unittest.TestCase):
         for i in range(0, 200):
             dt = datetime.datetime.now() - datetime.timedelta(days=i)
 
-            query = f"""INSERT INTO test_mindsdb (col_int,
+            query = f"""INSERT INTO {self.TABLE} (col_int,
                                     col_float,
                                     col_categorical,
                                     col_bool,
@@ -73,7 +76,7 @@ class TestMariaDB(unittest.TestCase):
         con.close()
 
         maria_ds = MariaDS(
-            table='test_mindsdb',
+            table=self.TABLE,
             host=self.HOST,
             user=self.USER,
             password=self.PASSWORD,

@@ -1,6 +1,6 @@
 import os
 import unittest
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, RUN_ID
 
 
 class TestSnowflake(unittest.TestCase):

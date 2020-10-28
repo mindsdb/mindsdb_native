@@ -4,7 +4,7 @@ import datetime
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, RUN_ID
 
 
 class TestPostgres(unittest.TestCase):
@@ -14,6 +14,9 @@ class TestPostgres(unittest.TestCase):
         self.HOST = DB_CREDENTIALS['postgres']['host']
         self.DATABASE = DB_CREDENTIALS['postgres']['database']
         self.PORT = int(DB_CREDENTIALS['postgres']['port'])
+        self.TABLE = 'test_table'
+        if RUN_ID is not None:
+            self.TABLE += '_' + RUN_ID
 
     def test_postgres_ds(self):
         import pg8000
@@ -28,19 +31,19 @@ class TestPostgres(unittest.TestCase):
         )
         cur = con.cursor()
 
-        cur.execute('DROP TABLE IF EXISTS test_mindsdb')
+        cur.execute(f'DROP TABLE IF EXISTS {self.TABLE}')
         cur.execute(
-            'CREATE TABLE test_mindsdb(col_1 Text, col_2 Int,  col_3 Boolean, col_4 Date, col_5 Int [])')
+            f'CREATE TABLE {self.TABLE}(col_1 Text, col_2 Int,  col_3 Boolean, col_4 Date, col_5 Int [])')
         for i in range(0, 200):
             dt = datetime.datetime.now() - datetime.timedelta(days=i)
             dt_str = dt.strftime('%Y-%m-%d')
             cur.execute(
-                f'INSERT INTO test_mindsdb VALUES (\'String {i}\', {i}, {i % 2 == 0}, \'{dt_str}\', ARRAY [1, 2, {i}])')
+                f'INSERT INTO {self.TABLE} VALUES (\'String {i}\', {i}, {i % 2 == 0}, \'{dt_str}\', ARRAY [1, 2, {i}])')
         con.commit()
         con.close()
 
         postgres_ds = PostgresDS(
-            table='test_mindsdb',
+            table=self.TABLE,
             host=self.HOST,
             user=self.USER,
             password=self.PASSWORD,

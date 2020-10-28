@@ -3,7 +3,7 @@ import unittest
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, RUN_ID
 
 
 class TestMYSQL(unittest.TestCase):
@@ -13,6 +13,9 @@ class TestMYSQL(unittest.TestCase):
         self.HOST = DB_CREDENTIALS['mysql']['host']
         self.DATABASE = DB_CREDENTIALS['mysql']['database']
         self.PORT = int(DB_CREDENTIALS['mysql']['port'])
+        self.TABLE = 'test_table'
+        if RUN_ID is not None:
+            self.TABLE += '_' + RUN_ID
 
     def test_mysql_ds(self):
         import mysql.connector
@@ -27,15 +30,15 @@ class TestMYSQL(unittest.TestCase):
         )
         cur = con.cursor()
 
-        cur.execute('DROP TABLE IF EXISTS test_mindsdb')
-        cur.execute('CREATE TABLE test_mindsdb(col_1 Text, col_2 BIGINT, col_3 BOOL)')
+        cur.execute(f'DROP TABLE IF EXISTS {self.TABLE}')
+        cur.execute(f'CREATE TABLE {self.TABLE}(col_1 Text, col_2 BIGINT, col_3 BOOL)')
         for i in range(0, 200):
-            cur.execute(f'INSERT INTO test_mindsdb VALUES ("This is string number {i}", {i}, {i % 2 == 0})')
+            cur.execute(f'INSERT INTO {self.TABLE} VALUES ("This is string number {i}", {i}, {i % 2 == 0})')
         con.commit()
         con.close()
 
         mysql_ds = MySqlDS(
-            table='test_mindsdb',
+            table=self.TABLE,
             host=self.HOST,
             user=self.USER,
             password=self.PASSWORD,

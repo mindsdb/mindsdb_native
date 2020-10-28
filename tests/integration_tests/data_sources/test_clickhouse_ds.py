@@ -5,7 +5,7 @@ import requests
 import mindsdb_native
 from mindsdb_native import Predictor
 from mindsdb_native import F
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, RUN_ID
 
 
 class TestClickhouse(unittest.TestCase):
@@ -14,6 +14,11 @@ class TestClickhouse(unittest.TestCase):
         self.PASSWORD = DB_CREDENTIALS['clickhouse']['password']
         self.HOST = DB_CREDENTIALS['clickhouse']['host']
         self.PORT = int(DB_CREDENTIALS['clickhouse']['port'])
+        self.DATABASE = 'test_db'
+        self.TABLE = 'test_table'
+        if RUN_ID is not None:
+            self.DATABASE += '_' + RUN_ID
+            self.TABLE += '_' + RUN_ID
 
     def test_clickhouse_ds(self):
         from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
@@ -23,10 +28,10 @@ class TestClickhouse(unittest.TestCase):
         clickhouse_url = f'http://{self.HOST}:{self.PORT}'
 
         queries = [
-            'CREATE DATABASE IF NOT EXISTS test',
-            'DROP TABLE IF EXISTS test.mock',
-            '''
-                CREATE TABLE test.mock(
+            f'CREATE DATABASE IF NOT EXISTS {self.DATABASE}',
+            f'DROP TABLE IF EXISTS {self.DATABASE}.{self.TABLE}',
+            f'''
+                CREATE TABLE {self.DATABASE}.{self.TABLE}(
                     col1 String
                     ,col2 Int64
                     ,col3 Array(UInt8)
@@ -34,16 +39,16 @@ class TestClickhouse(unittest.TestCase):
                     ORDER BY col2
                     PARTITION BY col1
             ''',
-            "INSERT INTO test.mock VALUES ('a',1,[1,2,3])",
-            "INSERT INTO test.mock VALUES ('b',2,[2,3,1])",
-            "INSERT INTO test.mock VALUES ('c',3,[3,1,2])"
+            f"INSERT INTO {self.DATABASE}.{self.TABLE} VALUES ('a',1,[1,2,3])",
+            f"INSERT INTO {self.DATABASE}.{self.TABLE} VALUES ('b',2,[2,3,1])",
+            f"INSERT INTO {self.DATABASE}.{self.TABLE} VALUES ('c',3,[3,1,2])"
         ]
         for q in queries:
             r = requests.post(clickhouse_url, data=q, params=params)
             assert r.status_code == 200
 
         clickhouse_ds = ClickhouseDS(
-            'SELECT * FROM test.mock ORDER BY col2 DESC LIMIT 2',
+            f'SELECT * FROM {self.DATABASE}.{self.TABLE} ORDER BY col2 DESC LIMIT 2',
             host=self.HOST,
             port=self.PORT,
             user=self.USER,
@@ -70,10 +75,10 @@ class TestClickhouse(unittest.TestCase):
             values.append([str(i % 4), i, i * 2])
 
         queries = [
-            'CREATE DATABASE IF NOT EXISTS test',
-            'DROP TABLE IF EXISTS test.mock',
-            '''
-                CREATE TABLE test.mock(
+            f'CREATE DATABASE IF NOT EXISTS {self.DATABASE}',
+            f'DROP TABLE IF EXISTS {self.DATABASE}.{self.TABLE}',
+            f'''
+                CREATE TABLE {self.DATABASE}.{self.TABLE}(
                     col1 String
                     ,col2 Int64
                     ,col3 Int64
@@ -85,14 +90,14 @@ class TestClickhouse(unittest.TestCase):
 
         for value in values:
             value_ins_str = str(value).replace('[','').replace(']','')
-            queries.append(f"INSERT INTO test.mock VALUES ({value_ins_str})")
+            queries.append(f"INSERT INTO {self.DATABASE}.{self.TABLE} VALUES ({value_ins_str})")
 
         for q in queries:
             r = requests.post(clickhouse_url, data=q, params=params)
             assert r.status_code == 200, r.text
 
         clickhouse_ds = ClickhouseDS(
-            'SELECT * FROM test.mock',
+            f'SELECT * FROM {self.DATABASE}.{self.TABLE}',
             host=self.HOST,
             port=self.PORT,
             user=self.USER,
