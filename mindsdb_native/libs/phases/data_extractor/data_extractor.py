@@ -65,7 +65,7 @@ class DataExtractor(BaseModule):
             df = df.sort_values(sort_by, ascending=asc_values)
 
         # if its not a time series, randomize the input data and we are learning
-        elif self.transaction.lmd['type'] == TRANSACTION_LEARN:
+        if not self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['type'] == TRANSACTION_LEARN:
             df = df.sample(frac=1, random_state=len(df))
 
         return df
@@ -91,7 +91,8 @@ class DataExtractor(BaseModule):
                 # if no data frame yet, make one
                 df = self._data_from_when()
 
-            if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries']:
+            if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['use_database_history']:
+                self.log.warning('Using automatic database history sourcing, will be selecting rows from the same table you used to train the original model.')
                 if 'make_predictions' not in df.columns:
                     df['make_predictions'] = [True] * len(df)
 
@@ -128,7 +129,9 @@ class DataExtractor(BaseModule):
 
                 df = pd.concat([df,historical_df])
 
-        df = self._apply_sort_conditions_to_df(df)
+        # Sorting here *should* only be needed at learn time
+        if self.transaction.lmd['type'] == TRANSACTION_LEARN:
+            df = self._apply_sort_conditions_to_df(df)
 
         # Mutable lists -> immutable tuples
         # (lists caused TypeError: uhashable type 'list' in TypeDeductor phase)
