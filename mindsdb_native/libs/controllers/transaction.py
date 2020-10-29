@@ -349,14 +349,17 @@ class PredictTransaction(Transaction):
             # confidence estimation
             if self.hmd['icp']['active']:
                 self.lmd['all_conformal_ranges'] = {}
-                X = deepcopy(predictions_df)
+                icp_X = deepcopy(predictions_df)
                 if self.lmd['tss']['is_timeseries']:
-                    X, _, _ = self.model_backend._ts_reshape(X)
+                    icp_X, _, _ = self.model_backend._ts_reshape(icp_X)
                 for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
-                    X.pop(col)
+                    icp_X.pop(col)
 
                 for predicted_col in self.lmd['predict_columns']:
-                    if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.NUMERIC:
+                    X = deepcopy(icp_X)
+                    for i in range(1, self.lmd['tss'].get('nr_predictions', 0)):
+                        X.pop(f'{predicted_col}_timestep_{i}')
+                    if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.SEQUENTIAL):
                         tol_const = 2  # std devs
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)

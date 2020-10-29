@@ -22,7 +22,8 @@ def clean_df(df, stats, output_columns, ignored_columns):
         if key in df.columns and key in output_columns:
             df.pop(key)
     for col in ignored_columns:
-        df.pop(col)
+        if col in df.columns:
+            df.pop(col)
     return df
 
 
