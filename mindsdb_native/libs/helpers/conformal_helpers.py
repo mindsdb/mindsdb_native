@@ -13,7 +13,7 @@ def _df_from_x(x, columns):
     return x
 
 
-def clean_df(df, stats, output_columns):
+def clean_df(df, stats, output_columns, ignored_columns):
     """
     :param stats: dict with information about every column
     :param output_columns: to be predicted
@@ -21,13 +21,16 @@ def clean_df(df, stats, output_columns):
     for key, value in stats.items():
         if key in df.columns and key in output_columns:
             df.pop(key)
+    for col in ignored_columns:
+        df.pop(col)
     return df
 
 
 def filter_cols(columns, target, ignore):
     cols = deepcopy(columns)
     for col in [target] + ignore:
-        cols.remove(col)
+        if col in cols:
+            cols.remove(col)
     return cols
 
 

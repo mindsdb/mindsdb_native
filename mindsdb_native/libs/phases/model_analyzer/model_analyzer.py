@@ -183,10 +183,12 @@ class ModelAnalyzer(BaseModule):
                 'target': deepcopy(target),
                 'all_columns': deepcopy(self.transaction.lmd['columns']),
                 'columns_to_ignore': [],
-                'use_previous_target': (self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['use_previous_target'])
+                'use_previous_target': (self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['use_previous_target']),
+                'nr_preds': self.transaction.lmd['tss'].get('nr_predictions', 0),
             }
             fit_params['columns_to_ignore'].extend(self.transaction.lmd['columns_to_ignore'])
             fit_params['columns_to_ignore'].extend([col for col in output_columns if col != target])
+            fit_params['columns_to_ignore'].extend([f'{target}_timestep_{i}' for i in range(1, fit_params['nr_preds'])])
 
             if is_classification:
                 if data_subtype != DATA_SUBTYPES.TAGS:
@@ -226,7 +228,7 @@ class ModelAnalyzer(BaseModule):
                 if not is_classification:
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 
-                X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns)
+                X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns, fit_params['columns_to_ignore'])
                 self.transaction.hmd['icp'][target].fit(X.values, y.values)
                 self.transaction.hmd['icp']['active'] = True
 
@@ -242,5 +244,5 @@ class ModelAnalyzer(BaseModule):
                         y = np.array([cats.index(i) for i in y])
                     y = y.astype(int)
 
-                X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns)
+                X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns, fit_params['columns_to_ignore'])
                 self.transaction.hmd['icp'][target].calibrate(X.values, y)
