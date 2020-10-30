@@ -25,12 +25,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install --no-cache-dir .
         pip install -r optional_requirements_extra_data_sources.txt
-        if [ "$RUNNER_OS" == "Linux" ]; then
-          pip install -r optional_requirements_snowflake.txt
-        fi
-        if [ "$RUNNER_OS" == "macOS" ]; then
-          pip install -r optional_requirements_snowflake.txt
-        fi
       env:
         CHECK_FOR_UPDATES: False
     - name: Install dependencies Linux
