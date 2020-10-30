@@ -172,7 +172,6 @@ class Predictor:
 
         :return:
         """
-
         with MDBLock('exclusive', 'learn_' + self.name):
             ignore_columns = [] if ignore_columns is None else ignore_columns
             timeseries_settings = {} if timeseries_settings is None else timeseries_settings
@@ -302,6 +301,8 @@ class Predictor:
                 logger=self.log
             )
 
+            self.transaction.run()
+
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
         """
@@ -415,4 +416,5 @@ class Predictor:
                 light_transaction_metadata=light_transaction_metadata,
                 heavy_transaction_metadata=heavy_transaction_metadata
             )
+            self.transaction.run()
             return self.transaction.output_data

@@ -7,7 +7,6 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 
 class PostgresDS(DataSource):
-
     def _setup(self, table=None, query=None, database='postgres', host='localhost',
                port=5432, user='postgres', password=''):
 
@@ -17,8 +16,13 @@ class PostgresDS(DataSource):
         if query is None:
             query = f'SELECT * FROM {table}'
 
-        con = pg8000.connect(database=database, user=user, password=password,
-                             host=host, port=port)
+        con = pg8000.connect(
+            database=database,
+            user=user,
+            password=password,
+            host=host,
+            port=port
+        )
         df = pd.read_sql(query, con=con)
         con.close()
 

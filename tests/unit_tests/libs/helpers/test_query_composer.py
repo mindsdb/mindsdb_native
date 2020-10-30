@@ -1,5 +1,6 @@
-import pytest
+import unittest
 from mindsdb_native.libs.helpers.query_composer import create_history_query
+
 
 def test_query_composer():
     tss = {

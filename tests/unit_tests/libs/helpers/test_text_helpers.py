@@ -1,5 +1,5 @@
+import unittest
 from collections import Counter
-import pytest
 import random
 import string
 
@@ -12,7 +12,7 @@ from mindsdb_native.libs.helpers.text_helpers import (
 from mindsdb_native.libs.helpers.text_helpers import get_identifier_description
 
 
-@pytest.mark.skip(reason="This fails randomly. For x reason lang_dist[lang] is 9 and len(sentences) is 10")
+@unittest.skip('This fails randomly. For x reason lang_dist[lang] is 9 and len(sentences) is 10')
 def test_language_analysis():
     from langdetect import DetectorFactory
     DetectorFactory.seed = 0

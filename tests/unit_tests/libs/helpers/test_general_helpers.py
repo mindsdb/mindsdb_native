@@ -1,9 +1,10 @@
+import unittest
 import pandas as pd
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 from mindsdb_native.libs.helpers.general_helpers import (evaluate_accuracy)
 
 
-class TestEvaluateAccuracy:
+class TestEvaluateAccuracy(unittest.TestCase):
     def test_evaluate_regression(self):
         predictions = {
             'y': [1, 2, 3, 4],
