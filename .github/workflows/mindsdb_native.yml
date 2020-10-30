@@ -32,6 +32,7 @@ jobs:
         if [ "$RUNNER_OS" == "Linux" ]; then
           pip install -r optional_requirements_snowflake.txt
         fi
+      shell: bash
       env:
         CHECK_FOR_UPDATES: False
     - name: Install dependencies OSX
@@ -39,6 +40,7 @@ jobs:
         if [ "$RUNNER_OS" == "macOS" ]; then
           pip install -r optional_requirements_snowflake.txt
         fi
+      shell: bash
       env:
         CHECK_FOR_UPDATES: False
     - name: Install lightwood/staging if it's not mindsdb_native/stable
