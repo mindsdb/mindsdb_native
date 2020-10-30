@@ -51,7 +51,7 @@ class TestClickhouse(unittest.TestCase):
     def test_database_history(self):
         from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 
-        TEMP_DB = 'test_database_history'
+        TEMP_DB = 'test_database_history_' + random_string()
         TEMP_TABLE = 'tmp_test_database_history_' + random_string()
 
         params = {'user': self.USER, 'password': self.PASSWORD}
