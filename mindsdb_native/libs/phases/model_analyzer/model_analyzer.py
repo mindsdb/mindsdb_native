@@ -12,7 +12,7 @@ import numpy as np
 from copy import deepcopy
 from sklearn.preprocessing import OneHotEncoder
 from nonconformist.icp import IcpRegressor, IcpClassifier
-from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, MarginErrFunc
+from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, InverseProbabilityErrFunc
 
 
 class ModelAnalyzer(BaseModule):
@@ -196,10 +196,7 @@ class ModelAnalyzer(BaseModule):
 
             if is_classification:
                 if data_subtype != DATA_SUBTYPES.TAGS:
-                    all_targets = [elt[1][target].values for elt in inspect.getmembers(self.transaction.input_data)
-                                   if elt[0] in {'test_df', 'train_df', 'validation_df'}]
-                    all_classes = np.unique(np.concatenate([np.unique(arr) for arr in all_targets]))
-
+                    all_classes = np.array(self.transaction.lmd['stats_v2'][target]['histogram']['x'])
                     enc = OneHotEncoder(sparse=False, handle_unknown='ignore')
                     enc.fit(all_classes.reshape(-1, 1))
                     fit_params['one_hot_enc'] = enc
@@ -209,7 +206,7 @@ class ModelAnalyzer(BaseModule):
                     self.transaction.hmd['label_encoders'][target] = None
 
                 adapter = ConformalClassifierAdapter
-                nc_function = MarginErrFunc()  # better than IPS as we'd need the complete distribution over all classes
+                nc_function = InverseProbabilityErrFunc()
                 nc_class = ClassifierNc
                 icp_class = IcpClassifier
 

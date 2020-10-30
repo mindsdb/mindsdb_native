@@ -2,6 +2,7 @@ from nonconformist.base import RegressorAdapter
 from nonconformist.base import ClassifierAdapter
 from mindsdb_native.libs.constants.mindsdb import *
 
+from scipy.special import softmax
 import pandas as pd
 import numpy as np
 from copy import deepcopy
@@ -79,6 +80,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         self.ar = fit_params['use_previous_target']
         if self.ar:
             self.columns.append(f'previous_{self.target}')
+        self.model.config['include_extra_data'] = True
 
     def fit(self, x, y):
         """
@@ -101,7 +103,12 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         """
         cols = filter_cols(self.columns, self.target, self.ignore_columns)
         x = _df_from_x(x, cols)
-        predictions = self.model.predict(when_data=x)
+        predictions = self.model.predict(when_data=x)  # ToDo: return complete class distribution and labels from lightwood
+
         ys = np.array(predictions[self.target]['predictions'])
-        ys = self.fit_params['one_hot_enc'].transform(ys.reshape(-1, 1))  # ideally, complete class distribution here
-        return ys
+        ys = self.fit_params['one_hot_enc'].transform(ys.reshape(-1, 1))
+
+        raw = np.array(predictions[self.target]['encoded_predictions'])
+        raw_s = np.max(softmax(raw, axis=1), axis=1)
+
+        return ys*raw_s.reshape(-1, 1)
