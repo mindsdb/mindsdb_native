@@ -9,10 +9,9 @@ class TestPostgres(unittest.TestCase):
         self.PASSWORD = DB_CREDENTIALS['postgres']['password']
         self.HOST = DB_CREDENTIALS['postgres']['host']
         self.PORT = int(DB_CREDENTIALS['postgres']['port'])
-        self.DATABASE = 'test_data'
-        self.TABLE = 'us_health_insurance'
+        self.DATABASE = 'postgres'
+        self.TABLE = 'home_rentals'
 
-    @unittest.skip("Execution failed on sql 'SELECT * FROM us_health_insurance LIMIT 100': {'S': 'ERROR', 'V': 'ERROR', 'C': '42P01', 'M': 'relation \"us_health_insurance\" does not exist', 'P': '15', 'F': 'parse_relation.c', 'L': '1194', 'R': 'parserOpenTable'}")
     def test_postgres_ds(self):
         from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
 
@@ -25,7 +24,11 @@ class TestPostgres(unittest.TestCase):
             password=self.PASSWORD,
             database=self.DATABASE,
             port=self.PORT,
-            query='SELECT * FROM {} LIMIT {}'.format(self.TABLE, LIMIT)
+            query='SELECT * FROM {}.{} LIMIT {}'.format(
+                'test_data',
+                self.TABLE,
+                LIMIT
+            )
         )
                             
         assert len(postgres_ds) == LIMIT
