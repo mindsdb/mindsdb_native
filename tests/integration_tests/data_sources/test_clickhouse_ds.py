@@ -5,6 +5,7 @@ import unittest
 import requests
 from . import DB_CREDENTIALS
 from mindsdb_native import Predictor, F
+import gc
 
 
 def random_string():
@@ -59,7 +60,7 @@ class TestClickhouse(unittest.TestCase):
         clickhouse_url = f'http://{self.HOST}:{self.PORT}'
 
         values = []
-        for i in range(500):
+        for i in range(200):
             values.append([str(i % 4), i, i * 2])
 
         queries = [
@@ -75,6 +76,7 @@ class TestClickhouse(unittest.TestCase):
                     PARTITION BY col1
             ''',
         ]
+        gc.collect()
 
         for value in values:
             value_ins_str = str(value).replace('[','').replace(']','')
