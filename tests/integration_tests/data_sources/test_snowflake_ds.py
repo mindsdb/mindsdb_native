@@ -8,7 +8,7 @@ class TestSnowflake(unittest.TestCase):
         from mindsdb_native.libs.data_sources.snowflake_ds import SnowflakeDS
 
         snowflake_ds = mindsdb_native.SnowflakeDS(
-            query='SELECT * FROM HEALTHCARE_COSTS'',
+            query='SELECT * FROM HEALTHCARE_COSTS',
             host=DB_CREDENTIALS['snowflake']['host'],
             user=DB_CREDENTIALS['snowflake']['user'],
             password=DB_CREDENTIALS['snowflake']['password'],
