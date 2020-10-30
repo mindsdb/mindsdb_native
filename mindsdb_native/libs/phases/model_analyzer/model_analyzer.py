@@ -175,9 +175,13 @@ class ModelAnalyzer(BaseModule):
         self.transaction.hmd['icp'] = {'active': False}
 
         for target in output_columns:
-            data_type = self.transaction.lmd['stats_v2'][target]['typing']['data_type']
-            data_subtype = self.transaction.lmd['stats_v2'][target]['typing']['data_subtype']
-            is_classification = data_type == DATA_TYPES.CATEGORICAL
+            typing_info = self.transaction.lmd['stats_v2'][target]['typing']
+            data_type = typing_info['data_type']
+            data_subtype = typing_info['data_subtype']
+
+            is_classification = (data_type == DATA_TYPES.CATEGORICAL) or \
+                                (data_type == DATA_TYPES.SEQUENTIAL and
+                                 DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())
 
             fit_params = {
                 'target': deepcopy(target),

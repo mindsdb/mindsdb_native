@@ -356,10 +356,16 @@ class PredictTransaction(Transaction):
                     icp_X.pop(col)
 
                 for predicted_col in self.lmd['predict_columns']:
+                    typing_info = self.lmd['stats_v2'][predicted_col]['typing']
                     X = deepcopy(icp_X)
                     for i in range(1, self.lmd['tss'].get('nr_predictions', 0)):
                         X.pop(f'{predicted_col}_timestep_{i}')
-                    if self.lmd['stats_v2'][predicted_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.SEQUENTIAL):
+
+                    # numerical
+                    if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
+                            (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                             DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
+
                         tol_const = 2  # std devs
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
@@ -378,7 +384,11 @@ class PredictTransaction(Transaction):
                                 sigma = (bounds[1] - bounds[0]) / 2
                                 output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
 
-                    elif self.lmd['stats_v2'][predicted_col]['typing']['data_type'] == DATA_TYPES.CATEGORICAL:
+                    # categorical
+                    elif typing_info['data_type'] == DATA_TYPES.CATEGORICAL or \
+                            (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                             DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
+
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
                             self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
                             for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
