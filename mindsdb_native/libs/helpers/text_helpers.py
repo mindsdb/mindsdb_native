@@ -64,7 +64,7 @@ def analyze_sentences(data):
     nr_words_dist = defaultdict(int)
     nltk.download('stopwords')
     stop_words = set(stopwords.words('english'))
-    for text in data:
+    for text in map(str, data):
         text = text.lower()
         tokens = tokenize_text(text)
         tokens_no_stop = [x for x in tokens if x not in stop_words]

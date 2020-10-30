@@ -1,3 +1,4 @@
+import unittest
 import pandas as pd
 from copy import deepcopy
 from mindsdb_native import Predictor

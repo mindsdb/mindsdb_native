@@ -1,39 +1,32 @@
-import pytest
-import logging
-from mindsdb_native import Predictor
+import unittest
 from mindsdb_native import F
+from . import DB_CREDENTIALS
 
-@pytest.mark.integration
-def test_mysql_ds():
-    import mysql.connector
-    from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
 
-    HOST = 'localhost'
-    USER = 'root'
-    PASSWORD = ''
-    DATABASE = 'mysql'
-    PORT = 3306
+class TestMYSQL(unittest.TestCase):
+    def setUp(self):
+        self.USER = DB_CREDENTIALS['mysql']['user']
+        self.PASSWORD = DB_CREDENTIALS['mysql']['password']
+        self.HOST = DB_CREDENTIALS['mysql']['host']
+        self.PORT = int(DB_CREDENTIALS['mysql']['port'])
+        self.DATABASE = 'test_data'
+        self.TABLE = 'us_health_insurance'
 
-    con = mysql.connector.connect(host=HOST,
-                                  port=PORT,
-                                  user=USER,
-                                  password=PASSWORD,
-                                  database=DATABASE)
-    cur = con.cursor()
+    def test_mysql_ds(self):
+        from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
 
-    cur.execute('DROP TABLE IF EXISTS test_mindsdb')
-    cur.execute('CREATE TABLE test_mindsdb(col_1 Text, col_2 BIGINT, col_3 BOOL)')
-    for i in range(0, 200):
-        cur.execute(f'INSERT INTO test_mindsdb VALUES ("This is string number {i}", {i}, {i % 2 == 0})')
-    con.commit()
-    con.close()
+        LIMIT = 100
 
-    mysql_ds = MySqlDS(table='test_mindsdb', host=HOST, user=USER,
-                       password=PASSWORD, database=DATABASE, port=PORT)
+        mysql_ds = MySqlDS(
+            table=self.TABLE,
+            host=self.HOST,
+            user=self.USER,
+            password=self.PASSWORD,
+            database=self.DATABASE,
+            port=self.PORT,
+            query='SELECT * FROM {} LIMIT {}'.format(self.TABLE, LIMIT)
+        )
 
-    assert mysql_ds.name() == 'MySqlDS: mysql/test_mindsdb'
+        assert len(mysql_ds) == LIMIT
 
-    assert (len(mysql_ds._df) == 200)
-
-    mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
-    F.analyse_dataset(from_data=mysql_ds)
+        F.analyse_dataset(mysql_ds)

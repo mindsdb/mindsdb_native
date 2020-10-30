@@ -5,7 +5,6 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 
 class MySqlDS(DataSource):
-
     def _setup(self, table=None, query=None, database='mysql', host='localhost',
                port=3306, user='root', password=''):
 
@@ -15,11 +14,13 @@ class MySqlDS(DataSource):
         if query is None:
             query = f'SELECT * FROM {table}'
 
-        con = mysql.connector.connect(host=host,
-                                      port=port,
-                                      user=user,
-                                      password=password,
-                                      database=database)
+        con = mysql.connector.connect(
+            host=host,
+            port=int(port),
+            user=user,
+            password=password,
+            database=database
+        )
         df = pd.read_sql(query, con=con)
         con.close()
 
@@ -30,8 +31,7 @@ class MySqlDS(DataSource):
         return df, col_map
 
     def name(self):
-        return '{}: {}/{}'.format(
+        return '{}: {}'.format(
             self.__class__.__name__,
-            self._database_name,
-            self._table_name
+            self._database_name
         )
