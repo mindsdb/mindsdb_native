@@ -5,11 +5,15 @@ import mindsdb_native
 
 class TestSnowflake(unittest.TestCase):
     def test_snowflake_ds(self):
+        print(os.name)
         if os.name == 'nt':
             print('Snowflake datasource (SnowflakeDS) can\'t be used on windows at the moment due to the connector not working')
             return
-        
-        from mindsdb_native.libs.data_sources.snowflake_ds import SnowflakeDS
+
+        try:
+            from mindsdb_native.libs.data_sources.snowflake_ds import SnowflakeDS
+        except:
+            pass
 
         # Create the datasource
         snowflake_ds = mindsdb_native.SnowflakeDS(
