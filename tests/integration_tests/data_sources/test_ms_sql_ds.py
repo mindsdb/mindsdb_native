@@ -4,7 +4,6 @@ import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
 from . import DB_CREDENTIALS
-from . import DB_CREDENTIALS, RUN_ID
 
 
 class TestMSSQL(unittest.TestCase):

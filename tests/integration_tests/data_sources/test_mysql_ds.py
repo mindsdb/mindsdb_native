@@ -1,9 +1,6 @@
-import os
 import unittest
-import logging
-from mindsdb_native import Predictor
 from mindsdb_native import F
-from . import DB_CREDENTIALS, RUN_ID
+from . import DB_CREDENTIALS
 
 
 class TestMYSQL(unittest.TestCase):
@@ -11,31 +8,14 @@ class TestMYSQL(unittest.TestCase):
         self.USER = DB_CREDENTIALS['mysql']['user']
         self.PASSWORD = DB_CREDENTIALS['mysql']['password']
         self.HOST = DB_CREDENTIALS['mysql']['host']
-        self.DATABASE = DB_CREDENTIALS['mysql']['database']
         self.PORT = int(DB_CREDENTIALS['mysql']['port'])
-        self.TABLE = 'test_table'
-        if RUN_ID is not None:
-            self.TABLE += '_' + RUN_ID
+        self.DATABASE = 'test_data'
+        self.TABLE = 'us_health_insurance'
 
     def test_mysql_ds(self):
-        import mysql.connector
         from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
 
-        con = mysql.connector.connect(
-            host=self.HOST,
-            port=self.PORT,
-            user=self.USER,
-            password=self.PASSWORD,
-            database=self.DATABASE
-        )
-        cur = con.cursor()
-
-        cur.execute(f'DROP TABLE IF EXISTS {self.TABLE}')
-        cur.execute(f'CREATE TABLE {self.TABLE}(col_1 Text, col_2 BIGINT, col_3 BOOL)')
-        for i in range(0, 200):
-            cur.execute(f'INSERT INTO {self.TABLE} VALUES ("This is string number {i}", {i}, {i % 2 == 0})')
-        con.commit()
-        con.close()
+        LIMIT = 100
 
         mysql_ds = MySqlDS(
             table=self.TABLE,
@@ -43,13 +23,10 @@ class TestMYSQL(unittest.TestCase):
             user=self.USER,
             password=self.PASSWORD,
             database=self.DATABASE,
-            port=self.PORT
+            port=self.PORT,
+            query='SELECT * FROM {} LIMIT {}'.format(self.TABLE, LIMIT)
         )
 
-        assert (len(mysql_ds._df) == 200), len(mysql_ds._df)
+        assert len(mysql_ds) == LIMIT
 
-        mdb = Predictor(
-            name='analyse_dataset_test_predictor',
-            log_level=logging.ERROR
-        )
-        F.analyse_dataset(from_data=mysql_ds)
+        F.analyse_dataset(mysql_ds)

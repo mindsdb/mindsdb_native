@@ -14,6 +14,9 @@ class DataSource:
         self._set_df(df, col_map)
         self._cleanup()
 
+    def __len__(self):
+        return len(self._df)
+
     def name(self):
         return 'Unknown'
 

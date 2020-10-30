@@ -1,10 +1,6 @@
-import os
 import unittest
-import logging
-from mindsdb_native import Predictor
-from mindsdb_native import F
+from mindsdb_native import Predictor, F
 from . import DB_CREDENTIALS
-from . import DB_CREDENTIALS, RUN_ID
 
 
 class TestMongoDB(unittest.TestCase):
@@ -57,5 +53,5 @@ class TestMongoDB(unittest.TestCase):
 
         assert (len(mongodb_ds._df) == 200)
 
-        mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
+        mdb = Predictor(name='analyse_dataset_test_predictor')
         F.analyse_dataset(from_data=mongodb_ds)
