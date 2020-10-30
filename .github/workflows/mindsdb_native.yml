@@ -25,11 +25,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install --no-cache-dir .
         pip install -r optional_requirements_extra_data_sources.txt
-        pip install -r optional_requirements_snowflake.txt
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          pip install -r optional_requirements_snowflake.txt
+        fi
+        if [ "$RUNNER_OS" == "macOS" ]; then
+          pip install -r optional_requirements_snowflake.txt
+        fi
+      env:
+        CHECK_FOR_UPDATES: False
     - name: Install lightwood/staging if it's not mindsdb_native/stable
       if: github.ref != 'refs/heads/stable'
       run: |
           pip install git+https://github.com/mindsdb/lightwood.git@staging --upgrade --no-cache-dir
+      env:
+        CHECK_FOR_UPDATES: False
     - name: Run unit tests
       run: |
           cd tests
