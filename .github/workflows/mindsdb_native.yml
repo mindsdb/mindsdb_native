@@ -25,6 +25,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install --no-cache-dir .
         pip install -r optional_requirements_extra_data_sources.txt
+        pip install -r optional_requirements_snowflake.txt
     - name: Install lightwood/staging if it's not mindsdb_native/stable
       if: github.ref != 'refs/heads/stable'
       run: |
@@ -46,7 +47,7 @@ jobs:
       env:
         CHECK_FOR_UPDATES: False
         DATABASE_CREDENTIALS_STRINGIFIED_JSON: ${{ secrets.DATABASE_CREDENTIALS }}
-       
+
   deploy:
     runs-on: ubuntu-latest
     needs: test
