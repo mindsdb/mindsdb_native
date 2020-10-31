@@ -400,7 +400,9 @@ class PredictTransaction(Transaction):
                              DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
 
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                            self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
+
+                            trials = np.max([self.hmd['icp'][predicted_col].predict(X.values) for _ in range(5)], axis=0)
+                            self.lmd['all_conformal_ranges'][predicted_col] = trials
                             for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
                                 sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :]
                                 output_data[f'{predicted_col}_confidence'][sample_idx] = sample.max()
