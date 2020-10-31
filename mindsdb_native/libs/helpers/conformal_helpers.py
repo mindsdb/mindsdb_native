@@ -2,10 +2,14 @@ from nonconformist.base import RegressorAdapter
 from nonconformist.base import ClassifierAdapter
 from mindsdb_native.libs.constants.mindsdb import *
 
-from scipy.special import softmax
 import pandas as pd
 import numpy as np
 from copy import deepcopy
+
+
+def softmax(x, T=1, axis=0):
+    e_x = np.exp((x - np.max(x))/T)
+    return e_x / e_x.sum(axis=axis, keepdims=True)
 
 
 def _df_from_x(x, columns):
@@ -80,7 +84,6 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         self.ar = fit_params['use_previous_target']
         if self.ar:
             self.columns.append(f'previous_{self.target}')
-        self.model.config['include_extra_data'] = True
 
     def fit(self, x, y):
         """
@@ -101,6 +104,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         ones, this should a numpy.array of shape (n_test, n_classes) with
         class probability estimates
         """
+        self.model.config['include_extra_data'] = True
         cols = filter_cols(self.columns, self.target, self.ignore_columns)
         x = _df_from_x(x, cols)
         predictions = self.model.predict(when_data=x)  # ToDo: return complete class distribution and labels from lightwood
@@ -109,6 +113,6 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         ys = self.fit_params['one_hot_enc'].transform(ys.reshape(-1, 1))
 
         raw = np.array(predictions[self.target]['encoded_predictions'])
-        raw_s = np.max(softmax(raw, axis=1), axis=1)
+        raw_s = np.max(softmax(raw, T=0.5, axis=1), axis=1)
 
         return ys*raw_s.reshape(-1, 1)
