@@ -67,7 +67,7 @@ class DataCleaner(BaseModule):
 
         if self.transaction.lmd['type'] == TRANSACTION_LEARN:
             # Remove rows that only contain nulls
-            df.dropna(inplace=True)
+            df.dropna(axis=0, how='all', inplace=True)
 
             MINIMUM_ROWS = 10
             if len(df) < MINIMUM_ROWS:
