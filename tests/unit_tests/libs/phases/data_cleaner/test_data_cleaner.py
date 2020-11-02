@@ -64,6 +64,8 @@ class TestDataCleaner(unittest.TestCase):
         else:
             raise AssertionError
         
+        # Dont compare sets containing np.nan, because for some reason there can be two np.nan in a set
+        # and tests fails even though everything works as expected
         notna_values = [x for x in predictor.transaction.input_data.data_frame['my_column'] if not pd.isna(x)]
 
         assert set(notna_values) == set([1, 2, 3])
