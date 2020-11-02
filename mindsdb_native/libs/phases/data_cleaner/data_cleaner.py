@@ -1,6 +1,7 @@
 import numpy as np
 
 from mindsdb_native.libs.phases.base_module import BaseModule
+from mindsdb_native.libs.constants import TRANSACTION_LEARN
 
 
 class DataCleaner(BaseModule):
