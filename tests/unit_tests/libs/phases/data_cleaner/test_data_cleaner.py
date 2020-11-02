@@ -1,6 +1,7 @@
 import unittest
 import pandas as pd
 import numpy as np
+import random
 
 from mindsdb_native import functional as F
 from mindsdb_native import Predictor
@@ -12,9 +13,11 @@ class TestDataCleaner(unittest.TestCase):
         predictor = Predictor(name='test_ignore_columns')
         predictor.breakpoint = 'DataCleaner'
 
+        n_points = 100
+
         df = pd.DataFrame({
-            'do_use': [1, 2, 3],
-            'ignore_this': [0, 1, 100]
+            'do_use': [*range(n_points)],
+            'ignore_this': [x % 2 for x in range(n_points)]
         })
 
         try:
@@ -35,9 +38,17 @@ class TestDataCleaner(unittest.TestCase):
         predictor = Predictor(name='test_user_provided_null_values')
         predictor.breakpoint = 'DataCleaner'
 
+        n_points = 50
+
+        null_data = ['NULL', 'null', 'none', 'Null']
+        non_null_data = [x % 3 + 1 for x in range(n_points - len(null_data))]
+
+        data = null_data + non_null_data
+        random.shuffle(data)
+
         df = pd.DataFrame({
-            'my_column': ['a', 'b', 'NULL', 'c', 'null', 'none', 'Null'],
-            'to_predict': [1, 2, 3, 1, 2, 3, 1]
+            'my_column': data,
+            'to_predict': [x % 3 for x in range(n_points)]
         })
 
         try:
@@ -55,7 +66,11 @@ class TestDataCleaner(unittest.TestCase):
         else:
             raise AssertionError
         
-        assert set(predictor.transaction.input_data.data_frame['my_column']) == set(['a', 'b', 'c', np.nan])
+        # Dont compare sets containing np.nan, because for some reason there can be two np.nan in a set
+        # and tests fails even though everything works as expected
+        notna_values = [x for x in predictor.transaction.input_data.data_frame['my_column'] if not pd.isna(x)]
+
+        assert set(notna_values) == set([1, 2, 3])
 
     def test_ignore_identifiers(self):
         df = pd.DataFrame({
