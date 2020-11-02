@@ -3,14 +3,14 @@ import unittest
 import logging
 from mindsdb_native import Predictor
 from mindsdb_native import F
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, break_dataset
 
 
 class TestMSSQL(unittest.TestCase):
     @unittest.skip('No remote MSSQL Server yet')
     def test_mssql_ds(self):
         import pytds
-        from mindsdb_native.libs.data_sources.ms_sql_ds import MSSQLDS
+        from mindsdb_native import MSSQLDS
 
         HOST = 'localhost'
         USER = 'sa'

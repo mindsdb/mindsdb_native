@@ -31,10 +31,6 @@ class DataSource:
     def _cleanup(self):
         pass
 
-    @property
-    def df(self):
-        return self._df
-
     def set_subtypes(self, data_subtypes):
         """
         :param data_subtypes: dict

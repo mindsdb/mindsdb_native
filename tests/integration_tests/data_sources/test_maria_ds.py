@@ -1,6 +1,6 @@
 import unittest
 from mindsdb_native import F
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, break_dataset
 
 
 class TestMariaDB(unittest.TestCase):
@@ -27,6 +27,8 @@ class TestMariaDB(unittest.TestCase):
             query='SELECT * FROM {} LIMIT {}'.format(self.TABLE, LIMIT)
         )
 
-        assert len(maria_ds) == LIMIT
+        maria_ds._df = break_dataset(maria_ds._df)
+
+        assert len(maria_ds) <= LIMIT
 
         F.analyse_dataset(from_data=maria_ds)

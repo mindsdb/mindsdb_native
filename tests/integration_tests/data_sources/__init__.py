@@ -3,6 +3,7 @@ import json
 import time
 import random
 import string
+import numpy as np
 
 _var_name = 'DATABASE_CREDENTIALS_STRINGIFIED_JSON'
 _var_value = os.getenv(_var_name)
@@ -13,3 +14,24 @@ if _var_value is None:
 assert _var_value is not None, _var_name + ' ' + 'is not set'
 
 DB_CREDENTIALS = json.loads(_var_value)
+
+
+def break_dataset(df, null_cell_pct=0.2, stringify_numbers_pct=0.5):
+    df = df.copy()
+
+    n_rows, n_cols = df.shape
+    
+    # Make cells null
+    for i in range(n_rows):
+        for j in range(n_cols):
+            if random.random() <= null_cell_pct:
+                df.iloc[i, j] = np.nan
+
+    # Stringify numbers
+    for i in range(n_rows):
+        for j in range(n_cols):
+            if isinstance(df.iloc[i, j], (float, int)):
+                if random.random() <= stringify_numbers_pct:
+                    df.iloc[i, j] = str(df.iloc[i, j])
+    
+    return df

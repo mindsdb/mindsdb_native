@@ -1,6 +1,6 @@
 import unittest
 from mindsdb_native import F
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, break_dataset
 
 
 class TestPostgres(unittest.TestCase):
@@ -13,7 +13,7 @@ class TestPostgres(unittest.TestCase):
         self.TABLE = 'home_rentals'
 
     def test_postgres_ds(self):
-        from mindsdb_native.libs.data_sources.postgres_ds import PostgresDS
+        from mindsdb_native import PostgresDS
 
         LIMIT = 100
 
@@ -30,6 +30,8 @@ class TestPostgres(unittest.TestCase):
                 LIMIT
             )
         )
+
+        postgres_ds._df = break_dataset(postgres_ds._df)
                             
         assert len(postgres_ds) == LIMIT
 

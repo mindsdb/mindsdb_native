@@ -58,7 +58,7 @@ def analyse_dataset(from_data, sample_settings=None):
     from_ds = getDS(from_data)
     transaction_type = TRANSACTION_ANALYSE
 
-    sample_for_analysis, sample_for_training, _ = _get_memory_optimizations(from_ds.df)
+    sample_for_analysis, sample_for_training, _ = _get_memory_optimizations(from_ds._df)
 
     sample_settings, sample_function = _prepare_sample_settings(
         sample_settings,

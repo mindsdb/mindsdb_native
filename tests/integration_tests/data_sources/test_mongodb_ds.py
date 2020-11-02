@@ -1,6 +1,6 @@
 import unittest
 from mindsdb_native import Predictor, F
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, break_dataset
 
 
 class TestMongoDB(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestMongoDB(unittest.TestCase):
     @unittest.skip('pymongo.errors.ServerSelectionTimeoutError')
     def test_mongodb_ds(self):
         from pymongo import MongoClient
-        from mindsdb_native.libs.data_sources.mongodb_ds import MongoDS
+        from mindsdb_native import MongoDS
 
         con = MongoClient(
             host=self.HOST,

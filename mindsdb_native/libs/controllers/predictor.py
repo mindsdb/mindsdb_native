@@ -193,7 +193,7 @@ class Predictor:
 
             transaction_type = TRANSACTION_LEARN
 
-            sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(from_ds.df)
+            sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(from_ds._df)
             sample_settings, sample_function = _prepare_sample_settings(
                 sample_settings,
                 sample_for_analysis,
@@ -390,7 +390,7 @@ class Predictor:
                 heavy_transaction_metadata['when_data'] = None
             else:
                 heavy_transaction_metadata['when_data'] = when_ds
-                _, _, disable_lightwood_transform_cache = _get_memory_optimizations(when_ds.df)
+                _, _, disable_lightwood_transform_cache = _get_memory_optimizations(when_ds._df)
             heavy_transaction_metadata['when'] = when
             heavy_transaction_metadata['name'] = self.name
 

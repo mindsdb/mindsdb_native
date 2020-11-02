@@ -1,22 +1,19 @@
 import os
 import unittest
-from . import DB_CREDENTIALS
 import mindsdb_native
+from . import DB_CREDENTIALS, break_dataset
+
 
 class TestSnowflake(unittest.TestCase):
     def test_snowflake_ds(self):
-        print(os.name)
         if os.name == 'nt':
             print('Snowflake datasource (SnowflakeDS) can\'t be used on windows at the moment due to the connector not working')
             return
 
-        try:
-            from mindsdb_native.libs.data_sources.snowflake_ds import SnowflakeDS
-        except:
-            pass
+        from mindsdb_native import SnowflakeDS
 
         # Create the datasource
-        snowflake_ds = mindsdb_native.SnowflakeDS(
+        snowflake_ds = SnowflakeDS(
             query='SELECT * FROM HEALTHCARE_COSTS',
             host=DB_CREDENTIALS['snowflake']['host'],
             user=DB_CREDENTIALS['snowflake']['user'],
@@ -29,8 +26,12 @@ class TestSnowflake(unittest.TestCase):
             port=DB_CREDENTIALS['snowflake']['port'],
         )
 
+        snowflake_ds._df = break_dataset(snowflake_ds._df)
+
         # Make sure we can use it for some basic tasks
-        data_analysis = mindsdb_native.F.analyse_dataset(snowflake_ds, sample_settings={
-            'sample_percentage': 5
-        })
+        data_analysis = mindsdb_native.F.analyse_dataset(
+            snowflake_ds,
+            sample_settings={'sample_percentage': 5}
+        )
+
         assert len(data_analysis['data_analysis_v2']['columns']) == 7
