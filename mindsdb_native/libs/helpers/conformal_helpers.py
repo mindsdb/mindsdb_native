@@ -112,7 +112,10 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         ys = np.array(predictions[self.target]['predictions'])
         ys = self.fit_params['one_hot_enc'].transform(ys.reshape(-1, 1))
 
-        raw = np.array(predictions[self.target]['encoded_predictions'])
-        raw_s = np.max(softmax(raw, T=0.01, axis=1), axis=1)
-
-        return ys*raw_s.reshape(-1, 1)
+        try:
+            raw = np.array(predictions[self.target]['encoded_predictions'])
+            raw_s = np.max(softmax(raw, T=0.5, axis=1), axis=1)
+            return ys * raw_s.reshape(-1, 1)
+        except KeyError:
+            # Not all mixers return class probabilities yet
+            return ys
