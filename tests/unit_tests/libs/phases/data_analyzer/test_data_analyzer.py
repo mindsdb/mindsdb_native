@@ -15,6 +15,8 @@ from unit_tests.utils import (
     PickableMock
 )
 
+from mindsdb_native.libs.constants.mindsdb import DATA_TYPE_ALIASES
+
 
 class TestDataAnalyzer(unittest.TestCase):
     def test_data_analysis_1(self):
@@ -196,3 +198,15 @@ class TestDataAnalyzer(unittest.TestCase):
         model_data = analyse_dataset(from_data=df)
 
         assert model_data['data_analysis_v2']['numeric_int']['empty']['empty_percentage'] == 50
+    
+    def test_numbers_treates_as_categories(self):
+        n_points = 100
+        df = pd.DataFrame({
+            'a': [x % 3 for x in range(n_points)],
+            'b': [x % 2 for x in range(n_points)],
+        })
+
+        model_data = analyse_dataset(from_data=df)
+
+        assert model_data['data_analysis_v2']['a']['typing']['alias'] == DATA_TYPE_ALIASES.NUMERICAL_LOW_GRANULARITY
+        assert model_data['data_analysis_v2']['b']['empty']['alias'] == DATA_TYPE_ALIASES.NUMERICAL_LOW_GRANULARITY
