@@ -118,9 +118,9 @@ class DataExtractor(BaseModule):
                     setup_args['query'] = create_history_query(setup_args['query'], self.transaction.lmd['tss'], self.transaction.lmd['stats_v2'], row)
 
                     if historical_df is None:
-                        historical_df = self.transaction.hmd['from_data_type'](**setup_args)._df
+                        historical_df = self.transaction.hmd['from_data_type'](**setup_args).df
                     else:
-                        historical_df = pd.concat(historical_df,self.transaction.hmd['from_data_type'](**setup_args)._df)
+                        historical_df = pd.concat(historical_df,self.transaction.hmd['from_data_type'](**setup_args).df)
 
                 historical_df['make_predictions'] = [False] * len(historical_df)
                 for col in historical_df.columns:

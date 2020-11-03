@@ -35,7 +35,7 @@ class TestMSSQL(unittest.TestCase):
             port=PORT
         )
 
-        assert (len(mssql_ds._df) == 200)
+        assert (len(mssql_ds.df) == 200)
 
         mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
         F.analyse_dataset(from_data=mssql_ds)

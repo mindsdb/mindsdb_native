@@ -51,7 +51,7 @@ class TestMongoDB(unittest.TestCase):
             database=self.DATABASE
         )
 
-        assert (len(mongodb_ds._df) == 200)
+        assert (len(mongodb_ds.df) == 200)
 
         mdb = Predictor(name='analyse_dataset_test_predictor')
         F.analyse_dataset(from_data=mongodb_ds)

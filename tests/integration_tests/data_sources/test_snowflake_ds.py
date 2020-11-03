@@ -26,7 +26,7 @@ class TestSnowflake(unittest.TestCase):
             port=DB_CREDENTIALS['snowflake']['port'],
         )
 
-        snowflake_ds._df = break_dataset(snowflake_ds._df)
+        snowflake_ds.df = break_dataset(snowflake_ds.df)
 
         # Make sure we can use it for some basic tasks
         data_analysis = mindsdb_native.F.analyse_dataset(

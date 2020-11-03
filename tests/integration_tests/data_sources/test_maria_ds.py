@@ -27,7 +27,7 @@ class TestMariaDB(unittest.TestCase):
             query='SELECT * FROM {} LIMIT {}'.format(self.TABLE, LIMIT)
         )
 
-        maria_ds._df = break_dataset(maria_ds._df)
+        maria_ds.df = break_dataset(maria_ds.df)
 
         assert len(maria_ds) <= LIMIT
 

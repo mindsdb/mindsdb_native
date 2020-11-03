@@ -45,7 +45,7 @@ class TestClickhouse(unittest.TestCase):
             )
         )
 
-        clickhouse_ds._df = break_dataset(clickhouse_ds._df)
+        clickhouse_ds.df = break_dataset(clickhouse_ds.df)
 
         assert len(clickhouse_ds) <= LIMIT
 

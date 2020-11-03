@@ -27,7 +27,7 @@ class TestMYSQL(unittest.TestCase):
             query='SELECT * FROM {} LIMIT {}'.format(self.TABLE, LIMIT)
         )
 
-        mysql_ds._df = break_dataset(mysql_ds._df)
+        mysql_ds.df = break_dataset(mysql_ds.df)
 
         assert len(mysql_ds) <= LIMIT
 
