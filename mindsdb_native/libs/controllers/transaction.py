@@ -411,8 +411,8 @@ class PredictTransaction(Transaction):
                                     if np.sum(sample[:, idx]) == 1:
                                         output_data[f'{predicted_col}_confidence'][sample_idx] = significance
                                         break
-                            else:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
+                                else:
+                                    output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
