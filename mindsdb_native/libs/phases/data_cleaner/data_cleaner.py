@@ -55,8 +55,14 @@ class DataCleaner(BaseModule):
         empty_columns, zero_information_columns = self._get_useless_columns(df)
 
         self.transaction.lmd['empty_columns'] = empty_columns
-        self.transaction.lmd['columns_to_ignore'].extend(empty_columns)
         self.transaction.lmd['zero_information_columns'] = zero_information_columns
+        self.transaction.lmd['columns_to_ignore'].extend(empty_columns)
+
+        self.transaction.lmd['columns_to_ignore'] = list(
+            set(self.transaction.lmd['zero_information_columns'] + self.transaction.lmd['columns_to_ignore']).difference(
+                self.transaction.lmd['force_column_usage']
+            )
+        )
 
         cols_to_drop = [col for col in df.columns if col in self.transaction.lmd['columns_to_ignore']]
         if cols_to_drop:
