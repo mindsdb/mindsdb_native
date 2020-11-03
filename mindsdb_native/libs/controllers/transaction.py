@@ -398,11 +398,21 @@ class PredictTransaction(Transaction):
                             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                              DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                            trials = np.max([self.hmd['icp'][predicted_col].predict(X.values) for _ in range(5)], axis=0)
-                            self.lmd['all_conformal_ranges'][predicted_col] = trials
+                            significances = list(range(0, 100, 10)) + [95, 96, 97, 98, 99]
+                            all_ranges = np.array(
+                                [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
+                                 for s in significances])
+                            self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+
                             for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
-                                sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :]
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = sample.max()
+                                sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
+                                for idx in range(sample.shape[1]):
+                                    significance = (99 - idx) / 100
+                                    if np.sum(sample[:, idx]) == 1:
+                                        output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                                        break
+                            else:
+                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
 
             if mode == 'predict':
                 self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
