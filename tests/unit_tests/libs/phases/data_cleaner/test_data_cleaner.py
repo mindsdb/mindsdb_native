@@ -13,9 +13,11 @@ class TestDataCleaner(unittest.TestCase):
         predictor = Predictor(name='test_ignore_columns')
         predictor.breakpoint = 'DataCleaner'
 
+        n_points = 100
+
         df = pd.DataFrame({
-            'do_use': [1, 2, 3],
-            'ignore_this': [0, 1, 100]
+            'do_use': [*range(n_points)],
+            'ignore_this': [x % 2 for x in range(n_points)]
         })
 
         try:

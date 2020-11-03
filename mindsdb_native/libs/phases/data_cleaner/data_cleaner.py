@@ -1,6 +1,7 @@
 import numpy as np
 
 from mindsdb_native.libs.phases.base_module import BaseModule
+from mindsdb_native.libs.constants.mindsdb import TRANSACTION_LEARN
 
 
 class DataCleaner(BaseModule):
@@ -10,8 +11,6 @@ class DataCleaner(BaseModule):
             if len(df[col_name].dropna()) < 1:
                 empty_columns.append(col_name)
                 self.log.warning(f'Column "{col_name}" is empty ! We\'ll go ahead and ignore it, please make sure you gave mindsdb the correct data.')
-
-
         return empty_columns
 
     def _remove_missing_targets(self, df):
@@ -63,7 +62,19 @@ class DataCleaner(BaseModule):
             self._remove_duplicate_rows(df)
         len_after_dedupe = len(df)
 
-        if len_after_dedupe < len_before_dedupe/2:
+        if len_after_dedupe < len_before_dedupe / 2:
             self.log.warning(f'Less than half of initial rows remain after deduplication. Consider passing `deduplicate_data=False` if training results are sub-par.')
+
+
+        if self.transaction.lmd['type'] == TRANSACTION_LEARN:
+            # Remove rows that only contain nulls
+            df.dropna(axis=0, how='all', inplace=True)
+
+            MINIMUM_ROWS = 10
+            if len(df) < MINIMUM_ROWS:
+                raise Exception('Your data contains very few rows ({}). The minimum is {} rows.'.format(
+                    len(df),
+                    MINIMUM_ROWS
+                ))
 
         self.transaction.input_data.data_frame = df
