@@ -5,13 +5,18 @@ from mindsdb_native.libs.constants.mindsdb import TRANSACTION_LEARN
 
 
 class DataCleaner(BaseModule):
-    def _get_empty_columns(self, df):
+    def _get_useless_columns(self, df):
         empty_columns = []
+        zero_information_columns = []
         for col_name in df.columns.values:
             if len(df[col_name].dropna()) < 1:
                 empty_columns.append(col_name)
                 self.log.warning(f'Column "{col_name}" is empty ! We\'ll go ahead and ignore it, please make sure you gave mindsdb the correct data.')
-        return empty_columns
+            else:
+                if len(set(df[col_name])) == 1:
+                    zero_information_columns.append(col_name)
+                    self.log.warning(f'Column "{col_name}" is always euqal to "{df[col_name].iloc[0]}" ! We\'ll go ahead and ignore it, please make sure you gave mindsdb the correct data.')
+        return empty_columns, zero_information_columns
 
     def _remove_missing_targets(self, df):
         initial_len = len(df)
@@ -48,9 +53,12 @@ class DataCleaner(BaseModule):
             # That's why np.nan is used here instead of None
             df[col].replace(nulls, np.nan, inplace=True)
 
-        empty_columns = self._get_empty_columns(df)
+        empty_columns, zero_information_columns = self._get_useless_columns(df)
+
         self.transaction.lmd['empty_columns'] = empty_columns
-        self.transaction.lmd['columns_to_ignore'] += empty_columns
+        self.transaction.lmd['columns_to_ignore'].extend(empty_columns)
+        self.transaction.lmd['zero_information_columns'] = zero_information_columns
+
         cols_to_drop = [col for col in df.columns if col in self.transaction.lmd['columns_to_ignore']]
         if cols_to_drop:
             df.drop(columns=cols_to_drop, inplace=True)
