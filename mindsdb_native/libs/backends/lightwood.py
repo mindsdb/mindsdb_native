@@ -1,4 +1,5 @@
 import copy
+import traceback
 from pathlib import Path
 from collections import defaultdict
 from lightwood.constants.lightwood import ColumnDataTypes
@@ -14,8 +15,10 @@ from mindsdb_native.config import *
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
+
 def _make_pred(row):
     return not hasattr(row, "make_predictions") or row.make_predictions
+
 
 class LightwoodBackend():
 
@@ -390,6 +393,7 @@ class LightwoodBackend():
                 if self.transaction.lmd['debug']:
                     raise
                 else:
+                    self.transaction.log.error(traceback.format_exc())
                     self.transaction.log.error('Exception while running {}'.format(mixer_class.__name__))
                     continue
 
