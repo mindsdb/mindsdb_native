@@ -75,10 +75,17 @@ def analyze_sentences(data):
 
     return nr_words, dict(word_dist), dict(nr_words_dist)
 
-def shrink_word_dist(word_dist):
-    tiny_word_dist = dict(sorted(word_dist.items(), key=lambda x: x[1], reverse=True)[:min(50,len(word_dist))])
+
+def shrink_word_dist(word_dist, limit=50):
+    tiny_word_dist = dict(
+        sorted(
+            word_dist.items(),
+            key=lambda x: x[1]
+        )[:limit]
+    )
     tiny_word_dist['other words'] = sum(word_dist.values()) - sum(tiny_word_dist.values())
     return tiny_word_dist
+
 
 def word_tokenize(string):
     sep_tag = '{#SEP#}'
