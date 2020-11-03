@@ -3,7 +3,7 @@ import random
 import string
 import unittest
 import requests
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, break_dataset
 from mindsdb_native import Predictor, F
 import gc
 
@@ -29,7 +29,7 @@ class TestClickhouse(unittest.TestCase):
         self.TABLE = 'home_rentals'
 
     def test_clickhouse_ds(self):
-        from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
+        from mindsdb_native import ClickhouseDS
 
         LIMIT = 100
 
@@ -45,7 +45,9 @@ class TestClickhouse(unittest.TestCase):
             )
         )
 
-        assert len(clickhouse_ds) == LIMIT
+        clickhouse_ds.df = break_dataset(clickhouse_ds.df)
+
+        assert len(clickhouse_ds) <= LIMIT
 
         F.analyse_dataset(from_data=clickhouse_ds)
 

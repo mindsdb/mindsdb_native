@@ -30,7 +30,7 @@ class S3DS(DataSource):
             s3.download_fileobj(bucket_name, file_path, fw)
 
         file_ds = FileDS(self.tmp_file_name)
-        return file_ds._df, file_ds._col_map
+        return file_ds.df, file_ds._col_map
 
     def _cleanup(self):
         os.remove(self.tmp_file_name)
