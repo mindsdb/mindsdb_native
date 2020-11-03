@@ -348,11 +348,7 @@ class TestPredictor(unittest.TestCase):
         F.export_predictor(name)
         F.import_model(f'{name}.zip', f'{name}-new')
         p = Predictor(name=f'{name}-new')
-        predictions = p.predict(
-            when_data={'sqft': 1000},
-            use_gpu=use_gpu,
-            run_confidence_variation_analysis=True
-        )
+        predictions = p.predict(when_data={'sqft': 1000}, use_gpu=use_gpu)
         self.assert_prediction_interface(predictions)
 
     def test_category_tags_input(self):
