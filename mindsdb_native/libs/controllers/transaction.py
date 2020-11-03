@@ -202,7 +202,6 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
-            #if not self.lmd['quick_learn']: <-- replace with histogram only if this ends up being heavily used
             self.lmd['current_phase'] = MODEL_STATUS_DATA_ANALYSIS
             self._call_phase_module(module_name='DataAnalyzer',
                                     input_data=self.input_data)
