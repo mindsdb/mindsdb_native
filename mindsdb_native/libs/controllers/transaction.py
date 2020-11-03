@@ -283,18 +283,17 @@ class PredictTransaction(Transaction):
         if self.input_data.data_frame.shape[0] <= 0:
             self.log.error('No input data provided !')
             return
+
         if self.lmd['tss']['is_timeseries']:
             self._call_phase_module(module_name='DataSplitter')
-
-        if self.lmd['quick_predict']:
-            self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
-            self._call_phase_module(module_name='ModelInterface', mode='predict')
-            self.output_data = self.hmd['predictions']
-            return
 
         self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
 
         self._call_phase_module(module_name='ModelInterface', mode='predict')
+
+        if self.lmd['quick_predict']:
+            self.output_data = self.hmd['predictions']
+            return
 
         output_data = {col: [] for col in self.lmd['columns']}
 
@@ -328,7 +327,7 @@ class PredictTransaction(Transaction):
 
                 # Compute the feature existance vector
                 input_columns = [col for col in self.input_data.columns if col not in self.lmd['predict_columns']]
-                features_existance_vector = [False if  str(output_data[col][row_number]) in ('None', 'nan', '', 'Nan', 'NAN', 'NaN') else True for col in input_columns if col not in self.lmd['columns_to_ignore']]
+                features_existance_vector = [False if str(output_data[col][row_number]) in ('None', 'nan', '', 'Nan', 'NAN', 'NaN') else True for col in input_columns if col not in self.lmd['columns_to_ignore']]
 
                 # Create the probabilsitic evaluation
                 probability_true_prediction = probabilistic_validator.evaluate_prediction_accuracy(
