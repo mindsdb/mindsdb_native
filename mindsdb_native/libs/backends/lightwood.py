@@ -83,7 +83,11 @@ class LightwoodBackend():
         for i in range(len(df_arr)):
             for order_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
                 for ii in range(len(df_arr[i])):
-                    df_arr[i][order_col].iloc[ii] = [df_arr[i][order_col].iloc[ii]]
+                    try:
+                        df_arr[i][order_col].iloc[ii] = [df_arr[i][order_col].iloc[ii]]
+                    except:
+                        label = df_arr[i].index.values[ii]
+                        df_arr[i].at[label, order_col] = [df_arr[i].at[label, order_col]]
 
         # Add previous rows
         for n in range(len(df_arr)):

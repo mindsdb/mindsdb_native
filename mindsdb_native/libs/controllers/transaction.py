@@ -361,10 +361,7 @@ class PredictTransaction(Transaction):
                 self.lmd['all_conformal_ranges'] = {}
                 icp_X = deepcopy(predictions_df)
                 if self.lmd['tss']['is_timeseries']:
-                    try:
-                        icp_X, _, _ = self.model_backend._ts_reshape(icp_X)
-                    except:
-                        pass # Pandas raises exception but assignment still happened
+                    icp_X, _, _ = self.model_backend._ts_reshape(icp_X)
                 for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                     icp_X.pop(col)
 
