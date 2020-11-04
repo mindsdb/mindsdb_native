@@ -48,6 +48,12 @@ except ImportError:
     MongoDS = None
 
 try:
+    from mindsdb_native.libs.data_sources.aws_athena_ds import AthenaDS
+except ImportError:
+    print("Athena Datasource is not available by default. If you wish to use it, please install mindsdb_native[extra_data_sources]")
+    AthenaDS = None
+
+try:
     from mindsdb_native.libs.data_sources.snowflake_ds import SnowflakeDS
 except ImportError:
     print("SnowflakeDS Datasource is not available by default. If you wish to use it, please install mindsdb_native[snowflake]")

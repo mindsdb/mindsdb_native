@@ -183,7 +183,10 @@ class TypeDeductor(BaseModule):
         known_type_dist = {k: v for k, v in type_dist.items() if k != 'Unknown'}
 
         if known_type_dist:
-            max_known_dtype, max_known_dtype_count = max(known_type_dist.items(), key=lambda kv: kv[0])
+            max_known_dtype, max_known_dtype_count = max(
+                known_type_dist.items(),
+                key=lambda kv: kv[0]
+            )
         else:
             max_known_dtype, max_known_dtype_count = None, None
 
@@ -196,8 +199,10 @@ class TypeDeductor(BaseModule):
 
             possible_subtype_counts = [(k, v) for k, v in subtype_dist.items()
                                     if k in DATA_TYPES_SUBTYPES[curr_data_type]]
-            curr_data_subtype, _ = max(possible_subtype_counts,
-                                    key=lambda pair: pair[1])
+            curr_data_subtype, _ = max(
+                possible_subtype_counts,
+                key=lambda pair: pair[1]
+            )
         else:
             curr_data_type, curr_data_subtype = None, None
 
@@ -269,7 +274,6 @@ class TypeDeductor(BaseModule):
             subtype_dist = {curr_data_subtype: len(data)}
 
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
-
 
     def run(self, input_data):
         stats_v2 = defaultdict(dict)

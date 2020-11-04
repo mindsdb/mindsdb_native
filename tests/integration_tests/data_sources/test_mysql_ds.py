@@ -1,6 +1,6 @@
 import unittest
 from mindsdb_native import F
-from . import DB_CREDENTIALS
+from . import DB_CREDENTIALS, break_dataset
 
 
 class TestMYSQL(unittest.TestCase):
@@ -13,7 +13,7 @@ class TestMYSQL(unittest.TestCase):
         self.TABLE = 'us_health_insurance'
 
     def test_mysql_ds(self):
-        from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
+        from mindsdb_native import MySqlDS
 
         LIMIT = 100
 
@@ -27,6 +27,8 @@ class TestMYSQL(unittest.TestCase):
             query='SELECT * FROM {} LIMIT {}'.format(self.TABLE, LIMIT)
         )
 
-        assert len(mysql_ds) == LIMIT
+        mysql_ds.df = break_dataset(mysql_ds.df)
+
+        assert len(mysql_ds) <= LIMIT
 
         F.analyse_dataset(mysql_ds)

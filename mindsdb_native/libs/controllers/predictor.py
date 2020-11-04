@@ -342,36 +342,29 @@ class Predictor:
                 when_data,
                 use_gpu=None,
                 advanced_args=None,
-                backend=None,
-                run_confidence_variation_analysis=False):
+                backend=None):
 
         if advanced_args is None:
             advanced_args = {}
         advanced_args['quick_predict'] = True
 
-        return self.predict(when_data, use_gpu, advanced_args, backend, run_confidence_variation_analysis)
+        return self.predict(when_data, use_gpu, advanced_args, backend)
 
     def predict(self,
                 when_data,
                 use_gpu=None,
                 advanced_args=None,
-                backend=None,
-                run_confidence_variation_analysis=False):
+                backend=None):
         """
         You have a mind trained already and you want to make a prediction
 
         :param when_data: python dict, file path, a pandas data frame, or url to a file that you want to predict from
-        :param run_confidence_variation_analysis: Run a confidence variation analysis on each of the given input column, currently only works when making single predictions via `when`
 
         :return: TransactionOutputData object
         """
         with MDBLock('shared', 'learn_' + self.name):
             if advanced_args is None:
                 advanced_args = {}
-            if run_confidence_variation_analysis is True and isinstance(when_data, list) and len(when_data) > 1:
-                error_msg = 'run_confidence_variation_analysis=True is a valid option only when predicting a single data point'
-                self.log.error(error_msg)
-                raise ValueError(error_msg)
 
             transaction_type = TRANSACTION_PREDICT
             when_ds = None
@@ -404,7 +397,6 @@ class Predictor:
                 type = transaction_type,
                 use_gpu = use_gpu,
                 data_preparation = {},
-                run_confidence_variation_analysis = run_confidence_variation_analysis,
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 use_database_history = advanced_args.get('use_database_history', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),

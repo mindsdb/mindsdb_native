@@ -105,7 +105,7 @@ class Transaction:
             with open(fn, 'wb') as fp:
                 pickle.dump(self.lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as e:
-            self.log.error(traceback.print_exc())
+            self.log.error(traceback.format_exc())
             self.log.error(e)
             self.log.error(f'Could not save mindsdb light metadata in the file: {fn}')
 
@@ -127,7 +127,7 @@ class Transaction:
                 pickle.dump(save_hmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as e:
             self.log.error(e)
-            self.log.error(traceback.print_exc())
+            self.log.error(traceback.format_exc())
             self.log.error(f'Could not save mindsdb heavy metadata in the file: {fn}')
 
         if 'icp' in self.hmd.keys() and self.hmd['icp']['active']:
@@ -152,7 +152,7 @@ class Transaction:
 
             except Exception as e:
                 self.log.error(e)
-                self.log.error(traceback.print_exc())
+                self.log.error(traceback.format_exc())
                 self.log.error(f'Could not save mindsdb conformal predictor in the file: {icp_fn}')
 
     def _call_phase_module(self, module_name, **kwargs):
@@ -207,7 +207,6 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
-            #if not self.lmd['quick_learn']: <-- replace with histogram only if this ends up being heavily used
             self.lmd['current_phase'] = MODEL_STATUS_DATA_ANALYSIS
             self._call_phase_module(module_name='DataAnalyzer',
                                     input_data=self.input_data)
@@ -236,7 +235,7 @@ class LearnTransaction(Transaction):
         except Exception as e:
             self.lmd['is_active'] = False
             self.lmd['current_phase'] = MODEL_STATUS_ERROR
-            self.lmd['error_msg'] = traceback.print_exc()
+            self.lmd['error_msg'] = traceback.format_exc()
             self.log.error(str(e))
             raise e
 
@@ -288,157 +287,120 @@ class PredictTransaction(Transaction):
         if self.input_data.data_frame.shape[0] <= 0:
             self.log.error('No input data provided !')
             return
+
         if self.lmd['tss']['is_timeseries']:
             self._call_phase_module(module_name='DataSplitter')
 
+        self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
+
+        self._call_phase_module(module_name='ModelInterface', mode='predict')
+
         if self.lmd['quick_predict']:
-            self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
-            self._call_phase_module(module_name='ModelInterface', mode='predict')
             self.output_data = self.hmd['predictions']
             return
 
-        # @TODO Maybe move to a separate "PredictionAnalysis" phase ?
-        if self.lmd['run_confidence_variation_analysis'] and not self.lmd['tss']['is_timeseries']:
-            nulled_out_data = []
-            nulled_out_columns = []
-            for column in self.input_data.columns:
-                # Only adapted for a single `when`
-                if self.input_data.data_frame.iloc[0][column] is not None:
-                    nulled_out_data.append(self.input_data.data_frame.iloc[0].copy())
-                    nulled_out_data[-1][column] = None
-                    nulled_out_columns.append(column)
+        output_data = {col: [] for col in self.lmd['columns']}
 
-            nulled_out_data = pd.DataFrame(nulled_out_data)
+        if 'make_predictions' in self.input_data.data_frame.columns:
+            predictions_df = pd.DataFrame(
+                self.input_data.data_frame[
+                    self.input_data.data_frame['make_predictions'] == True
+                ]
+            )
+            del predictions_df['make_predictions']
+        else:
+            predictions_df = self.input_data.data_frame
 
-        for mode in ['predict', 'analyze_confidence']:
-            if mode == 'analyze_confidence':
-                if not self.lmd['run_confidence_variation_analysis'] or self.lmd['tss']['is_timeseries']:
-                    continue
-                else:
-                    self.input_data.data_frame = nulled_out_data
-
-            self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
-
-            self._call_phase_module(module_name='ModelInterface', mode='predict')
-
-            output_data = {col: [] for col in self.lmd['columns']}
-
-            if 'make_predictions' in self.input_data.data_frame.columns:
-                predictions_df = pd.DataFrame(self.input_data.data_frame[self.input_data.data_frame['make_predictions'] == True])
-                del predictions_df['make_predictions']
+        for column in self.input_data.columns:
+            if column in self.lmd['predict_columns']:
+                output_data[f'__observed_{column}'] = list(predictions_df[column])
             else:
-                predictions_df = self.input_data.data_frame
+                output_data[column] = list(predictions_df[column])
 
-            for column in self.input_data.columns:
-                if column in self.lmd['predict_columns']:
-                    output_data[f'__observed_{column}'] = list(predictions_df[column])
-                else:
-                    output_data[column] = list(predictions_df[column])
+        for predicted_col in self.lmd['predict_columns']:
+            output_data[predicted_col] = list(self.hmd['predictions'][predicted_col])
+            for extra_column in [f'{predicted_col}_model_confidence', f'{predicted_col}_confidence_range']:
+                if extra_column in self.hmd['predictions']:
+                    output_data[extra_column] = self.hmd['predictions'][extra_column]
+
+            probabilistic_validator = unpickle_obj(self.hmd['probabilistic_validators'][predicted_col])
+            output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
+
+            output_data[f'model_{predicted_col}'] = deepcopy(output_data[predicted_col])
+            for row_number, predicted_value in enumerate(output_data[predicted_col]):
+
+                # Compute the feature existance vector
+                input_columns = [col for col in self.input_data.columns if col not in self.lmd['predict_columns']]
+                features_existance_vector = [False if str(output_data[col][row_number]) in ('None', 'nan', '', 'Nan', 'NAN', 'NaN') else True for col in input_columns if col not in self.lmd['columns_to_ignore']]
+
+                # Create the probabilsitic evaluation
+                probability_true_prediction = probabilistic_validator.evaluate_prediction_accuracy(
+                    features_existence=features_existance_vector,
+                    predicted_value=predicted_value
+                )
+
+                output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
+
+        # confidence estimation
+        if self.hmd['icp']['active']:
+            self.lmd['all_conformal_ranges'] = {}
+            icp_X = deepcopy(predictions_df)
+            if self.lmd['tss']['is_timeseries']:
+                icp_X, _, _ = self.model_backend._ts_reshape(icp_X)
+            for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
+                icp_X.pop(col)
 
             for predicted_col in self.lmd['predict_columns']:
-                output_data[predicted_col] = list(self.hmd['predictions'][predicted_col])
-                for extra_column in [f'{predicted_col}_model_confidence', f'{predicted_col}_confidence_range']:
-                    if extra_column in self.hmd['predictions']:
-                        output_data[extra_column] = self.hmd['predictions'][extra_column]
+                typing_info = self.lmd['stats_v2'][predicted_col]['typing']
+                X = deepcopy(icp_X)
+                for i in range(1, self.lmd['tss'].get('nr_predictions', 0)):
+                    X.pop(f'{predicted_col}_timestep_{i}')
 
-                probabilistic_validator = unpickle_obj(self.hmd['probabilistic_validators'][predicted_col])
-                output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
+                # numerical
+                if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
+                        (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                            DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
+                    tol_const = 2  # std devs
+                    tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+                    self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
+                    
+                    for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
+                        sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
+                        for idx in range(sample.shape[1]):
+                            significance = (99 - idx) / 100
+                            if np.sum(sample[:, idx]) == 1:
+                                output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                                break
+                        else:
+                            output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
+                            bounds = sample[:, 0]
+                            sigma = (bounds[1] - bounds[0]) / 2
+                            output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
+                # categorical
+                elif typing_info['data_type'] == DATA_TYPES.CATEGORICAL or \
+                        (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                            DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
+                    if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
+                        significances = list(range(0, 100, 10)) + [95, 96, 97, 98, 99]
+                        all_ranges = np.array(
+                            [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
+                                for s in significances])
+                        self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
 
-                output_data[f'model_{predicted_col}'] = deepcopy(output_data[predicted_col])
-                for row_number, predicted_value in enumerate(output_data[predicted_col]):
-
-                    # Compute the feature existance vector
-                    input_columns = [col for col in self.input_data.columns if col not in self.lmd['predict_columns']]
-                    features_existance_vector = [False if  str(output_data[col][row_number]) in ('None', 'nan', '', 'Nan', 'NAN', 'NaN') else True for col in input_columns if col not in self.lmd['columns_to_ignore']]
-
-                    # Create the probabilsitic evaluation
-                    probability_true_prediction = probabilistic_validator.evaluate_prediction_accuracy(features_existence=features_existance_vector, predicted_value=predicted_value)
-
-                    output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
-
-            # confidence estimation
-            if self.hmd['icp']['active']:
-                self.lmd['all_conformal_ranges'] = {}
-                icp_X = deepcopy(predictions_df)
-                if self.lmd['tss']['is_timeseries']:
-                    icp_X, _, _ = self.model_backend._ts_reshape(icp_X)
-                for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
-                    icp_X.pop(col)
-
-                for predicted_col in self.lmd['predict_columns']:
-                    typing_info = self.lmd['stats_v2'][predicted_col]['typing']
-                    X = deepcopy(icp_X)
-                    for i in range(1, self.lmd['tss'].get('nr_predictions', 0)):
-                        X.pop(f'{predicted_col}_timestep_{i}')
-
-                    # numerical
-                    if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
-                            (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
-                             DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
-                        tol_const = 2  # std devs
-                        tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
-                        self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
                             sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
                             for idx in range(sample.shape[1]):
                                 significance = (99 - idx) / 100
-                                diff = sample[1, idx] - sample[0, idx]
-                                if diff <= tolerance:
+                                if np.sum(sample[:, idx]) == 1:
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                    output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
                                     break
                             else:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
-                                bounds = sample[:, 0]
-                                sigma = (bounds[1] - bounds[0]) / 2
-                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
+                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
 
-                    # categorical
-                    elif typing_info['data_type'] == DATA_TYPES.CATEGORICAL or \
-                            (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
-                             DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
-                        if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                            significances = list(range(0, 100, 10)) + [95, 96, 97, 98, 99]
-                            all_ranges = np.array(
-                                [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
-                                 for s in significances])
-                            self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
-
-                            for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
-                                sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
-                                for idx in range(sample.shape[1]):
-                                    significance = (99 - idx) / 100
-                                    if np.sum(sample[:, idx]) == 1:
-                                        output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                        break
-                                else:
-                                    output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
-
-            if mode == 'predict':
-                self.output_data = PredictTransactionOutputData(transaction=self, data=output_data)
-            else:
-                nulled_out_predictions = PredictTransactionOutputData(transaction=self, data=output_data)
-
-        if self.lmd['run_confidence_variation_analysis'] and not self.lmd['tss']['is_timeseries']:
-            input_confidence = {}
-            extra_insights = {}
-
-            for predicted_col in self.lmd['predict_columns']:
-                input_confidence[predicted_col] = {}
-                extra_insights[predicted_col] = {'if_missing':[]}
-
-                actual_confidence = self.output_data[0].explanation[predicted_col]['confidence']
-
-                for i, nulled_col_name in enumerate(nulled_out_columns):
-                    nulled_out_predicted_value = nulled_out_predictions[i].explanation[predicted_col]['predicted_value']
-                    nulled_confidence = nulled_out_predictions[i].explanation[predicted_col]['confidence']
-                    confidence_variation = actual_confidence - nulled_confidence
-
-                    input_confidence[predicted_col][nulled_col_name] = round(confidence_variation,3)
-                    extra_insights[predicted_col]['if_missing'].append({nulled_col_name: nulled_out_predicted_value})
-
-            self.output_data._input_confidence = input_confidence
-            self.output_data._extra_insights = extra_insights
+        self.output_data = PredictTransactionOutputData(
+            transaction=self,
+            data=output_data
+        )
 
 
 class BadTransaction(Transaction):

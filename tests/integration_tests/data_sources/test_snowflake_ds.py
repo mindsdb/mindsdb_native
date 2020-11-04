@@ -1,42 +1,37 @@
 import os
 import unittest
-from . import DB_CREDENTIALS
+import mindsdb_native
+from . import DB_CREDENTIALS, break_dataset
 
 
 class TestSnowflake(unittest.TestCase):
-    @unittest.skip(reason='Can\'t run snowflake in a docker container')
     def test_snowflake_ds(self):
-        from mindsdb_native.libs.data_sources.snowflake_ds import SnowflakeDS
+        if os.name == 'nt':
+            print('Snowflake datasource (SnowflakeDS) can\'t be used on windows at the moment due to the connector not working')
+            return
 
-        # Create a snowflake datasource
+        from mindsdb_native import SnowflakeDS
+
+        # Create the datasource
         snowflake_ds = SnowflakeDS(
             query='SELECT * FROM HEALTHCARE_COSTS',
-            host='zka81761.us-east-1.snowflakecomputing.com',
-            user='GEORGE3D6',
-            password='',
-            account='zka81761.us-east-1.aws',
-            warehouse='COMPUTE_WH',
-            database='DEMO_DB',
-            schema='PUBLIC',
-            protocol='https',
-            port=443
+            host=DB_CREDENTIALS['snowflake']['host'],
+            user=DB_CREDENTIALS['snowflake']['user'],
+            password=DB_CREDENTIALS['snowflake']['password'],
+            account=DB_CREDENTIALS['snowflake']['account'],
+            warehouse=DB_CREDENTIALS['snowflake']['warehouse'],
+            database=DB_CREDENTIALS['snowflake']['database'],
+            schema=DB_CREDENTIALS['snowflake']['schema'],
+            protocol=DB_CREDENTIALS['snowflake']['protocol'],
+            port=DB_CREDENTIALS['snowflake']['port'],
         )
 
-        '''
-        The schema for `HEALTHCARE_COSTS` is:
-        AGE         NUMBER
-        SEX         STRING
-        BMI         FLOAT
-        CHILDREN    STRING
-        SMOKER      STRING
-        REGION      STRING
-        CHARGES     FLOAT
-        '''
+        snowflake_ds.df = break_dataset(snowflake_ds.df)
 
-        # We want to ask mindsdb with predicting the hosptialization charges given we have the rest of the information about the patient: Age, Sex, BMI, Nr. Children, Smoker status and region
+        # Make sure we can use it for some basic tasks
+        data_analysis = mindsdb_native.F.analyse_dataset(
+            snowflake_ds,
+            sample_settings={'sample_percentage': 5}
+        )
 
-        import mindsdb
-        predictor = mindsdb.Predictor(name='healthcare_cost_predictor')
-        predictor.learn(from_data=snowflake_ds, to_predict='CHARGES')
-        example_prediction = predictor.predict(when_data={'AGE':24})
-        print(example_prediction)
+        assert len(data_analysis['data_analysis_v2']['columns']) == 7

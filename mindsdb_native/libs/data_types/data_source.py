@@ -15,7 +15,7 @@ class DataSource:
         self._cleanup()
 
     def __len__(self):
-        return len(self._df)
+        return len(self.df)
 
     def name(self):
         return 'Unknown'
@@ -30,10 +30,6 @@ class DataSource:
 
     def _cleanup(self):
         pass
-
-    @property
-    def df(self):
-        return self._df
 
     def set_subtypes(self, data_subtypes):
         """
@@ -53,7 +49,7 @@ class DataSource:
                 raise ValueError(f'Invalid data subtype: {subtype}')
 
     def _set_df(self, df, col_map):
-        self._df = df
+        self.df = df
         self._col_map = col_map
 
     def drop_columns(self, column_list):
@@ -70,7 +66,7 @@ class DataSource:
             else:
                 columns_to_drop.append(self._col_map[col])
 
-        self._df.drop(columns=columns_to_drop, inplace=True)
+        self.df.drop(columns=columns_to_drop, inplace=True)
 
     def __getstate__(self):
         return self.__dict__
@@ -85,16 +81,16 @@ class DataSource:
         if attr.startswith('__') and attr.endswith('__'):
             raise AttributeError
         else:
-            return self._df.__getattr__(attr)
+            return self.df.__getattr__(attr)
 
     def __getitem__(self, key):
         """
         Map all other items to the DataFrame
         """
-        return self._df.__getitem__(key)
+        return self.df.__getitem__(key)
 
     def __setitem__(self, key, value):
         """
         Support item assignment, mapped to DataFrame
         """
-        self._df.__setitem__(key, value)
+        self.df.__setitem__(key, value)

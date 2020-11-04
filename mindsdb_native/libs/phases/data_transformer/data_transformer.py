@@ -91,11 +91,10 @@ class DataTransformer(BaseModule):
             input_data.validation_df[column] = input_data.validation_df[column].apply(func)
             input_data.test_df[column] = input_data.test_df[column].apply(func)
 
-            if not self.transaction.lmd['quick_learn']:
-                self.transaction.lmd['stats_v2'][column]['histogram']['x'] = [func(x) for x in self.transaction.lmd['stats_v2'][column]['histogram']['x']]
+            self.transaction.lmd['stats_v2'][column]['histogram']['x'] = [func(x) for x in self.transaction.lmd['stats_v2'][column]['histogram']['x']]
 
-                if 'percentage_buckets' in self.transaction.lmd['stats_v2'][column] and self.transaction.lmd['stats_v2'][column]['percentage_buckets'] is not None:
-                    self.transaction.lmd['stats_v2'][column]['percentage_buckets'] = [func(x) for x in self.transaction.lmd['stats_v2'][column]['percentage_buckets']]
+            if 'percentage_buckets' in self.transaction.lmd['stats_v2'][column] and self.transaction.lmd['stats_v2'][column]['percentage_buckets'] is not None:
+                self.transaction.lmd['stats_v2'][column]['percentage_buckets'] = [func(x) for x in self.transaction.lmd['stats_v2'][column]['percentage_buckets']]
         else:
             input_data.data_frame[column] = input_data.data_frame[column].apply(func)
 
@@ -146,10 +145,9 @@ class DataTransformer(BaseModule):
 
         # Un-bias dataset for training
         for column in self.transaction.lmd['predict_columns']:
-            # @TODO Should also happend during `quick_learn` but it's kind of an edge case so leaving it out for now
             if (self.transaction.lmd['stats_v2'][column]['typing']['data_type'] == DATA_TYPES.CATEGORICAL
                 and self.transaction.lmd['equal_accuracy_for_all_output_categories'] is True
-                and self.transaction.lmd['type'] == TRANSACTION_LEARN) and not self.transaction.lmd['quick_learn']:
+                and self.transaction.lmd['type'] == TRANSACTION_LEARN):
 
                 occurance_map = {}
                 ciclying_map = {}
