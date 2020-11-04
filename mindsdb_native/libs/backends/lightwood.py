@@ -1,4 +1,5 @@
 import copy
+import traceback
 from pathlib import Path
 from collections import defaultdict
 from lightwood.constants.lightwood import ColumnDataTypes
@@ -14,8 +15,10 @@ from mindsdb_native.config import *
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
+
 def _make_pred(row):
     return not hasattr(row, "make_predictions") or row.make_predictions
+
 
 class LightwoodBackend():
 
@@ -275,6 +278,10 @@ class LightwoodBackend():
         if self.transaction.lmd['use_gpu'] is not None:
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
+        if self.transaction.lmd['quick_learn']:
+            self.transaction.input_data.train_df = pd.concat([copy.deepcopy(self.transaction.input_data.train_df),copy.deepcopy(self.transaction.input_data.test_df)])
+            self.transaction.input_data.test_df = copy.deepcopy(self.transaction.input_data.validation_df)
+
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
@@ -386,6 +393,7 @@ class LightwoodBackend():
                 if self.transaction.lmd['debug']:
                     raise
                 else:
+                    self.transaction.log.error(traceback.format_exc())
                     self.transaction.log.error('Exception while running {}'.format(mixer_class.__name__))
                     continue
 

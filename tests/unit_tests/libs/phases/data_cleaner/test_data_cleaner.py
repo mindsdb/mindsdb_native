@@ -1,60 +1,131 @@
+import unittest
 import pandas as pd
 import numpy as np
-import pytest
+import random
 
-from mindsdb_native.libs.data_types.transaction_data import TransactionData
-from mindsdb_native.libs.phases.data_cleaner.data_cleaner import DataCleaner
+from mindsdb_native import functional as F
+from mindsdb_native import Predictor
+from mindsdb_native.libs.controllers.transaction import BreakpointException
 
 
-class TestDataCleaner:
-    @pytest.fixture()
-    def lmd(self, transaction):
-        lmd = transaction.lmd
-        lmd['empty_columns'] = []
-        lmd['columns_to_ignore'] = []
-        lmd['predict_columns'] = []
-        return lmd
+class TestDataCleaner(unittest.TestCase):
+    def test_ignore_columns(self):
+        predictor = Predictor(name='test_ignore_columns')
+        predictor.breakpoint = 'DataCleaner'
 
-    def test_ignore_columns(self, transaction, lmd):
-        data_cleaner = DataCleaner(session=transaction.session,
-                                   transaction=transaction)
+        n_points = 100
 
-        input_dataframe = pd.DataFrame({
-            'do_use': [1, 2, 3],
-            'ignore_this': [0, 1, 100]
+        df = pd.DataFrame({
+            'do_use': [*range(n_points)],
+            'ignore_this': [x % 2 for x in range(n_points)]
         })
 
-        lmd['columns_to_ignore'].append('ignore_this')
+        try:
+            predictor.learn(
+                from_data=df,
+                to_predict='do_use',
+                ignore_columns=['ignore_this']
+            )
+        except BreakpointException:
+            pass
+        else:
+            raise AssertionError
 
-        input_data = TransactionData()
-        input_data.data_frame = input_dataframe
+        assert 'do_use' in predictor.transaction.input_data.data_frame.columns
+        assert 'ignore_this' not in predictor.transaction.input_data.data_frame.columns
 
-        data_cleaner.transaction.input_data = input_data
-        data_cleaner.run()
+    def test_user_provided_null_values(self):
+        predictor = Predictor(name='test_user_provided_null_values')
+        predictor.breakpoint = 'DataCleaner'
 
-        assert 'do_use' in input_data.data_frame.columns
-        assert 'ignore_this' not in input_data.data_frame.columns
+        n_points = 50
 
-    def test_user_provided_null_values(self, transaction, lmd):
-        data_cleaner = DataCleaner(session=transaction.session,
-                                   transaction=transaction)
+        null_data = ['NULL', 'null', 'none', 'Null']
+        non_null_data = [x % 3 + 1 for x in range(n_points - len(null_data))]
 
-        input_dataframe = pd.DataFrame({
-            'my_column': ['a', 'b', 'NULL', 'c', 'null', 'none', 'Null']
+        data = null_data + non_null_data
+        random.shuffle(data)
+
+        df = pd.DataFrame({
+            'my_column': data,
+            'to_predict': [x % 3 for x in range(n_points)]
         })
 
-        lmd['null_values'] = {'my_column': ['NULL', 'null', 'none', 'Null']}
+        try:
+            predictor.learn(
+                from_data=df,
+                to_predict='to_predict',
+                advanced_args={
+                    'null_values': {
+                        'my_column': ['NULL', 'null', 'none', 'Null']
+                    }
+                }
+            )
+        except BreakpointException:
+            pass
+        else:
+            raise AssertionError
+        
+        # Dont compare sets containing np.nan, because for some reason there can be two np.nan in a set
+        # and tests fails even though everything works as expected
+        notna_values = [x for x in predictor.transaction.input_data.data_frame['my_column'] if not pd.isna(x)]
 
-        input_data = TransactionData()
-        input_data.data_frame = input_dataframe
+        assert set(notna_values) == set([1, 2, 3])
 
-        data_cleaner.transaction.input_data = input_data
-        data_cleaner.run()
+    def test_ignore_identifiers(self):
+        df = pd.DataFrame({
+            'do_use': [*range(60), *range(40)],
+            'numeric_id': list(range(100)),
+            'malicious_naming': list(range(99)) + [200],
+            'y': list(range(100)),
+        })
 
-        assert input_data.data_frame['my_column'].iloc[0] == 'a'
-        assert input_data.data_frame['my_column'].iloc[1] == 'b'
-        assert pd.isna(input_data.data_frame['my_column'].iloc[2])
-        assert input_data.data_frame['my_column'].iloc[3] == 'c'
-        assert pd.isna(input_data.data_frame['my_column'].iloc[4])
-        assert pd.isna(input_data.data_frame['my_column'].iloc[5])
-        assert pd.isna(input_data.data_frame['my_column'].iloc[6])
+        predictor = Predictor(name='test_ignore_identifiers')
+        predictor.breakpoint = 'DataSplitter'
+
+        try:
+            predictor.learn(
+                from_data=df,
+                to_predict='y',
+                stop_training_in_x_seconds=1,
+                use_gpu=False
+            )
+        except BreakpointException:
+            pass
+        else:
+            raise AssertionError
+
+        assert 'do_use' in predictor.transaction.input_data.train_df.columns
+        # Foreign key is ignored and removed from data frames
+        assert 'numeric_id' not in predictor.transaction.input_data.train_df.columns
+        assert 'numeric_id' in predictor.transaction.lmd['columns_to_ignore']
+        assert 'malicious_naming' not in predictor.transaction.input_data.train_df.columns
+        assert 'malicious_naming' in predictor.transaction.lmd['columns_to_ignore']
+
+    def test_force_identifier_usage(self):
+        df = pd.DataFrame({
+            'do_use': [*range(60), *range(40)],
+            'numeric_id': list(range(100)),
+            'malicious_naming': list(range(99)) + [200],
+            'y': list(range(100)),
+        })
+
+        predictor = Predictor(name='test_force_identifier_usage')
+        predictor.breakpoint = 'DataSplitter'
+    
+        try:
+            predictor.learn(
+                from_data=df,
+                to_predict='y',
+                stop_training_in_x_seconds=1,
+                advanced_args={'force_column_usage': ['numeric_id']},
+                use_gpu=False
+            )
+        except BreakpointException:
+            pass
+        else:
+            raise AssertionError
+
+        assert 'do_use' in predictor.transaction.input_data.train_df.columns
+        assert 'numeric_id' in predictor.transaction.input_data.train_df.columns
+        assert 'numeric_id' not in predictor.transaction.lmd['columns_to_ignore']

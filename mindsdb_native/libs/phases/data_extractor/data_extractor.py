@@ -70,7 +70,6 @@ class DataExtractor(BaseModule):
 
         return df
 
-
     def _get_prepared_input_df(self):
         """
 
@@ -84,7 +83,7 @@ class DataExtractor(BaseModule):
             df = self.transaction.hmd['from_data']
             df = df.where((pd.notnull(df)), None)
 
-        if  self.transaction.lmd['type'] == TRANSACTION_PREDICT:
+        if self.transaction.lmd['type'] == TRANSACTION_PREDICT:
             if self.transaction.hmd['when_data'] is not None:
                 df = self._data_from_when_data()
             else:
@@ -118,9 +117,9 @@ class DataExtractor(BaseModule):
                     setup_args['query'] = create_history_query(setup_args['query'], self.transaction.lmd['tss'], self.transaction.lmd['stats_v2'], row)
 
                     if historical_df is None:
-                        historical_df = self.transaction.hmd['from_data_type'](**setup_args)._df
+                        historical_df = self.transaction.hmd['from_data_type'](**setup_args).df
                     else:
-                        historical_df = pd.concat(historical_df,self.transaction.hmd['from_data_type'](**setup_args)._df)
+                        historical_df = pd.concat(historical_df,self.transaction.hmd['from_data_type'](**setup_args).df)
 
                 historical_df['make_predictions'] = [False] * len(historical_df)
                 for col in historical_df.columns:
@@ -146,7 +145,6 @@ class DataExtractor(BaseModule):
 
         return df
 
-
     def _validate_input_data_integrity(self):
         """
         :return:
@@ -164,7 +162,6 @@ class DataExtractor(BaseModule):
                     self.transaction.error = True
                     self.transaction.errorMsg = err
                     raise ValueError(err)
-                    return
 
     def _set_user_data_subtypes(self):
         if 'from_data' in self.transaction.hmd and self.transaction.hmd['from_data'] is not None:
