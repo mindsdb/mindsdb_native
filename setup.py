@@ -53,7 +53,6 @@ setuptools.setup(
     install_requires=requirements,
     extras_require = {
         'extra_data_sources': extra_data_sources_requirements
-        ,'beta': beta_requirements
         ,'snowflake': snowflake_requirements
     },
     tests_require = test_requirements,
