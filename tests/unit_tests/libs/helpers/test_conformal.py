@@ -53,7 +53,8 @@ def test_classifier():
     x_tr = _df_from_xy(X_train, Y_train, target)
     x_te = _df_from_xy(X_test, Y_test, target)
 
-    for label_type, type_name in zip([int, float, str], ['int', 'float', 'str']):
+    for label_type in [int, float, str]:
+        type_name = label_type.__name__
         tr = deepcopy(x_tr)
         te = deepcopy(x_te)
         tr[target] = tr[target].astype(label_type)
