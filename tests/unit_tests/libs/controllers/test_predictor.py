@@ -18,6 +18,7 @@ from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
+from mindsdb_native.libs.phases.model_interface.base_backend import BaseBackend
 
 from unit_tests.utils import (
     generate_value_cols,
@@ -99,18 +100,17 @@ class TestPredictor(unittest.TestCase):
     def test_custom_backend(self):
         predictor = Predictor(name='custom_model_test_predictor')
 
-        class CustomDTModel():
-            def __init__(self):
-                self.clf = LinearRegression()
-                le = preprocessing.LabelEncoder()
-
-            def set_transaction(self, transaction):
-                self.transaction = transaction
+        class CustomDTModel(BaseBackend):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
                 self.output_columns = self.transaction.lmd['predict_columns']
                 self.input_columns = [x for x in self.transaction.lmd['columns']
                                       if x not in self.output_columns]
                 self.train_df = self.transaction.input_data.train_df
                 self.test_dt = train_df = self.transaction.input_data.test_df
+
+                self.clf = LinearRegression()
+                le = preprocessing.LabelEncoder()
 
             def train(self):
                 self.le_arr = {}

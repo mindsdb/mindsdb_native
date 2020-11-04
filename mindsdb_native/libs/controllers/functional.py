@@ -133,17 +133,6 @@ def export_predictor(model_name):
                 full_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, file_name)
                 zip_fp.write(full_path, os.path.basename(full_path))
 
-            # If the backend is ludwig, save the ludwig files
-            try:
-                ludwig_model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'ludwig_data')
-                for root, dirs, files in os.walk(ludwig_model_path):
-                    for file in files:
-                        full_path = os.path.join(root, file)
-                        zip_fp.write(full_path,
-                                    full_path[len(CONFIG.MINDSDB_STORAGE_PATH):])
-            except Exception:
-                pass
-
         print(f'Exported model to {storage_file}')
 
 

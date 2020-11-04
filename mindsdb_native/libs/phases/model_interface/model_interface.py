@@ -1,28 +1,19 @@
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.constants.mindsdb import *
+from mindsdb_native.libs.phases.model_interface.lightwood_backend import LightwoodBackend
 
 import datetime
 
 
 class ModelInterface(BaseModule):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.predictor = None
+        self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
+        self.nn_mixer_only = False
+
     def run(self, mode='train'):
-        try:
-            from mindsdb_native.libs.backends.ludwig import LudwigBackend
-        except ImportError:
-            # Ludwig is optional, so this is fine
-            pass
-
-        try:
-            from mindsdb_native.libs.backends.lightwood import LightwoodBackend
-        except ImportError as e:
-            self.log.warning(e)
-
-        if self.transaction.hmd['model_backend'] == 'ludwig':
-            self.transaction.model_backend = LudwigBackend(self.transaction)
-        elif self.transaction.hmd['model_backend'] == 'lightwood':
-            self.transaction.model_backend = LightwoodBackend(self.transaction)
-        else:
-            self.transaction.model_backend = self.transaction.hmd['model_backend']
+        self.transaction.model_backend = LightwoodBackend(self.transaction)
 
         if hasattr(self.transaction.model_backend, 'set_transaction'):
             self.transaction.model_backend.set_transaction(self.transaction)
