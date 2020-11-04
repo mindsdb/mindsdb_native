@@ -89,6 +89,7 @@ class LightwoodBackend():
                     try:
                         df_arr[i][order_col].iloc[ii] = [df_arr[i][order_col].iloc[ii]]
                     except:
+                        # Needed because of a pandas bug that causes above to fail for small dataframes
                         label = df_arr[i].index.values[ii]
                         df_arr[i].at[label, order_col] = [df_arr[i].at[label, order_col]]
 

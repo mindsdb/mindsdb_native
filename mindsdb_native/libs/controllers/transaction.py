@@ -360,7 +360,7 @@ class PredictTransaction(Transaction):
                 if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
                         (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                             DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
-                    tol_const = 2  # std devs
+                    tol_const = 1  # std devs
                     tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
                     self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
                     
@@ -368,8 +368,10 @@ class PredictTransaction(Transaction):
                         sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
                         for idx in range(sample.shape[1]):
                             significance = (99 - idx) / 100
-                            if np.sum(sample[:, idx]) == 1:
+                            diff = sample[1, idx] - sample[0, idx]
+                            if diff <= tolerance:
                                 output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
                                 break
                         else:
                             output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
