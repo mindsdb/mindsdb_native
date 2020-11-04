@@ -2,14 +2,15 @@ from nonconformist.base import RegressorAdapter
 from nonconformist.base import ClassifierAdapter
 from mindsdb_native.libs.constants.mindsdb import *
 
-import pandas as pd
+import torch
 import numpy as np
+import pandas as pd
 from copy import deepcopy
+from torch.nn.functional import softmax
 
 
-def softmax(x, T=1, axis=0):
-    e_x = np.exp((x - np.max(x))/T)
-    return e_x / e_x.sum(axis=axis, keepdims=True)
+def t_softmax(x, t=1.0, axis=1):
+    return softmax(torch.Tensor(x)/t, dim=axis).numpy()
 
 
 def _df_from_x(x, columns):
@@ -114,7 +115,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
 
         try:
             raw = np.array(predictions[self.target]['encoded_predictions'])
-            raw_s = np.max(softmax(raw, T=0.5, axis=1), axis=1)
+            raw_s = np.max(t_softmax(raw, t=0.5), axis=1)
             return ys * raw_s.reshape(-1, 1)
         except KeyError:
             # Not all mixers return class probabilities yet
