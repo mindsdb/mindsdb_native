@@ -1,6 +1,6 @@
 import unittest
 from mindsdb_native import Predictor, F
-from . import DB_CREDENTIALS, break_dataset
+from . import DB_CREDENTIALS
 
 
 class TestMongoDB(unittest.TestCase):
@@ -9,37 +9,12 @@ class TestMongoDB(unittest.TestCase):
         self.PASSWORD = DB_CREDENTIALS['mongodb']['password']
         self.HOST = DB_CREDENTIALS['mongodb']['host']
         self.PORT = int(DB_CREDENTIALS['mongodb']['port'])
-        self.DATABASE = 'test_db'
-        self.COLLECTION = 'test_collection'
-        if RUN_ID is not None:
-            self.DATABASE += '_' + RUN_ID
-            self.COLLECTION += '_' + RUN_ID
+        self.DATABASE = 'test_data'
+        self.COLLECTION = 'home_rentals'
 
     @unittest.skip('pymongo.errors.ServerSelectionTimeoutError')
     def test_mongodb_ds(self):
-        from pymongo import MongoClient
         from mindsdb_native import MongoDS
-
-        con = MongoClient(
-            host=self.HOST,
-            port=int(self.PORT),
-            username=self.USER,
-            password=self.PASSWORD
-        )
-
-        db = con[self.DATABASE]
-        
-        if self.COLLECTION in db.list_collections():
-            db[self.COLLECTION].drop()
-
-        collection = db[self.COLLECTION]
-
-        for i in range(0, 200):
-            collection.insert_one({
-                'col_1': "This is string number {}".format(i),
-                'col_2': i,
-                'col_3': (i % 2) == 0
-            })
 
         mongodb_ds = MongoDS(
             collection=self.COLLECTION,
@@ -51,7 +26,4 @@ class TestMongoDB(unittest.TestCase):
             database=self.DATABASE
         )
 
-        assert (len(mongodb_ds.df) == 200)
-
-        mdb = Predictor(name='analyse_dataset_test_predictor')
         F.analyse_dataset(from_data=mongodb_ds)
