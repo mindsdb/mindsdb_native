@@ -383,7 +383,7 @@ class PredictTransaction(Transaction):
                         (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                             DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
                     if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                        significances = list(range(0, 100, 10)) + [95, 96, 97, 98, 99]
+                        significances = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
                         all_ranges = np.array(
                             [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
                                 for s in significances])
@@ -392,9 +392,9 @@ class PredictTransaction(Transaction):
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
                             sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
                             for idx in range(sample.shape[1]):
-                                significance = (99 - idx) / 100
+                                conf = (99 - significances[idx]) / 100
                                 if np.sum(sample[:, idx]) == 1:
-                                    output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                                    output_data[f'{predicted_col}_confidence'][sample_idx] = conf
                                     break
                             else:
                                 output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
