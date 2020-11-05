@@ -1,6 +1,5 @@
 import unittest
 from mindsdb_native.libs.helpers.locking import MDBLock
-import portalocker
 
 
 class ExceptionForTest(BaseException): pass
@@ -10,12 +9,21 @@ def func():
     raise ExceptionForTest('random exception')
 
 
-def test_exclusive_lock():
-    lock = MDBLock('exclusive', 'name')
+class TestLocking(unittest.TestCase):
+    def test_exclusive_lock(self):
+        lock = MDBLock('exclusive', 'name')
 
-    with unittest.assertRaises(ExceptionForTest):
-        lock(func)()
+        try:
+            lock(func)()
+        except ExceptionForTest:
+            pass
+        else:
+            raise AssertionError
 
-    with unittest.assertRaises(ExceptionForTest):
-        with lock:
-            func()
+        try:
+            with lock:
+                func()
+        except ExceptionForTest:
+            pass
+        else:
+            raise AssertionError
