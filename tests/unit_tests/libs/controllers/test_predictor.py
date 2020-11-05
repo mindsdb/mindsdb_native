@@ -18,7 +18,6 @@ from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
-from mindsdb_native.libs.phases.model_interface.base_backend import BaseBackend
 
 from unit_tests.utils import (
     generate_value_cols,
