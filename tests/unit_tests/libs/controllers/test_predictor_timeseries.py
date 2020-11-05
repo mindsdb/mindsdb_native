@@ -85,6 +85,9 @@ class TestPredictorTimeseries(unittest.TestCase):
             for col in expect_columns:
                 assert col in row
 
+        for row in [x.explanation[label_headers[0]] for x in results]:
+            assert row['confidence_interval'][0] <= row['predicted_value'] <= row['confidence_interval'][1]
+
         models = F.get_models()
         model_data = F.get_model_data(models[0]['name'])
         assert model_data
