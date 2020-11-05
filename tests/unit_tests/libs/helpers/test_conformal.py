@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_boston, load_iris
 
 
-class TestConformalPredictor(unittest.TestCase):
+class TestConformal(unittest.TestCase):
     def _df_from_x(self, x, columns=None):
         x = pd.DataFrame(x)
         if columns is None:
