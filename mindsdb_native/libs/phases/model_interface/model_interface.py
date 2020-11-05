@@ -15,9 +15,6 @@ class ModelInterface(BaseModule):
     def run(self, mode='train'):
         self.transaction.model_backend = LightwoodBackend(self.transaction)
 
-        if hasattr(self.transaction.model_backend, 'set_transaction'):
-            self.transaction.model_backend.set_transaction(self.transaction)
-
         if mode == 'train':
             self.transaction.model_backend.train()
             self.transaction.lmd['train_end_at'] = str(datetime.datetime.now())
