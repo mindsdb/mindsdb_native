@@ -153,7 +153,7 @@ class TestClickhouse(unittest.TestCase):
         p = Predictor('test_multitarget_prediction')
 
         p.learn(
-            from_data=ds,
+            from_data=clickhouse_ds,
             to_predict=['rental_price', 'location'],
             stop_training_in_x_seconds=3,
             use_gpu=False,
