@@ -65,7 +65,12 @@ class TestConformal(unittest.TestCase):
             te[target] = te[target].astype(label_type)
 
             p = Predictor(f"ConformalTest_{type_name}")
-            p.learn(from_data=tr, to_predict=target, stop_training_in_x_seconds=1)
+            p.learn(
+                from_data=tr,
+                to_predict=target,
+                stop_training_in_x_seconds=1,
+                advanced_args={'debug': True}
+            )
 
             r = p.predict(when_data=te)
             r = [x.explanation[target] for x in r]
