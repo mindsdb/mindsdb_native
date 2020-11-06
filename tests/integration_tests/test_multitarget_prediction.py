@@ -1,4 +1,6 @@
-from .data_sources import ClickhouseTest
+from integration_tests.data_sources import ClickhouseTest, break_dataset
+from mindsdb_native import Predictor, ClickhouseDS
+
 
 class TestMultitargetPrediction(ClickhouseTest):
     def test_multitarget_prediction(self):
