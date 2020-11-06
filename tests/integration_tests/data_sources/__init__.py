@@ -3,6 +3,7 @@ import json
 import time
 import random
 import string
+import unittest
 import numpy as np
 
 _var_name = 'DATABASE_CREDENTIALS_STRINGIFIED_JSON'
@@ -35,3 +36,12 @@ def break_dataset(df, null_cell_pct=0.2, stringify_numbers_pct=0.5):
                     df.iloc[i, j] = str(df.iloc[i, j])
     
     return df
+
+
+class ClickhouseTest(unittest.TestCase):
+    def setUp(self):
+        self.USER = DB_CREDENTIALS['clickhouse']['user']
+        self.PASSWORD = DB_CREDENTIALS['clickhouse']['password']
+        self.HOST = DB_CREDENTIALS['clickhouse']['host']
+        self.PORT = int(DB_CREDENTIALS['clickhouse']['port'])
+        self.DATABASE = 'test_data'
