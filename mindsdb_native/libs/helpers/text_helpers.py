@@ -164,6 +164,7 @@ def _is_foreign_key_name(name):
             return True
     return False
 
+
 def _is_identifier_name(name):
     for keyword in ['account', 'uuid', 'identifier', 'user']:
         if keyword in name:
@@ -177,8 +178,10 @@ def isascii(string):
     """
     return all(ord(c) < 128 for c in string)
 
+
 def extract_digits(point):
     return ''.join([char for char in str(point) if char.isdigit()])
+
 
 def get_pct_auto_increment(data):
     int_data = []
@@ -198,6 +201,7 @@ def get_pct_auto_increment(data):
         prev_nr = nr
 
     return increase_by_one/(len(data) - 1)
+
 
 def get_identifier_description(data, column_name, data_type, data_subtype, other_potential_subtypes):
     data = list(data)
