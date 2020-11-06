@@ -12,7 +12,6 @@ class TestMongoDB(unittest.TestCase):
         self.DATABASE = 'test_data'
         self.COLLECTION = 'home_rentals'
 
-    @unittest.skip('pymongo.errors.ServerSelectionTimeoutError')
     def test_mongodb_ds(self):
         from mindsdb_native import MongoDS
 
