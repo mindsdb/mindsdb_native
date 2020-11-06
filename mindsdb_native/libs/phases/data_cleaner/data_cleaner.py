@@ -58,6 +58,13 @@ class DataCleaner(BaseModule):
         self.transaction.lmd['zero_information_columns'] = zero_information_columns
         self.transaction.lmd['columns_to_ignore'].extend(empty_columns)
 
+        # Exclude target columns
+        self.transaction.lmd['columns_to_ignore'] = list(set(
+            self.transaction.lmd['columns_to_ignore']
+        ).difference(
+            self.transaction.lmd.get('predict_columns', [])
+        ))
+
         self.transaction.lmd['columns_to_ignore'] = list(
             set(self.transaction.lmd['zero_information_columns'] + self.transaction.lmd['columns_to_ignore']).difference(
                 self.transaction.lmd['force_column_usage']
