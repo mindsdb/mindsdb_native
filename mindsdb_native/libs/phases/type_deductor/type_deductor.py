@@ -330,7 +330,6 @@ class TypeDeductor(BaseModule):
             )
 
             if stats_v2[col_name]['identifier'] is not None:
-
                 if col_name not in self.transaction.lmd['force_column_usage']:
                     if col_name not in self.transaction.lmd['predict_columns']:
                         if (self.transaction.lmd.get('tss', None) and
