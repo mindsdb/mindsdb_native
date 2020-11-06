@@ -260,7 +260,6 @@ class Predictor:
                 null_values = advanced_args.get('null_values', {}),
                 data_split_indexes = advanced_args.get('data_split_indexes', None),
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
-                force_predict = advanced_args.get('force_predict', False),
                 mixer_class = advanced_args.get('use_mixers', None),
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
                 debug = advanced_args.get('debug', False),
