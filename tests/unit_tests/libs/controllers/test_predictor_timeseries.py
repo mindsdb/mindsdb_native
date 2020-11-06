@@ -73,7 +73,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             },
             stop_training_in_x_seconds=10,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
@@ -132,7 +132,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             },
             stop_training_in_x_seconds=10,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
@@ -187,7 +187,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             },
             stop_training_in_x_seconds=1,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         admittable = ['Auto-incrementing identifier']
@@ -236,7 +236,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             },
             stop_training_in_x_seconds=10,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)

@@ -428,7 +428,7 @@ class LightwoodBackend():
             ))
 
         if len(predictors_and_accuracies) == 0:
-            raise Exception('All models failed')
+            raise Exception('All models had an error while training')
 
         best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
 
