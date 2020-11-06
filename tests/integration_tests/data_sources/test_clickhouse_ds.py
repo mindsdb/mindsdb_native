@@ -51,7 +51,7 @@ class TestClickhouse(unittest.TestCase):
         F.analyse_dataset(from_data=clickhouse_ds)
 
     def test_database_history(self):
-        from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
+        from mindsdb_native import ClickhouseDS
 
         TEMP_DB = 'test_database_history_' + random_string()
         TEMP_TABLE = 'tmp_test_database_history_' + random_string()
@@ -129,6 +129,9 @@ class TestClickhouse(unittest.TestCase):
         assert r.status_code == 200, 'failed to drop temporary database "{}"'.format(TEMP_DB)
 
     def test_multitarget_prediction(self):
+        from mindsdb_native import ClickhouseDS
+
+
         LIMIT = 100
 
         clickhouse_ds = ClickhouseDS(
