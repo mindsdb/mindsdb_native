@@ -31,7 +31,12 @@ class TestConformal(unittest.TestCase):
 
         x_tr = self._df_from_xy(X_train, Y_train, target)
         p = Predictor("ConformalTest")
-        p.learn(from_data=x_tr, to_predict=target, stop_training_in_x_seconds=1)
+        p.learn(
+            from_data=x_tr,
+            to_predict=target,
+            stop_training_in_x_seconds=1,
+            advanced_args={'debug': True}
+        )
 
         x_te = self._df_from_xy(X_test, Y_test, target)
         r = p.predict(when_data=x_te)
@@ -60,7 +65,12 @@ class TestConformal(unittest.TestCase):
             te[target] = te[target].astype(label_type)
 
             p = Predictor(f"ConformalTest_{type_name}")
-            p.learn(from_data=tr, to_predict=target, stop_training_in_x_seconds=1)
+            p.learn(
+                from_data=tr,
+                to_predict=target,
+                stop_training_in_x_seconds=1,
+                advanced_args={'debug': True}
+            )
 
             r = p.predict(when_data=te)
             r = [x.explanation[target] for x in r]
