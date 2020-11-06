@@ -70,7 +70,11 @@ class ModelAnalyzer(BaseModule):
                 pass
 
             if fails:
-                if not self.transaction.lmd['debug'] or not self.transaction.lmd['force_predict']:
+                if self.transaction.lmd['debug']:
+                    pass
+                elif self.transaction.lmd['force_predict']:
+                    pass
+                else:
                     def predict_wrapper(*args, **kwargs):
                         raise Exception('Failed to train model')
                     self.session.predict = predict_wrapper
