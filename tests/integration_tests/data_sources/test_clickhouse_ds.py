@@ -3,7 +3,7 @@ import random
 import string
 import unittest
 import requests
-from . import DB_CREDENTIALS, break_dataset
+from . import DB_CREDENTIALS, break_dataset, ClickhouseTest
 from mindsdb_native import Predictor, F
 import gc
 
@@ -19,15 +19,7 @@ def random_string():
     )
 
 
-class TestClickhouse(unittest.TestCase):
-    def setUp(self):
-        self.USER = DB_CREDENTIALS['clickhouse']['user']
-        self.PASSWORD = DB_CREDENTIALS['clickhouse']['password']
-        self.HOST = DB_CREDENTIALS['clickhouse']['host']
-        self.PORT = int(DB_CREDENTIALS['clickhouse']['port'])
-        self.DATABASE = 'test_data'
-        self.TABLE = 'home_rentals'
-
+class TestClickhouse(ClickhouseTest):
     def test_clickhouse_ds(self):
         from mindsdb_native import ClickhouseDS
 
@@ -40,7 +32,7 @@ class TestClickhouse(unittest.TestCase):
             password=self.PASSWORD,
             query='SELECT * FROM {}.{} LIMIT {}'.format(
                 self.DATABASE,
-                self.TABLE,
+                'home_rentals',
                 LIMIT
             )
         )
@@ -52,7 +44,7 @@ class TestClickhouse(unittest.TestCase):
         F.analyse_dataset(from_data=clickhouse_ds)
 
     def test_database_history(self):
-        from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
+        from mindsdb_native import ClickhouseDS
 
         TEMP_DB = 'test_database_history_' + random_string()
         TEMP_TABLE = 'tmp_test_database_history_' + random_string()

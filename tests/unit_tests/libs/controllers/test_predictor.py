@@ -81,7 +81,7 @@ class TestPredictor(unittest.TestCase):
             to_predict='numeric_y',
             stop_training_in_x_seconds=1,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         # Test predicting using a data frame
@@ -174,7 +174,7 @@ class TestPredictor(unittest.TestCase):
             to_predict=label_headers,
             stop_training_in_x_seconds=1,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         results = mdb.predict(when_data=test_file_name)
