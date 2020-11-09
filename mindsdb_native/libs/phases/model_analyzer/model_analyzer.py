@@ -234,6 +234,7 @@ class ModelAnalyzer(BaseModule):
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 
                 X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns, fit_params['columns_to_ignore'])
+                self.transaction.hmd['icp'][target].index = X.columns
                 self.transaction.hmd['icp'][target].fit(X.values, y.values)
                 self.transaction.hmd['icp']['active'] = True
 
