@@ -345,6 +345,7 @@ class PredictTransaction(Transaction):
         if self.hmd['icp']['active']:
             self.lmd['all_conformal_ranges'] = {}
             icp_X = deepcopy(predictions_df)
+
             if self.lmd['tss']['is_timeseries']:
                 icp_X, _, _ = self.model_backend._ts_reshape(icp_X)
             for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
@@ -353,6 +354,11 @@ class PredictTransaction(Transaction):
             for predicted_col in self.lmd['predict_columns']:
                 typing_info = self.lmd['stats_v2'][predicted_col]['typing']
                 X = deepcopy(icp_X)
+
+                # preserve order that the ICP expects, else bounds are useless
+                X = X.reindex(columns=self.hmd['icp'][predicted_col].nc_function.model.columns)
+                X.pop(predicted_col)  # because it was reintroduced in above reindexing
+
                 for i in range(1, self.lmd['tss'].get('nr_predictions', 0)):
                     X.pop(f'{predicted_col}_timestep_{i}')
 
