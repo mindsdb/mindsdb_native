@@ -352,58 +352,58 @@ class PredictTransaction(Transaction):
                 icp_X.pop(col)
 
             for predicted_col in self.lmd['predict_columns']:
-                typing_info = self.lmd['stats_v2'][predicted_col]['typing']
-                X = deepcopy(icp_X)
+                if self.hmd['icp'].get(predicted_col, False):
+                    typing_info = self.lmd['stats_v2'][predicted_col]['typing']
+                    X = deepcopy(icp_X)
 
-                # preserve order that the ICP expects, else bounds are useless
-                X = X.reindex(columns=self.hmd['icp'][predicted_col].nc_function.model.columns)
-                X.pop(predicted_col)  # because it was reintroduced in above reindexing
+                    for i in range(1, self.lmd['tss'].get('nr_predictions', 0)):
+                        X.pop(f'{predicted_col}_timestep_{i}')
 
-                for i in range(1, self.lmd['tss'].get('nr_predictions', 0)):
-                    X.pop(f'{predicted_col}_timestep_{i}')
+                    # preserve order that the ICP expects, else bounds are useless
+                    X = X.reindex(columns=self.hmd['icp'][predicted_col].index.values)
 
-                # numerical
-                if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
-                        (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
-                            DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
-                    tol_const = 1  # std devs
-                    tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
-                    self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
-                    
-                    for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
-                        sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
-                        for idx in range(sample.shape[1]):
-                            significance = (99 - idx) / 100
-                            diff = sample[1, idx] - sample[0, idx]
-                            if diff <= tolerance:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
-                                break
-                        else:
-                            output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
-                            bounds = sample[:, 0]
-                            sigma = (bounds[1] - bounds[0]) / 2
-                            output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
-                # categorical
-                elif typing_info['data_type'] == DATA_TYPES.CATEGORICAL or \
-                        (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
-                            DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
-                    if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                        significances = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
-                        all_ranges = np.array(
-                            [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
-                                for s in significances])
-                        self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+                    # numerical
+                    if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
+                            (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                                DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
+                        tol_const = 1  # std devs
+                        tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+                        self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
 
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
                             sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
                             for idx in range(sample.shape[1]):
-                                conf = (99 - significances[idx]) / 100
-                                if np.sum(sample[:, idx]) == 1:
-                                    output_data[f'{predicted_col}_confidence'][sample_idx] = conf
+                                significance = (99 - idx) / 100
+                                diff = sample[1, idx] - sample[0, idx]
+                                if diff <= tolerance:
+                                    output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                                    output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
                                     break
                             else:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
+                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
+                                bounds = sample[:, 0]
+                                sigma = (bounds[1] - bounds[0]) / 2
+                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
+                    # categorical
+                    elif typing_info['data_type'] == DATA_TYPES.CATEGORICAL or \
+                            (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                                DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
+                        if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
+                            significances = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
+                            all_ranges = np.array(
+                                [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
+                                    for s in significances])
+                            self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+
+                            for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
+                                sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
+                                for idx in range(sample.shape[1]):
+                                    conf = (99 - significances[idx]) / 100
+                                    if np.sum(sample[:, idx]) == 1:
+                                        output_data[f'{predicted_col}_confidence'][sample_idx] = conf
+                                        break
+                                else:
+                                    output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
 
         self.output_data = PredictTransactionOutputData(
             transaction=self,
