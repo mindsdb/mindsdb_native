@@ -1,18 +1,14 @@
 import copy
 import traceback
 from pathlib import Path
-from collections import defaultdict
-from lightwood.constants.lightwood import ColumnDataTypes
 
 import numpy as np
 import pandas as pd
 import lightwood
-
 from lightwood.constants.lightwood import ColumnDataTypes
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
-from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
 
@@ -20,8 +16,7 @@ def _make_pred(row):
     return not hasattr(row, "make_predictions") or row.make_predictions
 
 
-class LightwoodBackend():
-
+class LightwoodBackend:
     def __init__(self, transaction):
         self.transaction = transaction
         self.predictor = None

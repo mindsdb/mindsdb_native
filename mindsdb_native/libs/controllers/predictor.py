@@ -243,7 +243,6 @@ class Predictor:
                 columns_to_ignore = ignore_columns,
                 validation_set_accuracy = None,
                 lightwood_data = {},
-                ludwig_data = {},
                 weight_map = {},
                 confusion_matrices = {},
                 empty_columns = [],
