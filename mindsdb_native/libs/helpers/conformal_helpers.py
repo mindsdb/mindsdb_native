@@ -142,9 +142,11 @@ class SelfawareNormalizer(BaseScorer):
         model_output = self.model.predict(df)
 
         sa_score = model_output[self.output_column].get('selfaware_confidences', None)
-
+        
         # default case, scaling factor is 1 for all
         if not sa_score:
             sa_score = np.ones(df.shape[0])
+        else:
+            sa_score = np.array(sa_score)
 
         return sa_score
