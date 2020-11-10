@@ -124,10 +124,11 @@ class ConformalClassifierAdapter(ClassifierAdapter):
 
 
 class SelfawareNormalizer(BaseScorer):
-    def __init__(self, model):
+    def __init__(self, model, fit_params=None):
         super(SelfawareNormalizer, self).__init__()
         self.model = model
-        self.cols = None  # has to be set after initializing the ICP
+        self.output_column = fit_params['output_column']
+        self.columns = None  # has to be set after initializing the ICP
 
     def fit(self, x, y):
         """No fitting is needed, as we instantiate this object
@@ -135,8 +136,15 @@ class SelfawareNormalizer(BaseScorer):
         pass
 
     def score(self, true_input, y=None):
-        df = _df_from_x(true_input, self.cols)
-        ds = self.model.ds_from_df(df)
+
+        df = _df_from_x(true_input, self.columns)
+        self.model.config['include_extra_data'] = True
         model_output = self.model.predict(df)
-        sa_score = self.model._mixer.selfaware_net.forward(ds, model_output)
+
+        sa_score = model_output[self.output_column].get('selfaware_confidences', None)
+
+        # default case, scaling factor is 1 for all
+        if not sa_score:
+            sa_score = np.ones(df.shape[0])
+
         return sa_score

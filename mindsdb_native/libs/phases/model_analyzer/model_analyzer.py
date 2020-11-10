@@ -2,7 +2,8 @@ from mindsdb_native.libs.helpers.general_helpers import pickle_obj, disable_cons
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
-from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter, SelfawareNormalizer, clean_df, filter_cols
+from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
+from mindsdb_native.libs.helpers.conformal_helpers import SelfawareNormalizer, clean_df, filter_cols
 from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from sklearn.metrics import balanced_accuracy_score, r2_score
@@ -224,12 +225,14 @@ class ModelAnalyzer(BaseModule):
             if data_type in (DATA_TYPES.NUMERIC, DATA_TYPES.SEQUENTIAL) or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
                 model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
 
-                if isinstance(self.transaction.model_backend.predictor._mixer, NnMixer) and self.transaction.model_backend.predictor._mixer.selfaware:  # Should really be .is_selfaware, but this is bc currently Lightwood not always triggers the SA, but if we wanna use it as normalizer, it should
-                    normalizer = SelfawareNormalizer(self.transaction.model_backend.predictor)
-                    nc = nc_class(model, nc_function, normalizer=normalizer)
+                if isinstance(self.transaction.model_backend.predictor._mixer, NnMixer) and \
+                        self.transaction.model_backend.predictor._mixer.is_selfaware:
+                    norm_params = {'output_column': target}
+                    normalizer = SelfawareNormalizer(self.transaction.model_backend.predictor, fit_params=norm_params)
                 else:
-                    normalizer = None
-                    nc = nc_class(model, nc_function)
+                    normalizer = None  # BaseNormalizer(KNeighborsRegressor(n_neighbors=5))
+
+                nc = nc_class(model, nc_function, normalizer=normalizer)
 
                 X = deepcopy(self.transaction.input_data.train_df)
                 if self.transaction.lmd['tss']['is_timeseries']:
@@ -237,8 +240,10 @@ class ModelAnalyzer(BaseModule):
                 y = X.pop(target)
 
                 self.transaction.hmd['icp'][target] = icp_class(nc)
+
                 if normalizer is not None:
-                    normalizer.cols = filter_cols(model.columns, model.target, model.ignore_columns)
+                    normalizer.columns = filter_cols(model.columns, model.target, model.ignore_columns)
+
                 if not is_classification:
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 
