@@ -81,7 +81,7 @@ class TestPredictor(unittest.TestCase):
             to_predict='numeric_y',
             stop_training_in_x_seconds=1,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         # Test predicting using a data frame
@@ -94,81 +94,6 @@ class TestPredictor(unittest.TestCase):
         assert isinstance(explanation_new['prediction_quality'], str)
 
         assert len(str(result[0])) > 20
-
-    @unittest.skip(reason="Causes error in probabilistic validator")
-    def test_custom_backend(self):
-        predictor = Predictor(name='custom_model_test_predictor')
-
-        class CustomDTModel():
-            def __init__(self):
-                self.clf = LinearRegression()
-                le = preprocessing.LabelEncoder()
-
-            def set_transaction(self, transaction):
-                self.transaction = transaction
-                self.output_columns = self.transaction.lmd['predict_columns']
-                self.input_columns = [x for x in self.transaction.lmd['columns']
-                                      if x not in self.output_columns]
-                self.train_df = self.transaction.input_data.train_df
-                self.test_dt = train_df = self.transaction.input_data.test_df
-
-            def train(self):
-                self.le_arr = {}
-                for col in [*self.output_columns, *self.input_columns]:
-                    self.le_arr[col] = preprocessing.LabelEncoder()
-                    self.le_arr[col].fit(pd.concat(
-                        [self.transaction.input_data.train_df,
-                         self.transaction.input_data.test_df,
-                         self.transaction.input_data.validation_df])[col])
-
-                X = []
-                for col in self.input_columns:
-                    X.append(self.le_arr[col].transform(
-                        self.transaction.input_data.train_df[col]))
-
-                X = np.swapaxes(X, 1, 0)
-
-                # Only works with one output column
-                Y = self.le_arr[self.output_columns[0]].transform(
-                    self.transaction.input_data.train_df[self.output_columns[0]])
-
-                self.clf.fit(X, Y)
-
-            def predict(self, mode='predict', ignore_columns=[]):
-                if mode == 'predict':
-                    df = self.transaction.input_data.data_frame
-                if mode == 'validate':
-                    df = self.transaction.input_data.validation_df
-                elif mode == 'test':
-                    df = self.transaction.input_data.test_df
-
-                X = []
-                for col in self.input_columns:
-                    X.append(self.le_arr[col].transform(df[col]))
-
-                X = np.swapaxes(X, 1, 0)
-
-                predictions = self.clf.predict(X)
-
-                formated_predictions = {self.output_columns[0]: predictions}
-
-                return formated_predictions
-
-        dt_model = CustomDTModel()
-
-        predictor.learn(
-            to_predict='rental_price',
-            from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-            backend=dt_model,
-            use_gpu=False
-        )
-
-        predictions = predictor.predict(
-            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
-            backend=dt_model
-        )
-
-        assert predictions
 
     def test_data_source_setting(self):
         data_url = 'https://raw.githubusercontent.com/mindsdb/mindsdb-examples/master/classics/german_credit_data/processed_data/test.csv'
@@ -249,7 +174,7 @@ class TestPredictor(unittest.TestCase):
             to_predict=label_headers,
             stop_training_in_x_seconds=1,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         results = mdb.predict(when_data=test_file_name)

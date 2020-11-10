@@ -1,18 +1,14 @@
 import copy
 import traceback
 from pathlib import Path
-from collections import defaultdict
-from lightwood.constants.lightwood import ColumnDataTypes
 
 import numpy as np
 import pandas as pd
 import lightwood
-
 from lightwood.constants.lightwood import ColumnDataTypes
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
-from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
 
@@ -20,8 +16,7 @@ def _make_pred(row):
     return not hasattr(row, "make_predictions") or row.make_predictions
 
 
-class LightwoodBackend():
-
+class LightwoodBackend:
     def __init__(self, transaction):
         self.transaction = transaction
         self.predictor = None
@@ -86,7 +81,12 @@ class LightwoodBackend():
         for i in range(len(df_arr)):
             for order_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
                 for ii in range(len(df_arr[i])):
-                    df_arr[i][order_col].iloc[ii] = [df_arr[i][order_col].iloc[ii]]
+                    try:
+                        df_arr[i][order_col].iloc[ii] = [df_arr[i][order_col].iloc[ii]]
+                    except Exception:
+                        # Needed because of a pandas bug that causes above to fail for small dataframes
+                        label = df_arr[i].index.values[ii]
+                        df_arr[i].at[label, order_col] = [df_arr[i].at[label, order_col]]
 
         # Add previous rows
         for n in range(len(df_arr)):
@@ -423,7 +423,7 @@ class LightwoodBackend():
             ))
 
         if len(predictors_and_accuracies) == 0:
-            raise Exception('All models failed')
+            raise Exception('All models had an error while training')
 
         best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
 

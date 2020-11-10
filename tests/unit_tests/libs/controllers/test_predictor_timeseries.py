@@ -73,7 +73,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             },
             stop_training_in_x_seconds=10,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
@@ -84,6 +84,9 @@ class TestPredictorTimeseries(unittest.TestCase):
             expect_columns = [label_headers[0], label_headers[0] + '_confidence']
             for col in expect_columns:
                 assert col in row
+
+        for row in [x.explanation[label_headers[0]] for x in results]:
+            assert row['confidence_interval'][0] <= row['predicted_value'] <= row['confidence_interval'][1]
 
         models = F.get_models()
         model_data = F.get_model_data(models[0]['name'])
@@ -129,7 +132,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             },
             stop_training_in_x_seconds=10,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
@@ -184,7 +187,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             },
             stop_training_in_x_seconds=1,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         admittable = ['Auto-incrementing identifier']
@@ -233,7 +236,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             },
             stop_training_in_x_seconds=10,
             use_gpu=False,
-            advanced_args={'force_predict': True}
+            advanced_args={'debug': True}
         )
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
