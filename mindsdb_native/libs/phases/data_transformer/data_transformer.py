@@ -66,7 +66,7 @@ def _lightwood_datetime_processing(dt):
 
 def _standardize_timeseries(ts_str):
     """
-    erases square brackets, trailing whitespace, 
+    erases square brackets, trailing whitespace,
     and commas from the array as string
     """
     try:
@@ -82,7 +82,6 @@ def _clean_float_or_none(val):
         return clean_float(val)
     except Exception:
         return None
-
 
 
 class DataTransformer(BaseModule):

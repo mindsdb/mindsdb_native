@@ -3,7 +3,6 @@ from pymongo import MongoClient
 
 from mindsdb_native.libs.data_types.data_source import DataSource
 
-
 class MongoDS(DataSource):
     def _setup(self, collection, query=None, database='database',
                host='localhost', port=27017, user='admin', password='123'):
@@ -20,10 +19,12 @@ class MongoDS(DataSource):
             if not isinstance(query, dict):
                 raise TypeError('query must be a dict')
 
-        conn = MongoClient(host=host,
-                           port=port,
-                           username=user,
-                           password=password)
+        conn = MongoClient(
+            host=host,
+            port=int(port),
+            username=user,
+            password=password
+        )
 
         db = conn[database]
         coll = db[collection]

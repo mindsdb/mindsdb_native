@@ -64,7 +64,7 @@ def analyze_sentences(data):
     nr_words_dist = defaultdict(int)
     nltk.download('stopwords')
     stop_words = set(stopwords.words('english'))
-    for text in data:
+    for text in map(str, data):
         text = text.lower()
         tokens = tokenize_text(text)
         tokens_no_stop = [x for x in tokens if x not in stop_words]
@@ -75,10 +75,17 @@ def analyze_sentences(data):
 
     return nr_words, dict(word_dist), dict(nr_words_dist)
 
-def shrink_word_dist(word_dist):
-    tiny_word_dist = dict(sorted(word_dist.items(), key=lambda x: x[1], reverse=True)[:min(50,len(word_dist))])
+
+def shrink_word_dist(word_dist, limit=50):
+    tiny_word_dist = dict(
+        sorted(
+            word_dist.items(),
+            key=lambda x: x[1]
+        )[:limit]
+    )
     tiny_word_dist['other words'] = sum(word_dist.values()) - sum(tiny_word_dist.values())
     return tiny_word_dist
+
 
 def word_tokenize(string):
     sep_tag = '{#SEP#}'
@@ -157,6 +164,7 @@ def _is_foreign_key_name(name):
             return True
     return False
 
+
 def _is_identifier_name(name):
     for keyword in ['account', 'uuid', 'identifier', 'user']:
         if keyword in name:
@@ -170,8 +178,10 @@ def isascii(string):
     """
     return all(ord(c) < 128 for c in string)
 
+
 def extract_digits(point):
     return ''.join([char for char in str(point) if char.isdigit()])
+
 
 def get_pct_auto_increment(data):
     int_data = []
@@ -182,7 +192,6 @@ def get_pct_auto_increment(data):
             pass
 
     int_data = sorted(int_data)
-    print(int_data)
     prev_nr = int_data[0]
     increase_by_one = 0
     for nr in int_data[1:]:
@@ -192,6 +201,7 @@ def get_pct_auto_increment(data):
         prev_nr = nr
 
     return increase_by_one/(len(data) - 1)
+
 
 def get_identifier_description(data, column_name, data_type, data_subtype, other_potential_subtypes):
     data = list(data)

@@ -59,9 +59,7 @@ def _prepare_timeseries_settings(user_provided_settings):
         ,group_by=None
         ,order_by=None
         ,window=None
-        ,dynamic_window=None
         ,use_previous_target=True
-        ,keep_order_column=True
         ,nr_predictions=1
         ,historical_columns=[]
     )
@@ -69,12 +67,8 @@ def _prepare_timeseries_settings(user_provided_settings):
     if len(user_provided_settings) > 0:
         if 'order_by' not in user_provided_settings:
             raise Exception('Invalid timeseries settings, please provide `order_by` key [a list of columns]')
-
-        elif 'window' not in user_provided_settings and 'dynamic_window' not in user_provided_settings:
-            raise Exception(f'Invalid timeseries settings, you must specify a window size with either `window` or `dynamic_window` key')
-
-        elif 'window' in user_provided_settings and 'dynamic_window' in user_provided_settings:
-            raise Exception(f'Invalid timeseries settings, you must specify a window size with *EITHER* `window` or `dynamic_window` key, not both!')
+        elif 'window' not in user_provided_settings:
+            raise Exception(f'Invalid timeseries settings, you must specify a window size')
         else:
             timeseries_settings['is_timeseries'] = True
 
@@ -120,6 +114,27 @@ class Predictor:
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
+    def quick_learn(self,
+              to_predict,
+              from_data,
+              timeseries_settings=None,
+              ignore_columns=None,
+              stop_training_in_x_seconds=None,
+              backend='lightwood',
+              rebuild_model=True,
+              use_gpu=None,
+              equal_accuracy_for_all_output_categories=True,
+              output_categories_importance_dictionary=None,
+              advanced_args=None,
+              sample_settings=None):
+
+        if advanced_args is None:
+            advanced_args = {}
+        advanced_args['quick_learn'] = True
+
+        return self.learn(to_predict, from_data, timeseries_settings, ignore_columns, stop_training_in_x_seconds, backend, rebuild_model, use_gpu, equal_accuracy_for_all_output_categories, output_categories_importance_dictionary, advanced_args, sample_settings)
+
+
     def learn(self,
               to_predict,
               from_data,
@@ -157,7 +172,6 @@ class Predictor:
 
         :return:
         """
-
         with MDBLock('exclusive', 'learn_' + self.name):
             ignore_columns = [] if ignore_columns is None else ignore_columns
             timeseries_settings = {} if timeseries_settings is None else timeseries_settings
@@ -229,7 +243,6 @@ class Predictor:
                 columns_to_ignore = ignore_columns,
                 validation_set_accuracy = None,
                 lightwood_data = {},
-                ludwig_data = {},
                 weight_map = {},
                 confusion_matrices = {},
                 empty_columns = [],
@@ -249,7 +262,10 @@ class Predictor:
                 force_predict = advanced_args.get('force_predict', False),
                 mixer_class = advanced_args.get('use_mixers', None),
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
-                debug = advanced_args.get('debug', False)
+                debug = advanced_args.get('debug', False),
+                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
+                quick_learn = advanced_args.get('quick_learn', False),
+                quick_predict = advanced_args.get('quick_predict', False)
             )
 
             if rebuild_model is False:
@@ -283,6 +299,8 @@ class Predictor:
                 heavy_transaction_metadata=heavy_transaction_metadata,
                 logger=self.log
             )
+
+            self.transaction.run()
 
 
     def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
@@ -319,27 +337,33 @@ class Predictor:
 
             return accuracy_dict
 
+    def quick_predict(self,
+                when_data,
+                use_gpu=None,
+                advanced_args=None,
+                backend=None):
+
+        if advanced_args is None:
+            advanced_args = {}
+        advanced_args['quick_predict'] = True
+
+        return self.predict(when_data, use_gpu, advanced_args, backend)
+
     def predict(self,
                 when_data,
                 use_gpu=None,
                 advanced_args=None,
-                backend=None,
-                run_confidence_variation_analysis=False):
+                backend=None):
         """
         You have a mind trained already and you want to make a prediction
 
         :param when_data: python dict, file path, a pandas data frame, or url to a file that you want to predict from
-        :param run_confidence_variation_analysis: Run a confidence variation analysis on each of the given input column, currently only works when making single predictions via `when`
 
         :return: TransactionOutputData object
         """
         with MDBLock('shared', 'learn_' + self.name):
             if advanced_args is None:
                 advanced_args = {}
-            if run_confidence_variation_analysis is True and isinstance(when_data, list) and len(when_data) > 1:
-                error_msg = 'run_confidence_variation_analysis=True is a valid option only when predicting a single data point'
-                self.log.error(error_msg)
-                raise ValueError(error_msg)
 
             transaction_type = TRANSACTION_PREDICT
             when_ds = None
@@ -372,8 +396,10 @@ class Predictor:
                 type = transaction_type,
                 use_gpu = use_gpu,
                 data_preparation = {},
-                run_confidence_variation_analysis = run_confidence_variation_analysis,
-                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache)
+                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
+                use_database_history = advanced_args.get('use_database_history', False),
+                allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
+                quick_predict = advanced_args.get('quick_predict', False)
             )
 
             self.transaction = PredictTransaction(
@@ -381,4 +407,5 @@ class Predictor:
                 light_transaction_metadata=light_transaction_metadata,
                 heavy_transaction_metadata=heavy_transaction_metadata
             )
+            self.transaction.run()
             return self.transaction.output_data

@@ -36,36 +36,7 @@ with open('optional_requirements_extra_data_sources.txt', 'r') as fp:
     for line in fp:
         extra_data_sources_requirements.append(line.rstrip('\n'))
 
-ludwig_model_requirements = []
-beta_requirements = []
-with open('optional_requirements_ludwig_model.txt', 'r') as fp:
-    for line in fp:
-        ludwig_model_requirements.append(line.rstrip('\n'))
-
 dependency_links = []
-
-# Linux specific requirements
-if sys_platform == 'linux' or sys_platform.startswith('linux'):
-    ludwig_model_requirements = remove_requirements(ludwig_model_requirements, 'tensorflow-estimator')
-
-# OSX specific requirements
-elif sys_platform == 'darwin':
-    requirements = requirements
-    ludwig_model_requirements = remove_requirements(ludwig_model_requirements, 'tensorflow', 'tensorflow == 1.13.1')
-    ludwig_model_requirements = remove_requirements(ludwig_model_requirements, 'tensorflow-estimator', 'tensorflow-estimator == 1.13.0')
-    ludwig_model_requirements = remove_requirements(ludwig_model_requirements, 'ludwig', 'ludwig == 0.1.2')
-
-# Windows specific requirements
-elif sys_platform in ['win32','cygwin','windows']:
-    requirements = ['cwrap', *requirements]
-    ludwig_model_requirements = remove_requirements(ludwig_model_requirements, 'tensorflow', 'tensorflow == 1.13.1')
-    ludwig_model_requirements = remove_requirements(ludwig_model_requirements, 'ludwig', 'ludwig == 0.1.2')
-    ludwig_model_requirements = remove_requirements(ludwig_model_requirements, 'tensorflow-estimator')
-    requirements = remove_requirements(requirements,'wheel', replace='wheel == 0.26.0')
-
-else:
-    print('\n\n====================\n\nError, platform {sys_platform} not recognized, proceeding to install anyway, but mindsdb might not work properly !\n\n====================\n\n')
-
 
 setuptools.setup(
     name=about['__title__'],
@@ -82,8 +53,6 @@ setuptools.setup(
     install_requires=requirements,
     extras_require = {
         'extra_data_sources': extra_data_sources_requirements
-        ,'ludwig_model': ludwig_model_requirements
-        ,'beta': beta_requirements
         ,'snowflake': snowflake_requirements
     },
     tests_require = test_requirements,

@@ -38,7 +38,12 @@ class TransactionOutputRow:
             answers[pred_col] = {}
             prediction_row = {col: self._data[col][self._row_index] for col in self._data.keys()}
 
-            answers[pred_col]['predicted_value'] = prediction_row[pred_col]
+            if self._transaction_output._transaction.lmd['tss']['is_timeseries'] and \
+                    self._transaction_output._transaction.lmd['tss']['nr_predictions'] > 1:
+                answers[pred_col]['predicted_value'] = prediction_row[pred_col][0]
+                answers[pred_col]['all_predicted_values'] = prediction_row[pred_col]
+            else:
+                answers[pred_col]['predicted_value'] = prediction_row[pred_col]
 
 
             if f'{pred_col}_model_confidence' in prediction_row:
@@ -60,7 +65,7 @@ class TransactionOutputRow:
 
             answers[pred_col]['prediction_quality'] = quality
 
-            if self._col_stats[pred_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE, DATA_TYPES.CATEGORICAL):
+            if self._col_stats[pred_col]['typing']['data_type'] in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE):
                 if f'{pred_col}_confidence_range' in prediction_row:
                     answers[pred_col]['confidence_interval'] = prediction_row[f'{pred_col}_confidence_range']
 

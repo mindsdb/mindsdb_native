@@ -14,10 +14,13 @@ from mindsdb_native.libs.controllers.transaction import AnalyseTransaction
 from mindsdb_native.libs.controllers.predictor import _get_memory_optimizations, _prepare_sample_settings, Predictor
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.libs.helpers.general_helpers import load_lmd, load_hmd
-from mindsdb_native.libs.constants.mindsdb import (MODEL_STATUS_TRAINED,
-                                                   MODEL_STATUS_ERROR,
-                                                   TRANSACTION_ANALYSE)
+from mindsdb_native.libs.constants.mindsdb import (
+    MODEL_STATUS_TRAINED,
+    MODEL_STATUS_ERROR,
+    TRANSACTION_ANALYSE
+)
 from mindsdb_native.libs.helpers.locking import MDBLock
+
 
 def validate(to_predict, from_data, accuracy_score_functions, learn_args=None, test_args=None):
             if learn_args is None: learn_args = {}
@@ -35,6 +38,7 @@ def validate(to_predict, from_data, accuracy_score_functions, learn_args=None, t
 
             return accuracy
 
+
 def cross_validate(to_predict, from_data, accuracy_score_functions, k=5, learn_args=None, test_args=None):
     '''
         Probably required a change to generate a split into `k` folds, then manually setting those folds as train/test/predict.
@@ -47,6 +51,7 @@ def cross_validate(to_predict, from_data, accuracy_score_functions, k=5, learn_a
     '''
     raise NotImplementedError('Cross validation is not implemented yet')
 
+
 def analyse_dataset(from_data, sample_settings=None):
     """
     Analyse the particular dataset being given
@@ -55,11 +60,13 @@ def analyse_dataset(from_data, sample_settings=None):
     from_ds = getDS(from_data)
     transaction_type = TRANSACTION_ANALYSE
 
-    sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(
-        from_ds.df)
-    sample_settings, sample_function = _prepare_sample_settings(sample_settings,
-                                                sample_for_analysis,
-                                                sample_for_training)
+    sample_for_analysis, sample_for_training, _ = _get_memory_optimizations(from_ds.df)
+
+    sample_settings, sample_function = _prepare_sample_settings(
+        sample_settings,
+        sample_for_analysis,
+        sample_for_training
+    )
 
     heavy_transaction_metadata = dict(
         name=None,
@@ -92,8 +99,9 @@ def analyse_dataset(from_data, sample_settings=None):
         logger=log
     )
 
-    md = get_model_data(lmd=tx.lmd)
-    return md
+    tx.run()
+
+    return get_model_data(lmd=tx.lmd)
 
 
 def export_storage(mindsdb_storage_dir='mindsdb_storage'):
@@ -103,8 +111,12 @@ def export_storage(mindsdb_storage_dir='mindsdb_storage'):
     :param mindsdb_storage_dir: this is the full_path where you want to store a mind to, it will be a zip file
     :return: bool (True/False) True if mind was exported successfully
     """
-    shutil.make_archive(base_name=mindsdb_storage_dir, format='zip',
-                        root_dir=CONFIG.MINDSDB_STORAGE_PATH)
+    shutil.make_archive(
+        base_name=mindsdb_storage_dir,
+        format='zip',
+        root_dir=CONFIG.MINDSDB_STORAGE_PATH
+    )
+
     print(f'Exported mindsdb storage to {mindsdb_storage_dir}.zip')
 
 
@@ -122,17 +134,6 @@ def export_predictor(model_name):
                               'lightwood_data']:
                 full_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, file_name)
                 zip_fp.write(full_path, os.path.basename(full_path))
-
-            # If the backend is ludwig, save the ludwig files
-            try:
-                ludwig_model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'ludwig_data')
-                for root, dirs, files in os.walk(ludwig_model_path):
-                    for file in files:
-                        full_path = os.path.join(root, file)
-                        zip_fp.write(full_path,
-                                    full_path[len(CONFIG.MINDSDB_STORAGE_PATH):])
-            except Exception:
-                pass
 
         print(f'Exported model to {storage_file}')
 
@@ -152,15 +153,12 @@ def rename_model(old_model_name, new_model_name):
         if old_model_name == new_model_name:
             return True
 
-        moved_a_backend = False
-        for extension in ['lightwood_data', 'ludwig_data']:
+        try:
             shutil.move(
-                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, extension),
-                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, new_model_name, extension)
+                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, 'lightwood_data'),
+                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, new_model_name, 'lightwood_data')
             )
-            moved_a_backend = True
-
-        if not moved_a_backend:
+        except Exception:
             return False
 
         lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, 'light_model_metadata.pickle'))
@@ -169,22 +167,10 @@ def rename_model(old_model_name, new_model_name):
         lmd['name'] = new_model_name
         hmd['name'] = new_model_name
 
-        renamed_one_backend = False
-        try:
-            lmd['ludwig_data']['ludwig_save_path'] = lmd['ludwig_data'][
-                'ludwig_save_path'].replace(old_model_name, new_model_name)
-            renamed_one_backend = True
-        except Exception:
-            pass
-
         try:
             lmd['lightwood_data']['save_path'] = lmd['lightwood_data'][
                 'save_path'].replace(old_model_name, new_model_name)
-            renamed_one_backend = True
         except Exception:
-            pass
-
-        if not renamed_one_backend:
             return False
 
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
@@ -216,11 +202,6 @@ def delete_model(model_name):
 
         try:
             os.remove(lmd['lightwood_data']['save_path'])
-        except Exception:
-            pass
-
-        try:
-            shutil.rmtree(lmd['ludwig_data']['ludwig_save_path'])
         except Exception:
             pass
 
@@ -258,9 +239,6 @@ def import_model(model_archive_path, new_name=None):
     )
 
     with MDBLock('exclusive', 'detele_' + lmd['name']):
-        if 'ludwig_data' in lmd and 'ludwig_save_path' in lmd['ludwig_data']:
-            lmd['ludwig_data']['ludwig_save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, lmd['name'], 'ludwig_data')
-
         if 'lightwood_data' in lmd and 'save_path' in lmd['lightwood_data']:
             lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, lmd['name'], 'lightwood_data')
 
@@ -483,7 +461,13 @@ def get_model_data(model_name=None, lmd=None):
 
 def get_models():
     models = []
-    for p in [x for x in Path(CONFIG.MINDSDB_STORAGE_PATH).iterdir() if x.is_dir()]:
+    predictors = [
+        x for x in Path(CONFIG.MINDSDB_STORAGE_PATH).iterdir() if
+            x.is_dir()
+            and x.joinpath('light_model_metadata.pickle').is_file()
+            and x.joinpath('heavy_model_metadata.pickle').is_file()
+    ]
+    for p in predictors:
         model_name = p.name
         try:
             amd = get_model_data(model_name)
