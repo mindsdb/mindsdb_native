@@ -230,7 +230,7 @@ class ModelAnalyzer(BaseModule):
                     norm_params = {'output_column': target}
                     normalizer = SelfawareNormalizer(self.transaction.model_backend.predictor, fit_params=norm_params)
                 else:
-                    normalizer = None  # BaseNormalizer(KNeighborsRegressor(n_neighbors=5))
+                    normalizer = None
 
                 nc = nc_class(model, nc_function, normalizer=normalizer)
 
