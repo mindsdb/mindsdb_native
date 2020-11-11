@@ -15,10 +15,10 @@ class DataSource:
         self.data_types = {}
         self.data_subtypes = {}
         self.is_dynamic = False
-        df, col_map = self._setup(*args, **kwargs)
+        self._internal_df = None
+        self._internal_col_map = None
         self.args = args
         self.kwargs = kwargs
-        self._set_df(df, col_map)
         self._cleanup()
 
     def __len__(self):
@@ -57,14 +57,27 @@ class DataSource:
 
     @property
     def df(self):
-        return self.internal_df
+        if self._internal_df is None:
+            self._internal_df, self._internal_col_map = self._setup(*args, **kwargs)
+        return self._internal_df
 
     @df.setter
     def df(self, df):
-        self.internal_df = df
+        self._internal_df = df
+
+    @property
+    def _col_map(self):
+        if self._internal_col_map is None:
+            self._internal_df, self._internal_col_map = self._setup(*args, **kwargs)
+
+        return self._internal_col_map
+
+    @_col_map.setter
+    def col_map(self, _col_map):
+        self._internal_col_map = _col_map
 
     def _set_df(self, df, col_map):
-        self.internal_df = df
+        self._internal_df = df
         self._col_map = col_map
 
     def drop_columns(self, column_list):
@@ -81,7 +94,7 @@ class DataSource:
             else:
                 columns_to_drop.append(self._col_map[col])
 
-        self.internal_df.drop(columns=columns_to_drop, inplace=True)
+        self._internal_df.drop(columns=columns_to_drop, inplace=True)
 
     def _filter_to_pandas(self, raw_condition, df):
         """Convert filter conditions to a paticular
@@ -127,7 +140,7 @@ class DataSource:
 
             return self._setup(*self.args, query=query, **self.kwargs)._df
         else:
-            df = self.internal_df
+            df = self._internal_df
             if where:
                 for cond in where:
                     pd_cond = self._filter_to_pandas(cond, df)
