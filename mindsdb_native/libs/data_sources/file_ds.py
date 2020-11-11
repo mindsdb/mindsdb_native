@@ -24,6 +24,10 @@ def clean_row(row):
     return n_row
 
 class FileDS(DataSource):
+    def __init__(self, *args, **kwargs):
+        self.is_sql = False
+        super(FileDS, self).__init__(*args, **kwargs)
+
     def _getDataIo(self, file):
         """
         This gets a file either url or local file and defiens what the format is as well as dialect

@@ -16,10 +16,6 @@ class DataSource:
     def __init__(self, *args, **kwargs):
         self.data_types = {}
         self.data_subtypes = {}
-        try:
-            self.is_sql == True
-        except Exception:
-            self.is_sql = False
         self._internal_df = None
         self._internal_col_map = None
         self.args = args
@@ -68,21 +64,17 @@ class DataSource:
     @property
     def df(self):
         import inspect
-        print(inspect.stack()[1].function)
-        print(1, self)
-        print(self.args, self.kwargs)
+        #print(inspect.stack())
         if self._internal_df is None:
             self._internal_df, self._internal_col_map = self._setup(*self.args, **self.kwargs)
         return self._internal_df
 
     @df.setter
     def df(self, df):
-        print(2)
         self._internal_df = df
 
     @property
     def _col_map(self):
-        print('3')
         if self._internal_col_map is None:
             # Probably more elegant without the `if` but python is dumb and can easily get itself into weird internal loops => core dumps if
             if self.is_sql:
@@ -94,7 +86,6 @@ class DataSource:
 
     @_col_map.setter
     def col_map(self, _col_map):
-        print(4)
         self._internal_col_map = _col_map
 
     def _set_df(self, df, col_map):
@@ -191,6 +182,12 @@ class DataSource:
         """
         Map all other functions to the DataFrame
         """
+        if attr == 'df':
+            print('here')
+            return self.df
+        if attr == 'col_map':
+            return self.col_map
+
         if attr.startswith('__') and attr.endswith('__'):
             raise AttributeError
         else:
