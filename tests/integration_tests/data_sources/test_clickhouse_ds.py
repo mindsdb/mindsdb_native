@@ -38,7 +38,7 @@ class TestClickhouse(ClickhouseTest):
 
         # test filter
         assert clickhouse_ds.is_sql
-        for val in clickhouse_ds.filter([['location', 'like','oo']])['location']:
+        for val in clickhouse_ds.filter([['location', 'like','ood']])['location']:
             assert val == 'good'
 
         assert len(clickhouse_ds.filter([['rental_price', '>', 2500]], 3)) == 3
