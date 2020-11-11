@@ -63,8 +63,6 @@ class DataSource:
 
     @property
     def df(self):
-        import inspect
-        #print(inspect.stack())
         if self._internal_df is None:
             self._internal_df, self._internal_col_map = self._setup(*self.args, **self.kwargs)
         return self._internal_df
@@ -183,7 +181,6 @@ class DataSource:
         Map all other functions to the DataFrame
         """
         if attr == 'df':
-            print('here')
             return self.df
         if attr == 'col_map':
             return self.col_map
