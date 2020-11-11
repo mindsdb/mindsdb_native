@@ -37,9 +37,6 @@ class DataSource:
     def __len__(self):
         return len(self.df)
 
-    def name(self):
-        return 'Unknown'
-
     def _setup(self, df, **kwargs):
         col_map = {}
 
@@ -70,6 +67,10 @@ class DataSource:
 
     @property
     def df(self):
+        import inspect
+        print(inspect.stack()[1].function)
+        print(1, self)
+        print(self.args, self.kwargs)
         if self._internal_df is None:
             self._internal_df, self._internal_col_map = self._setup(*self.args, **self.kwargs)
         return self._internal_df

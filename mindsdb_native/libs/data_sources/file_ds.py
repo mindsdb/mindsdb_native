@@ -146,9 +146,6 @@ class FileDS(DataSource):
             # No file type identified
             return data, None, dialect
 
-    def name(self):
-        return '{}: {}'.format(self.__class__.__name__, self._file_name)
-
     def _setup(self, file, clean_rows=True, custom_parser=None):
         """
         Setup from file

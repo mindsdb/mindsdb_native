@@ -205,13 +205,6 @@ class Predictor:
             self.log.warning(f'Sample for analysis: {sample_for_analysis}')
             self.log.warning(f'Sample for training: {sample_for_training}')
 
-            """
-            We don't implement "name" as a concept in mindsdbd data sources, this is only available for files,
-            the server doesn't handle non-file data sources at the moment, so this shouldn't prove an issue,
-            once we want to support datasources such as s3 and databases for the server we need to add name as a concept (or, preferably, before that)
-            """
-            data_source_name = from_ds.name()
-
             heavy_transaction_metadata = dict(
                 name=self.name,
                 from_data=from_ds,
@@ -229,7 +222,6 @@ class Predictor:
                 predict_columns = predict_columns,
                 model_columns_map = from_ds._col_map,
                 tss=timeseries_settings,
-                data_source = data_source_name,
                 type = transaction_type,
                 sample_settings = sample_settings,
                 stop_training_in_x_seconds = stop_training_in_x_seconds,
