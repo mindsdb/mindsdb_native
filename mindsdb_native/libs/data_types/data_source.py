@@ -68,7 +68,7 @@ class DataSource:
     @property
     def _col_map(self):
         if self._internal_col_map is None:
-            self._internal_df, self._internal_col_map = self._setup(*args, **kwargs)
+            _, self._internal_col_map = self.filter(where=[], limit=1, True)
 
         return self._internal_col_map
 
@@ -109,7 +109,7 @@ class DataSource:
         col, cond, val = raw_condition
         return mapping[cond](col, val)
 
-    def filter(self, where=None, limit=None):
+    def filter(self, where=None, limit=None, get_col_map=False):
         """Convert SQL like filter requests to pandas DataFrame filtering"""
         if self.is_dynamic:
             parsed_query = moz_sql_parser.parse(self.query)
@@ -138,7 +138,10 @@ class DataSource:
 
             query = moz_sql_parser.format(parsed_query)
 
-            return self._setup(*self.args, query=query, **self.kwargs)._df
+            if get_col_map:
+                return self._setup(*self.args, query=query, **self.kwargs)
+            else:
+                return self._setup(*self.args, query=query, **self.kwargs)[1]
         else:
             df = self._internal_df
             if where:
