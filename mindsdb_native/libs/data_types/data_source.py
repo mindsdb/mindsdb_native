@@ -28,9 +28,9 @@ class DataSource:
         if self.is_sql:
             # @TODO Also, even if we do the above, it might be wiser to set the `query` inside each separate datasource child ?
             try:
-                self.query = self.args['query']
+                self.query = self.kwargs['query']
             except Exception as e:
-                self.query = self.kwargs[0]
+                self.query = self.args[0]
 
         self._cleanup()
 
