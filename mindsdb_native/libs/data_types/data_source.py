@@ -76,17 +76,24 @@ class DataSource:
 
     @df.setter
     def df(self, df):
+        print(2)
         self._internal_df = df
 
     @property
     def _col_map(self):
+        print('3')
         if self._internal_col_map is None:
-            _, self._internal_col_map = self.filter(where=[], limit=1, get_col_map=True)
+            # Probably more elegant without the `if` but python is dumb and can easily get itself into weird internal loops => core dumps if
+            if self.is_sql:
+                _, self._internal_col_map = self.filter(where=[], limit=1, get_col_map=True)
+            else:
+                self._internal_df, self._internal_col_map = self._setup(*self.args, **self.kwargs)
 
         return self._internal_col_map
 
     @_col_map.setter
     def col_map(self, _col_map):
+        print(4)
         self._internal_col_map = _col_map
 
     def _set_df(self, df, col_map):
