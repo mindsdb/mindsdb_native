@@ -29,7 +29,6 @@ class TestMongoDB(unittest.TestCase):
 
         assert not mongodb_ds.is_sql
         for val in mongodb_ds.filter([['location', 'like','ood']])['location']:
-            print(val)
             assert val == 'good'
 
         assert len(mongodb_ds.filter([['rental_price', '>', 2500]], 3)) == 3

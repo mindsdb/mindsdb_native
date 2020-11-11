@@ -113,11 +113,11 @@ class DataSource:
         """Convert filter conditions to a paticular
         DataFrame instance"""
         mapping = {
-                    ">": lambda x, y: df[df[x].notnull()][x] > y,
-                    "like": lambda x, y: df[df[x].notnull()][x].str.contains(y.replace("%", "")),
-                    "<": lambda x, y: df[df[x].notnull()][x] < y,
-                    "=": lambda x, y: df[df[x].notnull()][x] == y,
-                    "!=": lambda x, y: df[df[x].notnull()][x] != y
+                    ">": lambda x, y: df[x] > y,
+                    "like": lambda x, y: df[x].str.contains(y.replace("%", "")),
+                    "<": lambda x, y: df[x] < y,
+                    "=": lambda x, y: df[x] == y,
+                    "!=": lambda x, y: df[x] != y
                   }
         col, cond, val = raw_condition
         return mapping[cond.lower()](col, val)
@@ -154,7 +154,7 @@ class DataSource:
 
             args = deepcopy(self.args)
             kwargs = deepcopy(self.kwargs)
-            
+
             if 'query' in kwargs:
                 kwargs['query'] = query
             else:
@@ -168,6 +168,7 @@ class DataSource:
             df = self.df
             if where:
                 for cond in where:
+                    df = df[df[cond[0]].notnull()]
                     pd_cond = self._filter_to_pandas(cond, df)
                     df = df[pd_cond]
             return df.head(limit) if limit else df
