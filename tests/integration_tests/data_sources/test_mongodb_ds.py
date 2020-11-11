@@ -12,6 +12,16 @@ class TestMongoDB(unittest.TestCase):
         self.DATABASE = 'test_data'
         self.COLLECTION = 'home_rentals'
 
+        # test filter (this is a non sql ds)
+        assert not clickhouse_ds.is_sql
+        print(clickhouse_ds.filter([['location', 'like','oo']])['location'])
+        for val in clickhouse_ds.filter([['location', 'like','oo']])['location']:
+            assert val == 'good'
+
+        assert len(clickhouse_ds.filter([['rental_price', '>', 2500]], 3)) == 3
+        assert len(clickhouse_ds.filter([['initial_price', '<', 0]], 3)) == 0
+
+
     def test_mongodb_ds(self):
         from mindsdb_native import MongoDS
 

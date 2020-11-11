@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pandas as pd
 import moz_sql_parser
 from moz_sql_parser.keywords import binary_ops
@@ -14,11 +16,22 @@ class DataSource:
     def __init__(self, *args, **kwargs):
         self.data_types = {}
         self.data_subtypes = {}
-        self.is_sql = False
+        try:
+            self.is_sql == True
+        except Exception:
+            self.is_sql = False
         self._internal_df = None
         self._internal_col_map = None
         self.args = args
         self.kwargs = kwargs
+
+        # @TOOD Let's just make the query an "obligatory" first arg of all sql datasources
+        if self.is_sql:
+            try:
+                self.query = kwargs['query']
+            except Exception as e:
+                self.query = args[0]
+
         self._cleanup()
 
     def __len__(self):
@@ -58,7 +71,7 @@ class DataSource:
     @property
     def df(self):
         if self._internal_df is None:
-            self._internal_df, self._internal_col_map = self._setup(*args, **kwargs)
+            self._internal_df, self._internal_col_map = self._setup(*self.args, **self.kwargs)
         return self._internal_df
 
     @df.setter
@@ -68,7 +81,7 @@ class DataSource:
     @property
     def _col_map(self):
         if self._internal_col_map is None:
-            _, self._internal_col_map = self.filter(where=[], limit=1, True)
+            _, self._internal_col_map = self.filter(where=[], limit=1, get_col_map=True)
 
         return self._internal_col_map
 
@@ -100,14 +113,14 @@ class DataSource:
         """Convert filter conditions to a paticular
         DataFrame instance"""
         mapping = {
-                    ">": lambda x, y: df[x] > y,
-                    "LIKE": lambda x, y: df[x].str.contains(y.replace("%", "")),
-                    "<": lambda x, y: df[x] < y,
-                    "=": lambda x, y: df[x] == y,
-                    "!=": lambda x, y: df[x] != y
+                    ">": lambda x, y: df[df[x].notnull()][x] > y,
+                    "like": lambda x, y: df[df[x].notnull()][x].str.contains(y.replace("%", "")),
+                    "<": lambda x, y: df[df[x].notnull()][x] < y,
+                    "=": lambda x, y: df[df[x].notnull()][x] == y,
+                    "!=": lambda x, y: df[df[x].notnull()][x] != y
                   }
         col, cond, val = raw_condition
-        return mapping[cond](col, val)
+        return mapping[cond.lower()](col, val)
 
     def filter(self, where=None, limit=None, get_col_map=False):
         """Convert SQL like filter requests to pandas DataFrame filtering"""
@@ -115,7 +128,7 @@ class DataSource:
             parsed_query = moz_sql_parser.parse(self.query)
 
             for col, op, value in where or []:
-                past_where_clause = self.parsed.get('where', {})
+                past_where_clause = parsed_query.get('where', {})
 
                 op = op.lower()
                 op_json = binary_ops.get(op, None)
@@ -137,13 +150,22 @@ class DataSource:
                 parsed_query['limit'] = limit
 
             query = moz_sql_parser.format(parsed_query)
+            query = query.replace('"',"'")
+
+            args = deepcopy(self.args)
+            kwargs = deepcopy(self.kwargs)
+            
+            if 'query' in kwargs:
+                kwargs['query'] = query
+            else:
+                args[0] = query
 
             if get_col_map:
-                return self._setup(*self.args, query=query, **self.kwargs)
+                return self._setup(*args, **kwargs)
             else:
-                return self._setup(*self.args, query=query, **self.kwargs)[1]
+                return self._setup(*args, **kwargs)[0]
         else:
-            df = self._internal_df
+            df = self.df
             if where:
                 for cond in where:
                     pd_cond = self._filter_to_pandas(cond, df)

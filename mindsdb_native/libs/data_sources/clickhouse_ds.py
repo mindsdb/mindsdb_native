@@ -12,7 +12,6 @@ class ClickhouseDS(DataSource):
 
     def _setup(self, query, host='localhost', user='default', password=None,
                port=8123, protocol='http'):
-
         if protocol not in ('https', 'http'):
             raise ValueError('Unexpected protocol {}'.fomat(protocol))
 
