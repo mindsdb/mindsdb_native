@@ -38,7 +38,6 @@ class TestClickhouse(ClickhouseTest):
 
         # test filter
         assert clickhouse_ds.is_sql
-        print(clickhouse_ds.filter([['location', 'like','oo']])['location'])
         for val in clickhouse_ds.filter([['location', 'like','oo']])['location']:
             assert val == 'good'
 
