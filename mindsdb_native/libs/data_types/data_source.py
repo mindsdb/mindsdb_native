@@ -21,12 +21,16 @@ class DataSource:
         self.args = args
         self.kwargs = kwargs
 
+        if 'is_sql' not in self.__dict__:
+            self.is_sql = False
+
         # @TOOD Let's just make the query an "obligatory" first arg of all sql datasources
         if self.is_sql:
+            # @TODO Also, even if we do the above, it might be wiser to set the `query` inside each separate datasource child ?
             try:
-                self.query = kwargs['query']
+                self.query = self.args['query']
             except Exception as e:
-                self.query = args[0]
+                self.query = self.kwargs[0]
 
         self._cleanup()
 
