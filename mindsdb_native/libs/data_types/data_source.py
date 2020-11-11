@@ -55,8 +55,16 @@ class DataSource:
             else:
                 raise ValueError(f'Invalid data subtype: {subtype}')
 
+    @property
+    def df(self):
+        return self.internal_df
+
+    @df.setter
+    def df(self, df):
+        self.internal_df = df
+
     def _set_df(self, df, col_map):
-        self.df = df
+        self.internal_df = df
         self._col_map = col_map
 
     def drop_columns(self, column_list):
@@ -73,17 +81,17 @@ class DataSource:
             else:
                 columns_to_drop.append(self._col_map[col])
 
-        self.df.drop(columns=columns_to_drop, inplace=True)
+        self.internal_df.drop(columns=columns_to_drop, inplace=True)
 
     def _filter_to_pandas(self, raw_condition):
         """Convert filter conditions to a paticular
         DataFrame instance"""
         mapping = {
-                    ">": lambda x, y: self._df[x] > y,
-                    "LIKE": lambda x, y: self._df[x].str.contains(y.replace("%", "")),
-                    "<": lambda x, y: self._df[x] < y,
-                    "=": lambda x, y: self._df[x] == y,
-                    "!=": lambda x, y: self._df[x] != y
+                    ">": lambda x, y: self.internal_df[x] > y,
+                    "LIKE": lambda x, y: self.internal_df[x].str.contains(y.replace("%", "")),
+                    "<": lambda x, y: self.internal_df[x] < y,
+                    "=": lambda x, y: self.internal_df[x] == y,
+                    "!=": lambda x, y: self.internal_df[x] != y
                   }
         col, cond, val = raw_condition
         return mapping[cond](col, val)
@@ -116,13 +124,13 @@ class DataSource:
                 parsed_query['limit'] = limit
 
             query = moz_sql_parser.format(parsed_query)
-            
+
             return self._setup(*self.args, query=query, **self.kwargs)._df
         else:
             if where:
                 for cond in [self._filter_to_pandas(x) for x in where]:
-                    self._df = self._df[cond]
-            return self._df.head(limit) if limit else self._df
+                    self.internal_df = self.internal_df[cond]
+            return self.internal_df.head(limit) if limit else self.internal_df
 
     def __getstate__(self):
         return self.__dict__
