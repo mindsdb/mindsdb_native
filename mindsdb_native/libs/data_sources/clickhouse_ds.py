@@ -6,6 +6,10 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
 class ClickhouseDS(DataSource):
+    def __init__(self, *args, **kwargs):
+        self.is_sql = True
+        super(ClickhouseDS, self).__init__(*args, **kwargs)
+
     def _setup(self, query, host='localhost', user='default', password=None,
                port=8123, protocol='http'):
 

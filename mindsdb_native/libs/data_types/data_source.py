@@ -14,7 +14,7 @@ class DataSource:
     def __init__(self, *args, **kwargs):
         self.data_types = {}
         self.data_subtypes = {}
-        self.is_dynamic = False
+        self.is_sql = False
         self._internal_df = None
         self._internal_col_map = None
         self.args = args
@@ -111,7 +111,7 @@ class DataSource:
 
     def filter(self, where=None, limit=None, get_col_map=False):
         """Convert SQL like filter requests to pandas DataFrame filtering"""
-        if self.is_dynamic:
+        if self.is_sql:
             parsed_query = moz_sql_parser.parse(self.query)
 
             for col, op, value in where or []:
