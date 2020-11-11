@@ -83,15 +83,15 @@ class DataSource:
 
         self.internal_df.drop(columns=columns_to_drop, inplace=True)
 
-    def _filter_to_pandas(self, raw_condition):
+    def _filter_to_pandas(self, raw_condition, df):
         """Convert filter conditions to a paticular
         DataFrame instance"""
         mapping = {
-                    ">": lambda x, y: self.internal_df[x] > y,
-                    "LIKE": lambda x, y: self.internal_df[x].str.contains(y.replace("%", "")),
-                    "<": lambda x, y: self.internal_df[x] < y,
-                    "=": lambda x, y: self.internal_df[x] == y,
-                    "!=": lambda x, y: self.internal_df[x] != y
+                    ">": lambda x, y: df[x] > y,
+                    "LIKE": lambda x, y: df[x].str.contains(y.replace("%", "")),
+                    "<": lambda x, y: df[x] < y,
+                    "=": lambda x, y: df[x] == y,
+                    "!=": lambda x, y: df[x] != y
                   }
         col, cond, val = raw_condition
         return mapping[cond](col, val)
@@ -127,10 +127,12 @@ class DataSource:
 
             return self._setup(*self.args, query=query, **self.kwargs)._df
         else:
+            df = self.internal_df
             if where:
-                for cond in [self._filter_to_pandas(x) for x in where]:
-                    self.internal_df = self.internal_df[cond]
-            return self.internal_df.head(limit) if limit else self.internal_df
+                for cond in where:
+                    pd_cond = self._filter_to_pandas(cond, df)
+                    df = df[pd_cond]
+            return df.head(limit) if limit else df
 
     def __getstate__(self):
         return self.__dict__
