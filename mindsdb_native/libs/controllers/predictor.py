@@ -279,7 +279,7 @@ class Predictor:
                     'heavy_model_metadata.pickle'
                 ))
 
-                for k in ['data_preparation', 'rebuild_model', 'data_source', 'type', 'columns_to_ignore', 'sample_margin_of_error', 'sample_confidence_level', 'stop_training_in_x_seconds']:
+                for k in ['data_preparation', 'rebuild_model', 'type', 'columns_to_ignore', 'sample_margin_of_error', 'sample_confidence_level', 'stop_training_in_x_seconds']:
                     if old_lmd[k] is not None: light_transaction_metadata[k] = old_lmd[k]
 
                 if old_hmd['from_data'] is not None:
