@@ -7,6 +7,9 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 
 class SnowflakeDS(DataSource):
+    def __init__(self, *args, **kwargs):
+        self.is_sql = True
+        super(SnowflakeDS, self).__init__(*args, **kwargs)
 
     def _setup(self, query, host, user, password, account, warehouse, database, schema, protocol='https', port=443):
         con = connector.connect(

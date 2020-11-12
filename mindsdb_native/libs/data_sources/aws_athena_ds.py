@@ -5,11 +5,14 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 
 class AthenaDS(DataSource):
+    def __init__(self, *args, **kwargs):
+        self.is_sql = True
+        super(AthenaDS, self).__init__(*args, **kwargs)
 
     def _setup(self, staging_dir, database=None, table=None, query=None,
                access_key=None, secret_key=None, region_name=None):
         """
-        
+
         :param staging_dir: Full S3 path where Athena temp data will stored. Ex. s3://bucket_name/athena/staging
         :param database: Name of the Database
         :param table: Name of the Table

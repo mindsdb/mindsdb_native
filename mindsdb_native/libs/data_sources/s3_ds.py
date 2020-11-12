@@ -10,6 +10,9 @@ from mindsdb_native import F
 
 
 class S3DS(DataSource):
+    def __init__(self, *args, **kwargs):
+        self.is_sql = False
+        super(S3DS, self).__init__(*args, **kwargs)
 
     def _setup(self, bucket_name, file_path, access_key=None,
                secret_key=None,use_default_credentails=False):

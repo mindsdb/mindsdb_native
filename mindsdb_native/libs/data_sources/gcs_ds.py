@@ -1,4 +1,4 @@
-import os 
+import os
 
 from google.cloud import storage
 from google.oauth2 import service_account
@@ -10,13 +10,16 @@ from mindsdb_native import F
 
 
 class GCSDS(DataSource):
+    def __init__(self, *args, **kwargs):
+        self.is_sql = False
+        super(GCSDS, self).__init__(*args, **kwargs)
 
     def _setup(self, bucket_name, file_path, project_id, auth_json):
 
         self._bucket_name = bucket_name
         self._file_name = os.path.basename(file_path)
 
-        try: 
+        try:
             auth_info = json.loads(auth_json)
             credentials = service_account.Credentials.from_service_account_info(info=auth_info)
         except:

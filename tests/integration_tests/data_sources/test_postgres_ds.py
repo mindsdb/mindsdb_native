@@ -32,7 +32,7 @@ class TestPostgres(unittest.TestCase):
         )
 
         postgres_ds.df = break_dataset(postgres_ds.df)
-                            
+
         assert len(postgres_ds) == LIMIT
 
         F.analyse_dataset(postgres_ds)

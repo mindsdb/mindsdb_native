@@ -234,7 +234,7 @@ class TestPredictor(unittest.TestCase):
         amd = F.get_model_data(name)
         assert isinstance(json.dumps(amd), str)
 
-        for k in ['status', 'name', 'version', 'data_source', 'current_phase',
+        for k in ['status', 'name', 'version', 'current_phase',
                   'updated_at', 'created_at', 'train_end_at']:
             assert isinstance(amd[k], str)
 
