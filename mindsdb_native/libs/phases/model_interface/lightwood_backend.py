@@ -120,7 +120,7 @@ class LightwoodBackend:
                             arr = [None] + arr
                         previous_target_values_arr.append(arr)
 
-                    df_arr[k][f'previous_{target_column}'] = previous_target_values_arr
+                    df_arr[k][f'__mdb_ts_previous_{target_column}'] = previous_target_values_arr
                     for timestep_index in range(1, self.nr_predictions):
                         next_target_value_arr = list(df_arr[k][target_column])
                         for del_index in range(0,timestep_index):
@@ -227,7 +227,7 @@ class LightwoodBackend:
 
                 if self.transaction.lmd['tss']['use_previous_target']:
                     p_col_config = copy.deepcopy(col_config)
-                    p_col_config['name'] = f"previous_{p_col_config['name']}"
+                    p_col_config['name'] = f"__mdb_ts_previous_{p_col_config['name']}"
                     p_col_config['original_type'] = col_config['type']
                     p_col_config['type'] = ColumnDataTypes.TIME_SERIES
 
