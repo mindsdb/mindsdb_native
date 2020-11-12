@@ -110,22 +110,30 @@ class DataSource:
 
         self._internal_df.drop(columns=columns_to_drop, inplace=True)
 
-    def _filter_to_pandas(self, raw_condition, df):
+    def _filter_df(self, raw_condition, df):
         """Convert filter conditions to a paticular
         DataFrame instance"""
-        mapping = {
-                    ">": lambda x, y: df[x] > y,
-                    "like": lambda x, y: df[x].str.contains(y.replace("%", "")),
-                    "<": lambda x, y: df[x] < y,
-                    "=": lambda x, y: df[x] == y,
-                    "!=": lambda x, y: df[x] != y
-                  }
         col, cond, val = raw_condition
-        return mapping[cond.lower()](col, val)
+        cond = cond.lower()
+        df = df[df[col].notnull()]
+
+        if cond == '>':
+            df = df[pd.to_numeric(df[col], errors='coerce') > val]
+        if cond == '<':
+            df = df[pd.to_numeric(df[col], errors='coerce') < val]
+        if cond == 'like':
+            df = df[df[col].str.contains(str(val).replace("%", ""))]
+        if cond == '=':
+            df = df[( df[col] == val ) | ( df[col] == str(val) )]
+        if cond == '!=':
+            df = df[( df[col] != val ) & ( df[col] != str(val) )]
+
+        return df
 
     def filter(self, where=None, limit=None, get_col_map=False):
         """Convert SQL like filter requests to pandas DataFrame filtering"""
-        if self.is_sql:
+        try:
+            assert self.is_sql
             parsed_query = moz_sql_parser.parse(self.query)
 
             for col, op, value in where or []:
@@ -152,7 +160,6 @@ class DataSource:
 
             query = moz_sql_parser.format(parsed_query)
             query = query.replace('"',"'")
-
             args = deepcopy(self.args)
             kwargs = deepcopy(self.kwargs)
 
@@ -161,17 +168,17 @@ class DataSource:
             else:
                 args[0] = query
 
+            print('\n\n\n\n',query,'\n\n\n\n')
             if get_col_map:
                 return self._setup(*args, **kwargs)
             else:
                 return self._setup(*args, **kwargs)[0]
-        else:
+        except Exception as e:
+            print('\n\n\n\n','HERE','\n\n\n\n')
             df = self.df
             if where:
                 for cond in where:
-                    df = df[df[cond[0]].notnull()]
-                    pd_cond = self._filter_to_pandas(cond, df)
-                    df = df[pd_cond]
+                    df = self._filter_df(cond, df)
             return df.head(limit) if limit else df
 
     def __getstate__(self):

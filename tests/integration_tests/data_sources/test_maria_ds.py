@@ -15,7 +15,7 @@ class TestMariaDB(unittest.TestCase):
     def test_maria_ds(self):
         from mindsdb_native import MariaDS
 
-        LIMIT = 100
+        LIMIT = 200
 
         maria_ds = MariaDS(
             table=self.TABLE,
@@ -32,3 +32,9 @@ class TestMariaDB(unittest.TestCase):
         assert len(maria_ds) <= LIMIT
 
         F.analyse_dataset(from_data=maria_ds)
+
+        # Our SQL parsing succeds here, but the query fails, test if we're still able to filter via the dataframe fallback
+        assert maria_ds.is_sql
+
+        assert len(maria_ds.filter([['Population', '<', 33098932]], 8)) == 8
+        assert len(maria_ds.filter([['Development Index', '!=', 3]], 12)) == 12
