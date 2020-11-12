@@ -12,7 +12,7 @@ class MindsdbLogger():
     internal_logger = None
     id = None
 
-    def __init__(self, log_level, uuid):
+    def __init__(self, log_level, uuid, report_uuid):
         '''
         # Initialize the log module, should only be called once at the begging of the program
 
@@ -21,7 +21,8 @@ class MindsdbLogger():
         '''
 
         self.id = uuid
-        self.internal_logger = logging.getLogger('mindsdb-logger-{}'.format(self.id))
+        self.report_uuid = report_uuid
+        self.internal_logger = logging.getLogger('mindsdb-logger-{}-{}'.format(self.id, self.report_uuid))
 
         self.internal_logger.handlers = []
         self.internal_logger.propagate = False

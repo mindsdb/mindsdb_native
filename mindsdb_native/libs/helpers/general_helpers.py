@@ -46,7 +46,7 @@ def check_for_updates():
     Check for updates of mindsdb
     it will ask the mindsdb server if there are new versions, if there are it will log a message
 
-    :return: None
+    :return: uuid_str
     """
 
     # tmp files
@@ -83,7 +83,7 @@ def check_for_updates():
         except Exception:
             log.warning(f'Got no response from update check server!')
         log.warning(f'Could not check for updates, got excetpion: {e}!')
-        return
+        return uuid_str
 
     try:
         if 'version' in ret and ret['version'] != __version__:
@@ -92,6 +92,8 @@ def check_for_updates():
             log.debug('MindsDB is up to date!')
     except Exception:
         log.warning('Could not check for MindsDB updates')
+
+    return uuid_str
 
 
 def convert_cammelcase_to_snake_string(cammel_string):

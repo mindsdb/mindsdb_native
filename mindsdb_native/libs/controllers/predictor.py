@@ -93,12 +93,15 @@ class Predictor:
         """
         self.name = name
         self.uuid = str(uuid.uuid1())
-        self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid)
+        if CONFIG.CHECK_FOR_UPDATES:
+            report_uuid = check_for_updates()
+        else:
+            report_uuid = 'no_report'
+        self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid, report_uuid=report_uuid)
         self.breakpoint = None
         self.transaction = None
 
-        if CONFIG.CHECK_FOR_UPDATES:
-            check_for_updates()
+
 
         if not CONFIG.SAGEMAKER:
             # If storage path is not writable, raise an exception as this can no longer be
