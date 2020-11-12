@@ -22,7 +22,7 @@ class MindsdbLogger():
 
         self.id = uuid
         self.report_uuid = report_uuid
-        self.internal_logger = logging.getLogger('mindsdb-logger-{}-{}'.format(self.id, self.report_uuid))
+        self.internal_logger = logging.getLogger('mindsdb-logger-{}---{}'.format(self.id, self.report_uuid))
 
         self.internal_logger.handlers = []
         self.internal_logger.propagate = False
