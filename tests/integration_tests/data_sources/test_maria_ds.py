@@ -24,7 +24,7 @@ class TestMariaDB(unittest.TestCase):
             password=self.PASSWORD,
             database=self.DATABASE,
             port=self.PORT,
-            query='SELECT * FROM {} LIMIT {}'.format(self.TABLE, LIMIT)
+            query='SELECT * FROM `{}` LIMIT {}'.format(self.TABLE, LIMIT)
         )
 
         maria_ds.df = break_dataset(maria_ds.df)
@@ -35,6 +35,6 @@ class TestMariaDB(unittest.TestCase):
 
         # Our SQL parsing succeds here, but the query fails, test if we're still able to filter via the dataframe fallback
         assert maria_ds.is_sql
-
+        maria_ds.query = maria_ds.query.replace(self.TABLE, 'wrongly_named_table')
         assert len(maria_ds.filter([['Population', '<', 33098932]], 8)) == 8
-        assert len(maria_ds.filter([['Development Index', '!=', 3]], 12)) == 12
+        assert len(maria_ds.filter([['Development_Index', '!=', 3]], 12)) == 12

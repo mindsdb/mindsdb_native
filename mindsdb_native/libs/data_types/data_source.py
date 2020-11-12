@@ -168,13 +168,11 @@ class DataSource:
             else:
                 args[0] = query
 
-            print('\n\n\n\n',query,'\n\n\n\n')
             if get_col_map:
                 return self._setup(*args, **kwargs)
             else:
                 return self._setup(*args, **kwargs)[0]
         except Exception as e:
-            print('\n\n\n\n','HERE','\n\n\n\n')
             df = self.df
             if where:
                 for cond in where:
