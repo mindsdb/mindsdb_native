@@ -90,9 +90,15 @@ class Transaction:
                     except AttributeError:
                         model_path = self.lmd['lightwood_data']['save_path']
                         self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
+
+                    # restore model in normalizer
+                    if self.hmd['icp'][col].nc_function.normalizer is not None:
+                        self.hmd['icp'][col].nc_function.normalizer.model = self.hmd['icp'][col].nc_function.model.model
+
         except FileNotFoundError as e:
             self.hmd['icp'] = {'active': False}
             self.log.warning(f'Could not find mindsdb conformal predictor.')
+
         except Exception as e:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb conformal predictor in the file: {icp_fn}')
@@ -142,6 +148,8 @@ class Transaction:
                             self.hmd['icp'][key].nc_function.model.model = None
                             self.hmd['icp'][key].nc_function.model.last_x = None
                             self.hmd['icp'][key].nc_function.model.last_y = None
+                            if self.hmd['icp'][key].nc_function.normalizer is not None:
+                                self.hmd['icp'][key].nc_function.normalizer.model = None
 
                     dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
 
