@@ -10,6 +10,7 @@ from pathlib import Path
 import uuid
 from contextlib import contextmanager
 
+import psutil
 from sklearn.metrics import (
     balanced_accuracy_score,
     accuracy_score,
@@ -40,8 +41,31 @@ class NumpyJSONEncoder(json.JSONEncoder):
         else:
             return super().default(obj)
 
+def _get_mindsdb_stauts(run_env):
+    if isinstance(run_env, dict) and run_env['trigger'] == 'mindsdb':
+        return 'ran_from_mindsdb'
 
-def check_for_updates():
+    for pid in psutil.pids():
+        if psutil.Process(pid).name() == 'mindsdb':
+            return 'mindsdb_running'
+    
+    try:
+        import mindsdb
+        return 'mindsdb_installer'
+    except Exception:
+        pass
+
+    return 'mindsdb_undetected'
+
+
+
+def _get_notebook():
+    try:
+        return str(get_ipython())[:80]
+    except Exception:
+        return 'None'
+
+def check_for_updates(run_env=None):
     """
     Check for updates of mindsdb
     it will ask the mindsdb server if there are new versions, if there are it will log a message
@@ -67,7 +91,8 @@ def check_for_updates():
     if Path(mdb_file).is_file():
         token = open(mdb_file, 'r').read()
     else:
-        token = '{system}|{version}|{uid}'.format(system=platform.system(), version=__version__, uid=uuid_str)
+        token = '{system}|{version}|{uid}|{notebook}|{mindsdb_status}'.format(
+            system=platform.system(), version=__version__, uid=uuid_str, notebook=_get_notebook(),mindsdb_status=_get_mindsdb_stauts(run_env))
         try:
             open(mdb_file, 'w').write(token)
         except Exception:
