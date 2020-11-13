@@ -83,9 +83,9 @@ def _prepare_timeseries_settings(user_provided_settings):
 
 
 class Predictor:
-    def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL):
+    def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL, run_env=None):
         """
-        This controller defines the API to a MindsDB 'mind', a mind is an object that can learn and predict from data
+        This controller defines the API to a MindsDB Predictor, an object that can learn and predict from data
 
         :param name: the namespace you want to identify this mind instance with
         :param root_folder: the folder where you want to store this mind or load from
@@ -94,7 +94,7 @@ class Predictor:
         self.name = name
         self.uuid = str(uuid.uuid1())
         if CONFIG.CHECK_FOR_UPDATES:
-            self.report_uuid = check_for_updates()
+            self.report_uuid = check_for_updates(run_env)
         else:
             self.report_uuid = 'no_report'
         self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid, report_uuid=self.report_uuid)
