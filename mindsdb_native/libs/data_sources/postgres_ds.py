@@ -7,12 +7,17 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 
 class PostgresDS(DataSource):
-    def __init__(self, *args, **kwargs):
-        self.is_sql = True
-        super(PostgresDS, self).__init__(*args, **kwargs)
+    def __init__(self, query, database='postgres', host='localhost',
+                 port=5432, user='postgres', password=''):
+        self.query = query
+        self.database = database
+        self.host = host
+        self.port = int(port)
+        self.user = user
+        self.password = password
+        super().__init__(sql_query=query)
 
-    def _setup(self, table=None, query=None, database='postgres', host='localhost',
-               port=5432, user='postgres', password=''):
+    def _setup(self, query=None, **kwargs):
 
         self._database_name = database
         self._table_name = table

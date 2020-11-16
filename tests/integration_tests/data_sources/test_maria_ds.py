@@ -18,7 +18,6 @@ class TestMariaDB(unittest.TestCase):
         LIMIT = 200
 
         maria_ds = MariaDS(
-            table=self.TABLE,
             host=self.HOST,
             user=self.USER,
             password=self.PASSWORD,

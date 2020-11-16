@@ -5,34 +5,29 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 
 class MariaDS(DataSource):
-    def __init__(self, *args, **kwargs):
-        self.is_sql = True
-        super(MariaDS, self).__init__(*args, **kwargs)
+    def __init__(self, query, database='mysql', host='localhost', port=3306,
+                 user='root', password=''):
+        self.query = query
+        self.database = database
+        self.host = host
+        self.port = int(port)
+        self.user = user
+        self.password = password
+        super().__init__(sql_query=query)
 
-    def _setup(self, table=None, query=None, database='mysql', host='localhost',
-               port=3306, user='root', password=''):
-
-        self._database_name = database
-        self._table_name = table
-
-        if query is None:
-            query = f'SELECT * FROM {table}'
-
+    def _setup(self, query=None, **kwargs):
         con = mysql.connector.connect(
-            host=host,
-            port=int(port),
-            user=user,
-            password=password,
-            database=database
+            host=self.host,
+            port=self.port,
+            user=self.user,
+            password=self.password,
+            database=self.database
         )
-        df = pd.read_sql(query, con=con)
+
+        df = pd.read_sql(query or self.query, con=con)
         con.close()
 
-        col_map = {}
-        for col in df.columns:
-            col_map[col] = col
-
-        return df, col_map
+        return super()._setup(df)
 
     def name(self):
         return '{}: {}'.format(

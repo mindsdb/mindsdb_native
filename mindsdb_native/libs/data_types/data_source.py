@@ -13,31 +13,21 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
 class DataSource:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, sql_query):
         self.data_types = {}
         self.data_subtypes = {}
         self._internal_df = None
         self._internal_col_map = None
-        self.args = args
-        self.kwargs = kwargs
 
-        if 'is_sql' not in self.__dict__:
-            self.is_sql = False
-
-        # @TOOD Let's just make the query an "obligatory" first arg of all sql datasources
-        if self.is_sql:
-            # @TODO Also, even if we do the above, it might be wiser to set the `query` inside each separate datasource child ?
-            try:
-                self.query = self.kwargs['query']
-            except Exception as e:
-                self.query = self.args[0]
+        self.is_sql = sql_query is not None
+        self.query = sql_query
 
         self._cleanup()
 
     def __len__(self):
         return len(self.df)
 
-    def _setup(self, df, **kwargs):
+    def _setup(self, df, *kwargs):
         col_map = {}
 
         for col in df.columns:
@@ -68,7 +58,7 @@ class DataSource:
     @property
     def df(self):
         if self._internal_df is None:
-            self._internal_df, self._internal_col_map = self._setup(*self.args, **self.kwargs)
+            self._internal_df, self._internal_col_map = self._setup()
         return self._internal_df
 
     @df.setter
@@ -82,7 +72,7 @@ class DataSource:
             if self.is_sql:
                 _, self._internal_col_map = self.filter(where=[], limit=1, get_col_map=True)
             else:
-                self._internal_df, self._internal_col_map = self._setup(*self.args, **self.kwargs)
+                self._internal_df, self._internal_col_map = self._setup()
 
         return self._internal_col_map
 
@@ -160,19 +150,12 @@ class DataSource:
 
             query = moz_sql_parser.format(parsed_query)
             query = query.replace('"',"'")
-            args = deepcopy(self.args)
-            kwargs = deepcopy(self.kwargs)
-
-            if 'query' in kwargs:
-                kwargs['query'] = query
-            else:
-                args[0] = query
 
             if get_col_map:
-                return self._setup(*args, **kwargs)
+                return self._setup(query=query)
             else:
-                return self._setup(*args, **kwargs)[0]
-        except Exception as e:
+                return self._setup(query=query)[0]
+        except Exception:
             df = self.df
             if where:
                 for cond in where:

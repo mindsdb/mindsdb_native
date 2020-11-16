@@ -18,7 +18,6 @@ class TestMYSQL(unittest.TestCase):
         LIMIT = 400
 
         mysql_ds = MySqlDS(
-            table=self.TABLE,
             host=self.HOST,
             user=self.USER,
             password=self.PASSWORD,
