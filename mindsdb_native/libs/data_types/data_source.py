@@ -21,7 +21,7 @@ class DataSource:
             self._internal_df = df
             self._internal_col_map = None
         else:
-            self._internal_df, self._internal_col_map = self._make_col_map(self._internal_df)
+            self._internal_df, self._internal_col_map = self._make_col_map(df)
 
         self.is_sql = sql_query is not None
         self.query = sql_query
@@ -33,7 +33,6 @@ class DataSource:
 
     def _setup(self, *kwargs):
         return self._internal_df, self._internal_col_map
-        return self._make_col_map(self._internal_df)
 
     def _make_col_map(self, df):
         col_map = {}
