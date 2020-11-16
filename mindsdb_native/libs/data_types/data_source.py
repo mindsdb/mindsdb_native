@@ -13,11 +13,15 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
 class DataSource:
-    def __init__(self, sql_query):
+    def __init__(self, df=None, sql_query=None):
         self.data_types = {}
         self.data_subtypes = {}
-        self._internal_df = None
-        self._internal_col_map = None
+
+        if df is None:
+            self._internal_df = df
+            self._internal_col_map = None
+        else:
+            self._internal_df, self._internal_col_map = self._make_col_map(self._internal_df)
 
         self.is_sql = sql_query is not None
         self.query = sql_query
@@ -28,7 +32,8 @@ class DataSource:
         return len(self.df)
 
     def _setup(self, *kwargs):
-        raise NotImplementedError
+        return self._internal_df, self._internal_col_map
+        return self._make_col_map(self._internal_df)
 
     def _make_col_map(self, df):
         col_map = {}

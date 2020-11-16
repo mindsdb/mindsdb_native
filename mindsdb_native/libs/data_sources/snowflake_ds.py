@@ -33,11 +33,7 @@ class SnowflakeDS(DataSource):
         self._database = database
         self._warehouse = warehouse
 
-        col_map = {}
-        for col in df.columns:
-            col_map[col] = col
-
-        return df, col_map
+        return self._make_col_map(df)
 
     def name(self):
         return '{}: {}/{}'.format(
