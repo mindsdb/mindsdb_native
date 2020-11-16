@@ -51,7 +51,7 @@ class ClickhouseDS(DataSource):
         
         df = pd.DataFrame(data)
 
-        return super()._setup(df)
+        return self._make_col_map(df)
 
     def name(self):
         return '{}'.format(self.__class__.__name__)

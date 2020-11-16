@@ -18,35 +18,24 @@ class PostgresDS(DataSource):
         super().__init__(sql_query=query)
 
     def _setup(self, query=None, **kwargs):
-
-        self._database_name = database
-        self._table_name = table
-
-        if query is None:
-            query = f'SELECT * FROM {table}'
-
         con = pg8000.connect(
-            database=database,
-            user=user,
-            password=password,
-            host=host,
-            port=port
+            database=self.database,
+            user=self.user,
+            password=self.password,
+            host=self.host,
+            port=self.port
         )
-        df = pd.read_sql(query, con=con)
+        df = pd.read_sql(query or self.query, con=con)
         con.close()
 
         df.columns = [x if isinstance(x, str) else x.decode('utf-8') for x in df.columns]
         for col_name in df.columns:
             try:
                 df[col_name] = df[col_name].apply(lambda x: x if isinstance(x, str) else x.decode('utf-8'))
-            except:
+            except Exception:
                 pass
-
-        col_map = {}
-        for col in df.columns:
-            col_map[col] = col
-
-        return df, col_map
+        
+        return self._make_col_map(df)
 
     def name(self):
         return '{}: {}/{}'.format(

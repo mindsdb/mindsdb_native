@@ -27,7 +27,10 @@ class DataSource:
     def __len__(self):
         return len(self.df)
 
-    def _setup(self, df, *kwargs):
+    def _setup(self, *kwargs):
+        raise NotImplementedError
+
+    def _make_col_map(self, df):
         col_map = {}
 
         for col in df.columns:
