@@ -25,7 +25,11 @@ class TestBrokenDatasets(ClickhouseTest):
         stats_2 = F.analyse_dataset(ds)['data_analysis_v2']
 
         for col in ds.df.columns:
-            assert stats_1[col]['typing']['data_type'] == stats_2[col]['typing']['data_type']
+            if col in stats_1 and col in stats_2:
+                assert stats_1[col]['typing']['data_type'] == stats_2[col]['typing']['data_type']
+            else:
+                if not (col not in stats_1 and col not in stats_2):
+                    raise AssertionError
 
     def test_hdi(self):
         ds = self.get_ds('hdi', limit=500)
@@ -35,7 +39,11 @@ class TestBrokenDatasets(ClickhouseTest):
         stats_2 = F.analyse_dataset(ds)['data_analysis_v2']
 
         for col in ds.df.columns:
-            assert stats_1[col]['typing']['data_type'] == stats_2[col]['typing']['data_type']
+            if col in stats_1 and col in stats_2:
+                assert stats_1[col]['typing']['data_type'] == stats_2[col]['typing']['data_type']
+            else:
+                if not (col not in stats_1 and col not in stats_2):
+                    raise AssertionError
 
     def test_us_health_insurance(self):
         ds = self.get_ds('us_health_insurance', limit=500)
@@ -45,4 +53,8 @@ class TestBrokenDatasets(ClickhouseTest):
         stats_2 = F.analyse_dataset(ds)['data_analysis_v2']
 
         for col in ds.df.columns:
-            assert stats_1[col]['typing']['data_type'] == stats_2[col]['typing']['data_type']
+            if col in stats_1 and col in stats_2:
+                assert stats_1[col]['typing']['data_type'] == stats_2[col]['typing']['data_type']
+            else:
+                if not (col not in stats_1 and col not in stats_2):
+                    raise AssertionError
