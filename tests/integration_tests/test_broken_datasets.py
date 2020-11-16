@@ -36,3 +36,13 @@ class TestBrokenDatasets(ClickhouseTest):
 
         for col in ds.df.columns:
             assert stats_1[col]['typing']['data_type'] == stats_2[col]['typing']['data_type']
+
+    def test_us_health_insurance(self):
+        ds = self.get_ds('us_health_insurance', limit=500)
+        stats_1 = F.analyse_dataset(ds)['data_analysis_v2']
+
+        ds.df = break_dataset(ds.df)
+        stats_2 = F.analyse_dataset(ds)['data_analysis_v2']
+
+        for col in ds.df.columns:
+            assert stats_1[col]['typing']['data_type'] == stats_2[col]['typing']['data_type']
