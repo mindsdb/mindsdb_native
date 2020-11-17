@@ -272,10 +272,15 @@ class TestPredictor(unittest.TestCase):
 
         # Test confidence estimation after save -> load
         F.export_predictor(name)
+        try:
+            F.delete_model(f'{name}-new')
+        except:
+            pass
         F.import_model(f'{name}.zip', f'{name}-new')
         p = Predictor(name=f'{name}-new')
         predictions = p.predict(when_data={'sqft': 1000}, use_gpu=use_gpu)
         self.assert_prediction_interface(predictions)
+        F.delete_model(f'{name}-new')
 
     def test_category_tags_input(self):
         vocab = random.sample(SMALL_VOCAB, 10)

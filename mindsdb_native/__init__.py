@@ -72,3 +72,8 @@ except ImportError:
     GCSDS = None
 
 MindsDB = Predictor
+
+from mindsdb_native.libs.helpers.general_helpers import check_for_updates
+from mindsdb_native.config import CONFIG
+if CONFIG.CHECK_FOR_UPDATES:
+    check_for_updates()
