@@ -7,7 +7,8 @@ from mindsdb_native.libs.helpers.text_helpers import gen_chars
 from mindsdb_native.config import CONFIG
 from inspect import getframeinfo, stack
 
-log = MindsdbLogger(log_level=CONFIG.DEFAULT_LOG_LEVEL, uuid='core-logger', report_uuid='')
+log = None
+
 class MindsdbLogger():
     global log
     internal_logger = None
@@ -125,3 +126,5 @@ class MindsdbLogger():
                 self.info(message)
                 self.info('info type: {type}'.format(type=type))
             self.info(gen_chars(10, '-'))
+
+log = MindsdbLogger(log_level=CONFIG.DEFAULT_LOG_LEVEL, uuid='core-logger', report_uuid='')
