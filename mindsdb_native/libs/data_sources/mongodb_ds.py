@@ -4,12 +4,16 @@ from pymongo import MongoClient
 from mindsdb_native.libs.data_types.data_source import DataSource
 
 class MongoDS(DataSource):
+    def __init__(self, *args, **kwargs):
+        self.is_sql = False
+        super(MongoDS, self).__init__(*args, **kwargs)
+
     def _setup(self, collection, query=None, database='database',
                host='localhost', port=27017, user='admin', password='123'):
 
         if not isinstance(collection, str):
             raise TypeError('collection must be a str')
-        
+
         self._database_name = database
         self._collection_name = collection
 

@@ -34,6 +34,7 @@ class TestPredictor(unittest.TestCase):
 
     def test_sample_for_training(self):
         predictor = Predictor(name='test_sample_for_training')
+        assert predictor.report_uuid == 'no_report'
 
         n_points = 100
         input_dataframe = pd.DataFrame({
@@ -234,7 +235,7 @@ class TestPredictor(unittest.TestCase):
         amd = F.get_model_data(name)
         assert isinstance(json.dumps(amd), str)
 
-        for k in ['status', 'name', 'version', 'data_source', 'current_phase',
+        for k in ['status', 'name', 'version', 'current_phase',
                   'updated_at', 'created_at', 'train_end_at']:
             assert isinstance(amd[k], str)
 
@@ -271,10 +272,15 @@ class TestPredictor(unittest.TestCase):
 
         # Test confidence estimation after save -> load
         F.export_predictor(name)
+        try:
+            F.delete_model(f'{name}-new')
+        except:
+            pass
         F.import_model(f'{name}.zip', f'{name}-new')
         p = Predictor(name=f'{name}-new')
         predictions = p.predict(when_data={'sqft': 1000}, use_gpu=use_gpu)
         self.assert_prediction_interface(predictions)
+        F.delete_model(f'{name}-new')
 
     def test_category_tags_input(self):
         vocab = random.sample(SMALL_VOCAB, 10)

@@ -323,8 +323,8 @@ def get_model_data(model_name=None, lmd=None):
         amd['status'] = 'training'
 
     # Shared keys
-    for k in ['name', 'version', 'is_active', 'data_source', 'predict', 'current_phase',
-    'train_end_at', 'updated_at', 'created_at','data_preparation', 'validation_set_accuracy']:
+    for k in ['name', 'version', 'is_active', 'predict', 'current_phase',
+    'train_end_at', 'updated_at', 'created_at','data_preparation', 'validation_set_accuracy', 'report_uuid']:
         if k == 'predict':
             amd[k] = lmd['predict_columns']
         elif k in lmd:
@@ -472,7 +472,7 @@ def get_models():
         try:
             amd = get_model_data(model_name)
             model = {}
-            for k in ['name', 'version', 'is_active', 'data_source', 'predict',
+            for k in ['name', 'version', 'is_active', 'predict',
             'status', 'train_end_at', 'updated_at', 'created_at','current_phase', 'accuracy']:
                 if k in amd:
                     model[k] = amd[k]

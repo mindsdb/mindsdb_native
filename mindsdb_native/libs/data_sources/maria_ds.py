@@ -5,6 +5,10 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 
 
 class MariaDS(DataSource):
+    def __init__(self, *args, **kwargs):
+        self.is_sql = True
+        super(MariaDS, self).__init__(*args, **kwargs)
+
     def _setup(self, table=None, query=None, database='mysql', host='localhost',
                port=3306, user='root', password=''):
 
