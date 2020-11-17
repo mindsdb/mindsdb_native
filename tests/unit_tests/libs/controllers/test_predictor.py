@@ -34,6 +34,7 @@ class TestPredictor(unittest.TestCase):
 
     def test_sample_for_training(self):
         predictor = Predictor(name='test_sample_for_training')
+        assert predictor.report_uuid == 'no_report'
 
         n_points = 100
         input_dataframe = pd.DataFrame({
