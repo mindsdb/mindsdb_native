@@ -83,9 +83,9 @@ def _prepare_timeseries_settings(user_provided_settings):
 
 
 class Predictor:
-    def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL):
+    def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL, run_env=None):
         """
-        This controller defines the API to a MindsDB 'mind', a mind is an object that can learn and predict from data
+        This controller defines the API to a MindsDB Predictor, an object that can learn and predict from data
 
         :param name: the namespace you want to identify this mind instance with
         :param root_folder: the folder where you want to store this mind or load from
@@ -93,12 +93,15 @@ class Predictor:
         """
         self.name = name
         self.uuid = str(uuid.uuid1())
-        self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid)
+        if CONFIG.CHECK_FOR_UPDATES:
+            self.report_uuid = check_for_updates(run_env)
+        else:
+            self.report_uuid = 'no_report'
+        self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid, report_uuid=self.report_uuid)
         self.breakpoint = None
         self.transaction = None
 
-        if CONFIG.CHECK_FOR_UPDATES:
-            check_for_updates()
+
 
         if not CONFIG.SAGEMAKER:
             # If storage path is not writable, raise an exception as this can no longer be
@@ -243,7 +246,7 @@ class Predictor:
                 data_subtypes = {},
                 equal_accuracy_for_all_output_categories = equal_accuracy_for_all_output_categories,
                 output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
-
+                report_uuid = self.report_uuid,
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
                 force_column_usage = advanced_args.get('force_column_usage', []),
@@ -389,6 +392,7 @@ class Predictor:
                 type = transaction_type,
                 use_gpu = use_gpu,
                 data_preparation = {},
+                report_uuid = self.report_uuid,
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 use_database_history = advanced_args.get('use_database_history', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
