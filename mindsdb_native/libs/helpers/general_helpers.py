@@ -41,7 +41,7 @@ class NumpyJSONEncoder(json.JSONEncoder):
         else:
             return super().default(obj)
 
-def _get_mindsdb_stauts(run_env):
+def _get_mindsdb_status(run_env):
     if isinstance(run_env, dict) and run_env['trigger'] == 'mindsdb':
         return 'ran_from_mindsdb'
 
@@ -94,7 +94,7 @@ def check_for_updates(run_env=None):
             uuid_str = f'{uuid_str}.NO_WRITE'
 
     token = '{system}|{version}|{uid}|{notebook}|{mindsdb_status}'.format(
-        system=platform.system(), version=__version__, uid=uuid_str, notebook=_get_notebook(),mindsdb_status=_get_mindsdb_stauts(run_env))
+        system=platform.system(), version=__version__, uid=uuid_str, notebook=_get_notebook(),mindsdb_status=_get_mindsdb_status(run_env))
     try:
         ret = requests.get('https://public.api.mindsdb.com/updates/mindsdb_native/{token}'.format(token=token), headers={'referer': 'http://check.mindsdb.com/?token={token}'.format(token=token)})
         ret = ret.json()
