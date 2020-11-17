@@ -122,8 +122,3 @@ class MindsdbLogger():
                 self.info(message)
                 self.info('info type: {type}'.format(type=type))
             self.info(gen_chars(10, '-'))
-
-
-
-main_logger_uuid = 'core-logger'
-log = MindsdbLogger(log_level=CONFIG.DEFAULT_LOG_LEVEL, uuid=main_logger_uuid)
