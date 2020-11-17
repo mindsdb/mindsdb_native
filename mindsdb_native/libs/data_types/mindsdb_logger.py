@@ -7,8 +7,9 @@ from mindsdb_native.libs.helpers.text_helpers import gen_chars
 from mindsdb_native.config import CONFIG
 from inspect import getframeinfo, stack
 
-
+log = MindsdbLogger(log_level=CONFIG.DEFAULT_LOG_LEVEL, uuid='core-logger', report_uuid='')
 class MindsdbLogger():
+    global log
     internal_logger = None
     id = None
 
@@ -19,6 +20,8 @@ class MindsdbLogger():
         :param log_level: What logs to display
         :param uuid: The unique id for this MindsDB instance or training/prediction session
         '''
+        if uuid != 'core-logger':
+            log = MindsdbLogger(log_level=CONFIG.DEFAULT_LOG_LEVEL, uuid='core-logger', report_uuid=report_uuid)
 
         self.id = uuid
         self.report_uuid = report_uuid
