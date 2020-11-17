@@ -46,9 +46,14 @@ def _get_mindsdb_stauts(run_env):
         return 'ran_from_mindsdb'
 
     for pid in psutil.pids():
-        if psutil.Process(pid).name() == 'mindsdb':
+        name = str(psutil.Process(pid).cmdline())
+        if 'mindsdb' in name and 'native' not in name:
             return 'mindsdb_running'
-    
+
+        name = psutil.Process(pid).name()
+        if 'mindsdb' in name and 'native' not in name:
+            return 'mindsdb_running'
+
     try:
         import mindsdb
         return 'mindsdb_installer'
@@ -88,17 +93,8 @@ def check_for_updates(run_env=None):
             log.warning(f'Cannot store token, Please add write permissions to file: {uuid_file}')
             uuid_str = f'{uuid_str}.NO_WRITE'
 
-    if Path(mdb_file).is_file():
-        token = open(mdb_file, 'r').read()
-    else:
-        token = '{system}|{version}|{uid}|{notebook}|{mindsdb_status}'.format(
-            system=platform.system(), version=__version__, uid=uuid_str, notebook=_get_notebook(),mindsdb_status=_get_mindsdb_stauts(run_env))
-        try:
-            open(mdb_file, 'w').write(token)
-        except Exception:
-            log.warning(f'Cannot store token, Please add write permissions to file: {mdb_file}')
-            token = f'{token}.NO_WRITE'
-
+    token = '{system}|{version}|{uid}|{notebook}|{mindsdb_status}'.format(
+        system=platform.system(), version=__version__, uid=uuid_str, notebook=_get_notebook(),mindsdb_status=_get_mindsdb_stauts(run_env))
     try:
         ret = requests.get('https://public.api.mindsdb.com/updates/mindsdb_native/{token}'.format(token=token), headers={'referer': 'http://check.mindsdb.com/?token={token}'.format(token=token)})
         ret = ret.json()
