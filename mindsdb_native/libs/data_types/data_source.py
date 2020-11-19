@@ -13,7 +13,9 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
 class DataSource:
-    def __init__(self):
+    def __init__(self, df=None):
+        if df is not None:
+            self.df = df
         self.data_types = {}
         self.data_subtypes = {}
         self._internal_df = None
@@ -85,11 +87,8 @@ class DataSource:
 
         self._internal_df.drop(columns=columns_to_drop, inplace=True)
 
-    def query(self, q):
-        """
-        Must return tuple(pandas.DataFrame, dict)
-        """
-        raise NotImplementedError
+    def query(self, q=None):
+        return self.df, self._make_colmap(self.df)
 
     def _filter_df(self, raw_condition, df):
         """Convert filter conditions to a paticular
