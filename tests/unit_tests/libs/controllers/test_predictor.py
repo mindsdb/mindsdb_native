@@ -456,3 +456,25 @@ class TestPredictor(unittest.TestCase):
         assert sum([predictor.transaction.input_data.train_df.shape[0],
                     predictor.transaction.input_data.test_df.shape[0],
                     predictor.transaction.input_data.validation_df.shape[0]]) == n_points + 1
+
+    def test_empty_column(self):
+        mdb = Predictor(name='test_empty_column')
+
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'empty_col': [None] * n_points,
+            'numeric_x': list(range(n_points)),
+            'categorical_x': [int(x % 2 == 0) for x in range(n_points)],
+        }, index=list(range(n_points)))
+
+        input_dataframe['numeric_y'] = input_dataframe.numeric_x + 2 * input_dataframe.categorical_x
+
+        mdb.learn(
+            from_data=input_dataframe,
+            to_predict='numeric_y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False,
+            advanced_args={'debug': True}
+        )
+
+        mdb.predict(when_data={'categorical_x': 0})
