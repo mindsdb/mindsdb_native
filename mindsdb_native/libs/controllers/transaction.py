@@ -379,7 +379,12 @@ class PredictTransaction(Transaction):
                                 diff = sample[1, idx] - sample[0, idx]
                                 if diff <= tolerance:
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                    output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
+                                    conf_range = list(sample[:, idx])
+
+                                    # for positive numerical domains
+                                    if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
+                                        conf_range[0] = max(0, conf_range[0])
+                                    output_data[f'{predicted_col}_confidence_range'][sample_idx] = conf_range
                                     break
                             else:
                                 output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
