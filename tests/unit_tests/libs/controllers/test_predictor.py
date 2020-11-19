@@ -458,7 +458,7 @@ class TestPredictor(unittest.TestCase):
                     predictor.transaction.input_data.validation_df.shape[0]]) == n_points + 1
 
     def test_empty_column(self):
-        mdb = Predictor(name='test_explain_prediction')
+        mdb = Predictor(name='test_empty_column')
 
         n_points = 100
         input_dataframe = pd.DataFrame({
