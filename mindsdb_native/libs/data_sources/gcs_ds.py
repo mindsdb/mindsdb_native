@@ -10,25 +10,21 @@ from mindsdb_native import F
 
 
 class GCSDS(DataSource):
-    def __init__(self, *args, **kwargs):
-        self.is_sql = False
-        super(GCSDS, self).__init__(*args, **kwargs)
+    def __init__(self, bucket_name, file_path, project_id, auth_json):
+        super().__init__()
+        self.bucket_name = bucket_name
+        self.file_path = file_path
 
-    def _setup(self, bucket_name, file_path, project_id, auth_json):
-
-        self._bucket_name = bucket_name
-        self._file_name = os.path.basename(file_path)
-
+    def query(self, q=None):
         try:
             auth_info = json.loads(auth_json)
             credentials = service_account.Credentials.from_service_account_info(info=auth_info)
-        except:
+        except Exception:
             credentials = service_account.Credentials.from_service_account_file(filename=auth_json)
 
-
         gc_client = storage.Client(credentials=credentials, project=project_id)
-        bucket = gc_client.get_bucket(bucket_name)
-        blob = storage.Blob(file_path, bucket)
+        bucket = gc_client.get_bucket(self.bucket_name)
+        blob = storage.Blob(self.file_path, bucket)
 
         self.tmp_file_name = '.tmp_mindsdb_data_file'
 
@@ -36,15 +32,14 @@ class GCSDS(DataSource):
             gc_client.download_blob_to_file(blob, fw)
 
         file_ds = FileDS(self.tmp_file_name)
-        return file_ds.df, file_ds._col_map
 
-    def _cleanup(self):
         os.remove(self.tmp_file_name)
 
+        return file_ds.df, file_ds._col_map
 
     def name(self):
         return '{}: {}/{}'.format(
             self.__class__.__name__,
-            self._bucket_name,
-            self._file_name
+            self.bucket_name,
+            self.file_path
         )
