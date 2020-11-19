@@ -166,6 +166,8 @@ class LightwoodBackend:
             other_keys = {'encoder_attrs': {}}
             if data_type == DATA_TYPES.NUMERIC:
                 lightwood_data_type = ColumnDataTypes.NUMERIC
+                if col_name in self.transaction.lmd['predict_columns'] and col_stats.get('positive_domain', False):
+                    other_keys['encoder_attrs']['positive_domain'] = True
 
             elif data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:

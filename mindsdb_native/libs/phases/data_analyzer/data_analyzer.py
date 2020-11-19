@@ -299,18 +299,22 @@ class DataAnalyzer(BaseModule):
                     stats_v2[col_name]['bias']['warning'] = warning_str + " This doesn't necessarily mean there's an issue with your data, it just indicates a higher than usual probability there might be some issue."
 
                 if data_type == DATA_TYPES.NUMERIC:
-                        outliers = lof_outliers(data_subtype, col_data)
-                        stats_v2[col_name]['outliers'] = {
-                            'outlier_values': outliers,
-                            'outlier_buckets': compute_outlier_buckets(
-                                outlier_values=outliers,
-                                hist_x=histogram['x'],
-                                hist_y=histogram['y'],
-                                percentage_buckets=percentage_buckets,
-                                col_stats=stats_v2[col_name]
-                            ),
-                            'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""
-                        }
+                    outliers = lof_outliers(data_subtype, col_data)
+                    stats_v2[col_name]['outliers'] = {
+                        'outlier_values': outliers,
+                        'outlier_buckets': compute_outlier_buckets(
+                            outlier_values=outliers,
+                            hist_x=histogram['x'],
+                            hist_y=histogram['y'],
+                            percentage_buckets=percentage_buckets,
+                            col_stats=stats_v2[col_name]
+                        ),
+                        'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""
+                    }
+                    # specify positive numerical domain
+                    if stats_v2[col_name]['histogram']['x'][0] >= 0:
+                        stats_v2[col_name]['positive_domain'] = True
+
 
             if data_type == DATA_TYPES.TEXT:
                 lang_dist = get_language_dist(col_data)
@@ -326,7 +330,6 @@ class DataAnalyzer(BaseModule):
                 if isinstance(x, dict) and 'warning' in x:
                     self.log.warning(x['warning'])
                 stats_v2[col_name]['nr_warnings'] += 1
-            self.log.info(f'Finished analyzing column: {col_name} !\n')
 
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
@@ -344,6 +347,8 @@ class DataAnalyzer(BaseModule):
             if data_type == DATA_TYPES.CATEGORICAL:
                 if DATA_TYPES.NUMERIC in stats_v2[col_name]['additional_info']['other_potential_types']:
                     stats_v2[col_name]['typing']['alias'] = DATA_TYPE_ALIASES.NUMERICAL_LOW_GRANULARITY
+
+            self.log.info(f'Finished analyzing column: {col_name} !\n')
 
         self.transaction.lmd['data_preparation']['accepted_margin_of_error'] = self.transaction.lmd['sample_settings']['sample_margin_of_error']
 
