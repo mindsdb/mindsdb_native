@@ -13,13 +13,21 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
 class DataSource:
-    def __init__(self, df=None):
+    def __init__(self, df=None, query=None):
+        if type(self) is DataSource and df is None:
+            raise Exception('When you\'re instantiating DataSource, you must provide :param df:')
+
+        self._query = query
+
         if df is not None:
-            self.df = df
+            self._internal_df = df
+            self._internal_col_map = self._make_colmap(df)
+        else:
+            self._internal_df = None
+            self._internal_col_map = None
+
         self.data_types = {}
         self.data_subtypes = {}
-        self._internal_df = None
-        self._internal_col_map = None
 
     def __len__(self):
         return len(self.df)
@@ -88,7 +96,24 @@ class DataSource:
         self._internal_df.drop(columns=columns_to_drop, inplace=True)
 
     def query(self, q=None):
-        return self.df, self._make_colmap(self.df)
+        """
+        :param q: a query specific to type of datasource
+        Datasources must override this method to return pandas.DataFrame
+        based on :param q:
+        e.g. for MySqlDS :param q: must be a SQL query
+             for MongoDS :param q: must be a dictionary
+            
+        :return: tuple(pandas.DataFrame, dict)
+        """
+
+        # If it's not a subclass of DataSource, then dataframe was provided
+        # in the constructor and we just return it
+        if type(self) is DataSource:
+            return self._internal_df, self._internal_col_map
+
+        # If it is a subclass of DataSource, then this method must be overriden
+        else:
+            raise NotImplementedError('You must override DataSource.query')
 
     def _filter_df(self, raw_condition, df):
         """Convert filter conditions to a paticular
@@ -128,7 +153,7 @@ class DataSource:
         Map all other functions to the DataFrame
         """
         try:
-            return super().__getattr__(attr)
+            return super().__getattribute__(attr)
         except AttributeError:
             return getattr(self.df, attr)
 
@@ -147,8 +172,7 @@ class DataSource:
 
 class SQLDataSource(DataSource):
     def __init__(self, query):
-        super().__init__()
-        self._query = query
+        super().__init__(query=query)
 
     def filter(self, where=None, limit=None, get_col_map=False):
         try:

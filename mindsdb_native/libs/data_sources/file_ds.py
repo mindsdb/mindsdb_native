@@ -31,41 +31,21 @@ class FileDS(DataSource):
         self.clean_rows = clean_rows
         self.custom_parser = custom_parser
 
-    @property
-    def df(self):
-        if self._internal_df is None:
-            self._internal_df, self._internal_col_map = self.query(
-                self.file,
-                self.clean_rows,
-                self.custom_parser
-            )
-        return self._internal_df
-
-    @property
-    def _col_map(self):
-        if self._internal_df is None:
-            self._internal_df, self._internal_col_map = self.query(
-                self.file,
-                self.clean_rows,
-                self.custom_parser
-            )
-        return self._internal_col_map
-
-    def query(self, file, clean_rows=True, custom_parser=None):
+    def query(self, q=None):
         """
         Setup from file
         :param file: fielpath or url
         :param clean_rows: if you want to clean rows for strange null values
         :param custom_parser: if you want to parse the file with some custom parser
         """
-        self._file_name = os.path.basename(file)
+        self._file_name = os.path.basename(self.file)
 
         # get file data io, format and dialect
-        data, fmt, dialect = self._getDataIo(file)
+        data, fmt, dialect = self._getDataIo(self.file)
         data.seek(0) # make sure we are at 0 in file pointer
 
-        if custom_parser:
-            header, file_data = custom_parser(data, fmt)
+        if self.custom_parser:
+            header, file_data = self.custom_parser(data, fmt)
 
         elif fmt == 'csv':
             csv_reader = list(csv.reader(data, dialect))
@@ -88,7 +68,7 @@ class FileDS(DataSource):
         else:
             raise ValueError('Could not load file into any format, supported formats are csv, json, xls, xlsx')
 
-        if clean_rows == True:
+        if self.clean_rows:
             file_list_data = [clean_row(row) for row in file_data]
         else:
             file_list_data = file_data
