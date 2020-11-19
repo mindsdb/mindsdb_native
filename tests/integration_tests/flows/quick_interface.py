@@ -23,6 +23,8 @@ class TestQuickInterface(unittest.TestCase):
 
         # Reload with a different name to see if it's saved properly
         test_predictor = mindsdb_native.Predictor(name='test_quick_interface')
+        # Assert `report_uuid` is present and reporting is disabled, here just to have it somewhere in integration tests
+        assert test_predictor.report_uuid == 'no_report'
 
         # Make some predictions with quick_predict and make sure they look alright
         predictions = test_predictor.quick_predict(df_test)
