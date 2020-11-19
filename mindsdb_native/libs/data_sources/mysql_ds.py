@@ -26,11 +26,7 @@ class MySqlDS(SQLDataSource):
         df = pd.read_sql(q, con=con)
         con.close()
 
-        col_map = {}
-        for col in df.columns:
-            col_map[col] = col
-
-        return df, col_map
+        return df, self._make_colmap(df)
 
     def name(self):
         return '{}: {}'.format(

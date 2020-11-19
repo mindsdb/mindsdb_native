@@ -13,7 +13,7 @@ from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
 class DataSource:
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self.data_types = {}
         self.data_subtypes = {}
         self._internal_df = None
@@ -22,13 +22,11 @@ class DataSource:
     def __len__(self):
         return len(self.df)
 
-    def _setup(self, df, **kwargs):
+    def _make_colmap(self, df):
         col_map = {}
-
         for col in df.columns:
             col_map[col] = col
-
-        return df, col_map
+        return col_map
 
     def set_subtypes(self, data_subtypes):
         """

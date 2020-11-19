@@ -3,45 +3,48 @@ import os
 
 from snowflake import connector
 
-from mindsdb_native.libs.data_types.data_source import DataSource
+from mindsdb_native.libs.data_types.data_source import SQLDataSource
 
 
-class SnowflakeDS(DataSource):
-    def __init__(self, *args, **kwargs):
-        self.is_sql = True
-        super(SnowflakeDS, self).__init__(*args, **kwargs)
+class SnowflakeDS(SQLDataSource):
+    def __init__(self, query, host, user, password, account, warehouse,
+                 database, schema, protocol='https', port=443):
+        super().__init__(query)
+        self.host = host
+        self.user = user
+        self.password = password
+        self.account = account
+        self.warehouse = warehouse
+        self.database = database
+        self.schema = schema
+        self.protocol = protocol
+        self.port = int(port)
 
-    def _setup(self, query, host, user, password, account, warehouse, database, schema, protocol='https', port=443):
+    def query(self, q):
         con = connector.connect(
-                  host=host,
-                  user=user,
-                  password=password,
-                  account=account,
-                  warehouse=warehouse,
-                  database=database,
-                  schema=schema,
-                  protocol='https',
-                  port=port)
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            account=self.account,
+            warehouse=self.warehouse,
+            database=self.database,
+            schema=self.schema,
+            protocol=self.protocol,
+            port=self.port
+        )
         # Create a cursor object.
         cur = con.cursor()
-        cur.execute(query)
+        cur.execute(q)
         df = cur.fetch_pandas_all()
 
         cur.close()
         con.close()
 
-        self._database = database
-        self._warehouse = warehouse
-
-        col_map = {}
-        for col in df.columns:
-            col_map[col] = col
-
-        return df, col_map
+        return df, self._make_colmap(df)
 
     def name(self):
         return '{}: {}/{}'.format(
             self.__class__.__name__,
-            self._database,
-            self._warehouse
+            self.database,
+            self.warehouse
         )

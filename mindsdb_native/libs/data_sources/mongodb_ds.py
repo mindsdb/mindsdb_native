@@ -31,11 +31,7 @@ class MongoDS(DataSource):
 
         df = pd.DataFrame(list(coll.find(q, {'_id': 0})))
 
-        col_map = {}
-        for col in df.columns:
-            col_map[col] = col
-
-        return df, col_map
+        return df, self._make_colmap(df)
 
     def name(self):
         return '{}: {}/{}'.format(

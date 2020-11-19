@@ -5,7 +5,7 @@ from mindsdb_native.libs.data_types.data_source import SQLDataSource
 
 
 class AthenaDS(SQLDataSource):
-    def __init__(self, query, staging_dir, database=None, table=None,
+    def __init__(self, query, staging_dir, database=None,
                  access_key=None, secret_key=None, region_name=None):
         """
         :param query: Query to be executed. Ex. SELECT * FROM db.table;
@@ -19,32 +19,31 @@ class AthenaDS(SQLDataSource):
         super().__init__()
 
         if (not database or not table) and not query:
-            raise ValueError("Either database and table or query should be passed.")
+            raise ValueError('Either database and table or query should be passed.')
+        
+        self.staging_dir = staging_dir
+        self.database = database
+        self.access_key = access_key
+        self.secret_key = secret_key
+        self.region_name = region_name
 
-        self._database_name = database
-        self._table_name = table
-
+    def query(self, q):
         _conn_args = {
-            's3_staging_dir': staging_dir,
-            'database': database,
-            'table': table
+            's3_staging_dir': self.staging_dir,
+            'database': self.database
         }
 
-        if access_key is not None and secret_key is not None:
-            _conn_args['aws_access_key_id'] = access_key
-            _conn_args['aws_secret_access_key'] = secret_key
+        if self.access_key is not None and self.secret_key is not None:
+            _conn_args['aws_access_key_id'] = self.access_key
+            _conn_args['aws_secret_access_key'] = self.secret_key
 
-        if region_name:
-            _conn_args['region_name'] = region_name
+        if self.region_name is not None:
+            _conn_args['region_name'] = self.region_name
 
         conn = connect(**_conn_args)
         cursor = conn.cursor()
 
-        if query:
-            cursor.execute(query)
-        else:
-            cursor.execute("SELECT * FROM {database}.{table};".format(database=database,
-                                                                      table=table))
+        cursor.execute(q)
 
         # Load query results into Pandas DataFrame and show results
         df = as_pandas(cursor)
