@@ -172,7 +172,7 @@ class DataSource:
                 return self._setup(*args, **kwargs)
             else:
                 return self._setup(*args, **kwargs)[0]
-        except Exception as e:
+        except Exception:
             df = self.df
             if where:
                 for cond in where:
