@@ -112,7 +112,6 @@ class ModelAnalyzer(BaseModule):
         self.transaction.lmd['accuracy_samples'] = {}
         self.transaction.hmd['probabilistic_validators'] = {}
 
-
         self.transaction.lmd['train_data_accuracy'] = {}
         self.transaction.lmd['test_data_accuracy'] = {}
         self.transaction.lmd['valid_data_accuracy'] = {}
@@ -159,11 +158,22 @@ class ModelAnalyzer(BaseModule):
             )
 
         for col in output_columns:
-            pval = ProbabilisticValidator(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
-            predictions_arr = [normal_predictions_test] + [x for x in empty_input_predictions_test.values()]
+            pval = ProbabilisticValidator(
+                col_stats=self.transaction.lmd['stats_v2'][col],
+                col_name=col,
+                input_columns=input_columns
+            )
+            predictions_arr = [normal_predictions_test, *empty_input_predictions_test.values()]
 
-            pval.fit(test_df, predictions_arr, [[ignored_column] for ignored_column in empty_input_predictions_test])
+            pval.fit(
+                test_df,
+                predictions_arr,
+                [[ignored_column] for ignored_column in empty_input_predictions_test]
+            )
+
             overall_accuracy, accuracy_histogram, cm, accuracy_samples = pval.get_accuracy_stats()
+            print('col', col)
+            print('overall_accuracy', overall_accuracy)
             overall_accuracy_arr.append(overall_accuracy)
 
             self.transaction.lmd['accuracy_histogram'][col] = accuracy_histogram
@@ -171,8 +181,10 @@ class ModelAnalyzer(BaseModule):
             self.transaction.lmd['accuracy_samples'][col] = accuracy_samples
             self.transaction.hmd['probabilistic_validators'][col] = pickle_obj(pval)
 
-        self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr)/len(overall_accuracy_arr)
-
+        self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr) / len(overall_accuracy_arr)
+        print('overall_accuracy_arr', overall_accuracy_arr)
+        print('sum(overall_accuracy_arr)', sum(overall_accuracy_arr))
+        print('len(overall_accuracy_arr)', len(overall_accuracy_arr))
         # conformal prediction confidence estimation
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
         self.transaction.hmd['label_encoders'] = {}

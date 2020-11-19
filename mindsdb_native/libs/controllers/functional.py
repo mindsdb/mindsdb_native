@@ -331,7 +331,7 @@ def get_model_data(model_name=None, lmd=None):
             amd[k] = lmd[k]
             if k == 'validation_set_accuracy':
                 if lmd['validation_set_accuracy'] is not None:
-                    amd['accuracy'] = round(lmd['validation_set_accuracy'],3)
+                    amd['accuracy'] = round(lmd['validation_set_accuracy'], 3)
                 else:
                     amd['accuracy'] = None
         else:

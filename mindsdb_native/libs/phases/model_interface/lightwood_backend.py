@@ -427,6 +427,9 @@ class LightwoodBackend:
 
         best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
 
+        print('best_predictor', best_predictor)
+        print('best_accuracy', best_accuracy)
+
         # Find predictor with NnMixer
         for predictor, accuracy in predictors_and_accuracies:
             if isinstance(predictor._mixer, lightwood.mixers.NnMixer):
@@ -443,6 +446,8 @@ class LightwoodBackend:
             SMALL_ACCURACY_DIFFERENCE = 0.01
             if (best_accuracy - nn_mixer_predictor_accuracy) < SMALL_ACCURACY_DIFFERENCE:
                 self.predictor = nn_mixer_predictor
+
+        print('self.predictor', self.predictor)
 
         self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
 

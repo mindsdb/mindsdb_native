@@ -145,6 +145,9 @@ class ProbabilisticValidator:
 
     def get_accuracy_stats(self):
 
+        print('self.normal_predictions_bucketized', self.normal_predictions_bucketized)
+        
+
         bucket_accuracy = {}
         bucket_acc_counts = {}
         for i, bucket in enumerate(self.normal_predictions_bucketized):
@@ -156,14 +159,22 @@ class ProbabilisticValidator:
             else:
                 bucket_acc_counts[bucket].append(1 if bucket == self.real_values_bucketized[i] else 0)
 
+            print('i', i)
+            print('bucket_acc_counts[bucket]', bucket_acc_counts[bucket])
+
+        print('-' * 10)
+
         for bucket in bucket_accuracy:
-            bucket_accuracy[bucket] = sum(bucket_acc_counts[bucket])/len(bucket_acc_counts[bucket])
+            bucket_accuracy[bucket] = sum(bucket_acc_counts[bucket]) / len(bucket_acc_counts[bucket])
+            print('bucket_acc_counts[bucket]', bucket_acc_counts[bucket])
 
         accuracy_count = []
         for counts in list(bucket_acc_counts.values()):
             accuracy_count += counts
 
-        overall_accuracy = sum(accuracy_count)/len(accuracy_count)
+        print('accuracy_count', accuracy_count)
+
+        overall_accuracy = sum(accuracy_count) / len(accuracy_count)
 
         for bucket in range(len(self.buckets)):
             if bucket not in bucket_accuracy:
