@@ -44,14 +44,8 @@ class TransactionOutputRow:
                 answers[pred_col]['all_predicted_values'] = prediction_row[pred_col]
             else:
                 answers[pred_col]['predicted_value'] = prediction_row[pred_col]
-
-
-            if f'{pred_col}_model_confidence' in prediction_row:
-                answers[pred_col]['confidence'] = (prediction_row[f'{pred_col}_model_confidence'] * 3 + prediction_row[f'{pred_col}_confidence'] * 1)/4
-            else:
-                answers[pred_col]['confidence'] = prediction_row[f'{pred_col}_confidence']
-
-            answers[pred_col]['confidence'] = round(answers[pred_col]['confidence'], 4)
+    
+            answers[pred_col]['confidence'] = round(prediction_row[f'{pred_col}_confidence'], 4)
 
             quality = 'very confident'
             if answers[pred_col]['confidence'] < 0.8:
