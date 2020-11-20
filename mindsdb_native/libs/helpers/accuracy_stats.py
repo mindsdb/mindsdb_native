@@ -142,5 +142,4 @@ class AccStats:
                 ,'x': [x[1] for x in sampled_numerical_samples_arr]
             }
 
-        print(overall_accuracy, accuracy_histogram, cm, accuracy_samples)
         return overall_accuracy, accuracy_histogram, cm, accuracy_samples
