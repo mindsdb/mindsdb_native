@@ -44,18 +44,20 @@ class TransactionOutputRow:
                 answers[pred_col]['all_predicted_values'] = prediction_row[pred_col]
             else:
                 answers[pred_col]['predicted_value'] = prediction_row[pred_col]
-    
-            answers[pred_col]['confidence'] = round(prediction_row[f'{pred_col}_confidence'], 4)
 
-            quality = 'very confident'
-            if answers[pred_col]['confidence'] < 0.8:
-                quality = 'confident'
-            if answers[pred_col]['confidence'] < 0.6:
-                quality = 'somewhat confident'
-            if answers[pred_col]['confidence'] < 0.4:
-                quality = 'not very confident'
-            if answers[pred_col]['confidence'] < 0.2:
-                quality = 'not confident'
+            if prediction_row[f'{pred_col}_confidence'] is not None:
+                answers[pred_col]['confidence'] = round(prediction_row[f'{pred_col}_confidence'], 4)
+                quality = 'very confident'
+                if answers[pred_col]['confidence'] < 0.8:
+                    quality = 'confident'
+                if answers[pred_col]['confidence'] < 0.6:
+                    quality = 'somewhat confident'
+                if answers[pred_col]['confidence'] < 0.4:
+                    quality = 'not very confident'
+                if answers[pred_col]['confidence'] < 0.2:
+                    quality = 'not confident'
+            else:
+                quality = 'missing confidence estimation'
 
             answers[pred_col]['prediction_quality'] = quality
 
