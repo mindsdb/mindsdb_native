@@ -16,7 +16,6 @@ from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, Inverse
 
 
 class ModelAnalyzer(BaseModule):
-
     def run(self):
         np.seterr(divide='warn', invalid='warn')
         """
