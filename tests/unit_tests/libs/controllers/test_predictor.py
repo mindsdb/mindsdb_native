@@ -270,6 +270,13 @@ class TestPredictor(unittest.TestCase):
             assert isinstance(importance, (float, int))
             assert (importance >= 0 and importance <= 10)
 
+        # Check whether positive numerical domain was detected
+        assert self.predictor.transaction['lmd']['stats_v2']['rental_price']['positive_domain']
+
+        # Check no negative predictions are emitted
+        neg_pred_candidate = predictor.predict(when_data={'initial_price': -10}, use_gpu=use_gpu)
+        assert neg_pred_candidate._data['rental_price'] >= 0
+
         # Test confidence estimation after save -> load
         F.export_predictor(name)
         try:
