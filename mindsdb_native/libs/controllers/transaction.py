@@ -317,30 +317,6 @@ class PredictTransaction(Transaction):
             else:
                 output_data[column] = list(predictions_df[column])
 
-        for predicted_col in self.lmd['predict_columns']:
-            output_data[predicted_col] = list(self.hmd['predictions'][predicted_col])
-            for extra_column in [f'{predicted_col}_model_confidence', f'{predicted_col}_confidence_range']:
-                if extra_column in self.hmd['predictions']:
-                    output_data[extra_column] = self.hmd['predictions'][extra_column]
-
-            probabilistic_validator = unpickle_obj(self.hmd['probabilistic_validators'][predicted_col])
-            output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
-
-            output_data[f'model_{predicted_col}'] = deepcopy(output_data[predicted_col])
-            for row_number, predicted_value in enumerate(output_data[predicted_col]):
-
-                # Compute the feature existance vector
-                input_columns = [col for col in self.input_data.columns if col not in self.lmd['predict_columns']]
-                features_existance_vector = [False if str(output_data[col][row_number]) in ('None', 'nan', '', 'Nan', 'NAN', 'NaN') else True for col in input_columns if col not in self.lmd['columns_to_ignore']]
-
-                # Create the probabilsitic evaluation
-                probability_true_prediction = probabilistic_validator.evaluate_prediction_accuracy(
-                    features_existence=features_existance_vector,
-                    predicted_value=predicted_value
-                )
-
-                output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
-
         # confidence estimation
         if self.hmd['icp']['active']:
             self.lmd['all_conformal_ranges'] = {}
@@ -354,6 +330,10 @@ class PredictTransaction(Transaction):
                     icp_X.pop(col)
 
             for predicted_col in self.lmd['predict_columns']:
+                output_data[predicted_col] = list(self.hmd['predictions'][predicted_col])
+                output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
+                output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
+
                 if self.hmd['icp'].get(predicted_col, False):
                     typing_info = self.lmd['stats_v2'][predicted_col]['typing']
                     X = deepcopy(icp_X)
