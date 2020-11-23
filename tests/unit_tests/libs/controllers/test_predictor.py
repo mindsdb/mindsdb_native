@@ -208,27 +208,24 @@ class TestPredictor(unittest.TestCase):
         Tests whole pipeline from downloading the dataset to making predictions and explanations.
         """
         predictor = Predictor(name=name)
-
-        path = '/MindsDB/benchmarks/benchmarks/datasets/home_rentals/data.csv'
-
         # Create & Learn
         predictor.learn(
             to_predict='rental_price',
-            from_data=path,#"https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             backend='lightwood',
             stop_training_in_x_seconds=80,
             use_gpu=use_gpu
         )
 
         test_results = predictor.test(
-            when_data=path,#"https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             accuracy_score_functions=r2_score,
             predict_args={'use_gpu': use_gpu}
         )
         assert test_results['rental_price_accuracy'] >= 0.8
 
         predictions = predictor.predict(
-            when_data=path,#"https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             use_gpu=use_gpu
         )
         self.assert_prediction_interface(predictions)
