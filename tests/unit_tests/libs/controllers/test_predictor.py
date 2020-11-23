@@ -208,24 +208,27 @@ class TestPredictor(unittest.TestCase):
         Tests whole pipeline from downloading the dataset to making predictions and explanations.
         """
         predictor = Predictor(name=name)
+
+        path = '/MindsDB/benchmarks/benchmarks/datasets/home_rentals/data.csv'
+
         # Create & Learn
         predictor.learn(
             to_predict='rental_price',
-            from_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            from_data=path,#"https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             backend='lightwood',
             stop_training_in_x_seconds=80,
             use_gpu=use_gpu
         )
 
         test_results = predictor.test(
-            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            when_data=path,#"https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             accuracy_score_functions=r2_score,
             predict_args={'use_gpu': use_gpu}
         )
         assert test_results['rental_price_accuracy'] >= 0.8
 
         predictions = predictor.predict(
-            when_data="https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
+            when_data=path,#"https://s3.eu-west-2.amazonaws.com/mindsdb-example-data/home_rentals.csv",
             use_gpu=use_gpu
         )
         self.assert_prediction_interface(predictions)
@@ -271,11 +274,12 @@ class TestPredictor(unittest.TestCase):
             assert (importance >= 0 and importance <= 10)
 
         # Check whether positive numerical domain was detected
-        assert self.predictor.transaction['lmd']['stats_v2']['rental_price']['positive_domain']
+        assert predictor.transaction.lmd['stats_v2']['rental_price']['positive_domain']
 
         # Check no negative predictions are emitted
-        neg_pred_candidate = predictor.predict(when_data={'initial_price': -10}, use_gpu=use_gpu)
-        assert neg_pred_candidate._data['rental_price'] >= 0
+        for i in (-500, -100, -10):
+            neg_pred_candidate = predictor.predict(when_data={'initial_price': i}, use_gpu=use_gpu)
+            assert neg_pred_candidate._data['rental_price'][0] >= 0
 
         # Test confidence estimation after save -> load
         F.export_predictor(name)
