@@ -19,7 +19,6 @@ def getDS(from_data):
     elif isinstance(from_data, DataFrame):
         from_ds = DataSource(from_data)
 
-
     else:  # assume is a file
         from_ds = FileDS(from_data)
         if from_ds is None:

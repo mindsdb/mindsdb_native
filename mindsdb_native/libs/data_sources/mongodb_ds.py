@@ -4,46 +4,38 @@ from pymongo import MongoClient
 from mindsdb_native.libs.data_types.data_source import DataSource
 
 class MongoDS(DataSource):
-    def __init__(self, *args, **kwargs):
-        self.is_sql = False
-        super(MongoDS, self).__init__(*args, **kwargs)
+    def __init__(self, query, collection, database='database',
+                 host='localhost', port=27017, user='admin', password='123'):
+        super().__init__()
+        self._query = query
+        self.collection = collection
+        self.database = database
+        self.host = host
+        self.port = int(port)
+        self.user = user
+        self.password = password
 
-    def _setup(self, collection, query=None, database='database',
-               host='localhost', port=27017, user='admin', password='123'):
-
-        if not isinstance(collection, str):
-            raise TypeError('collection must be a str')
-
-        self._database_name = database
-        self._collection_name = collection
-
-        if query is None:
-            query = {}
-        else:
-            if not isinstance(query, dict):
-                raise TypeError('query must be a dict')
+    def query(self, q):
+        if not isinstance(q, dict):
+            raise TypeError('query must be a dict')
 
         conn = MongoClient(
-            host=host,
-            port=int(port),
-            username=user,
-            password=password
+            host=self.host,
+            port=self.port,
+            username=self.user,
+            password=self.password
         )
 
-        db = conn[database]
-        coll = db[collection]
+        db = conn[self.database]
+        coll = db[self.collection]
 
-        df = pd.DataFrame(list(coll.find(query, {'_id': 0})))
+        df = pd.DataFrame(list(coll.find(q, {'_id': 0})))
 
-        col_map = {}
-        for col in df.columns:
-            col_map[col] = col
-
-        return df, col_map
+        return df, self._make_colmap(df)
 
     def name(self):
         return '{}: {}/{}'.format(
             self.__class__.__name__,
-            self._database_name,
-            self._collection_name
+            self.database,
+            self.collection
         )
