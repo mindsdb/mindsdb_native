@@ -270,6 +270,16 @@ class TestPredictor(unittest.TestCase):
             assert isinstance(importance, (float, int))
             assert (importance >= 0 and importance <= 10)
 
+        # Check whether positive numerical domain was detected
+        assert predictor.transaction.lmd['stats_v2']['rental_price']['positive_domain']
+
+        # Check no negative predictions are emitted
+        for i in (-500, -100, -10):
+            neg_pred_candidate = predictor.predict(when_data={'initial_price': i}, use_gpu=use_gpu)
+            assert neg_pred_candidate._data['rental_price'][0] >= 0
+            assert neg_pred_candidate._data['rental_price_confidence_range'][0][0] >= 0
+            assert neg_pred_candidate._data['rental_price_confidence_range'][0][1] >= 0
+
         # Test confidence estimation after save -> load
         F.export_predictor(name)
         try:
@@ -456,3 +466,25 @@ class TestPredictor(unittest.TestCase):
         assert sum([predictor.transaction.input_data.train_df.shape[0],
                     predictor.transaction.input_data.test_df.shape[0],
                     predictor.transaction.input_data.validation_df.shape[0]]) == n_points + 1
+
+    def test_empty_column(self):
+        mdb = Predictor(name='test_empty_column')
+
+        n_points = 100
+        input_dataframe = pd.DataFrame({
+            'empty_col': [None] * n_points,
+            'numeric_x': list(range(n_points)),
+            'categorical_x': [int(x % 2 == 0) for x in range(n_points)],
+        }, index=list(range(n_points)))
+
+        input_dataframe['numeric_y'] = input_dataframe.numeric_x + 2 * input_dataframe.categorical_x
+
+        mdb.learn(
+            from_data=input_dataframe,
+            to_predict='numeric_y',
+            stop_training_in_x_seconds=1,
+            use_gpu=False,
+            advanced_args={'debug': True}
+        )
+
+        mdb.predict(when_data={'categorical_x': 0})

@@ -18,7 +18,6 @@ class TestMYSQL(unittest.TestCase):
         LIMIT = 400
 
         mysql_ds = MySqlDS(
-            table=self.TABLE,
             host=self.HOST,
             user=self.USER,
             password=self.PASSWORD,
@@ -34,7 +33,6 @@ class TestMYSQL(unittest.TestCase):
         F.analyse_dataset(mysql_ds)
 
         # Our SQL parsing fails here, test if we're still able to filter via the dataframe fallback
-        assert mysql_ds.is_sql
         for val in mysql_ds.filter([['sex', 'like','fem']])['sex']:
             assert val == 'female'
 

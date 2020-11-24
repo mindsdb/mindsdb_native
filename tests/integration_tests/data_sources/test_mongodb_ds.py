@@ -27,7 +27,6 @@ class TestMongoDB(unittest.TestCase):
 
         F.analyse_dataset(from_data=mongodb_ds)
 
-        assert not mongodb_ds.is_sql
         for val in mongodb_ds.filter([['location', 'like','ood']])['location']:
             assert val == 'good'
 
