@@ -277,6 +277,8 @@ class TestPredictor(unittest.TestCase):
         for i in (-500, -100, -10):
             neg_pred_candidate = predictor.predict(when_data={'initial_price': i}, use_gpu=use_gpu)
             assert neg_pred_candidate._data['rental_price'][0] >= 0
+            assert neg_pred_candidate._data['rental_price_confidence_range'][0][0] >= 0
+            assert neg_pred_candidate._data['rental_price_confidence_range'][0][1] >= 0
 
         # Test confidence estimation after save -> load
         F.export_predictor(name)
