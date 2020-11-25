@@ -21,4 +21,4 @@ def getDS(from_data):
     elif isinstance(from_data, str):
         if os.path.isfile(from_data) or from_data.startswith('http:') or from_data.startswith('https:'):
             return FileDS(from_data)
-    raise ValueError('from_data must be one of: [DataSource, DataFrame, file path]')
+    raise ValueError('from_data must be one of: [DataSource, DataFrame, file path, file URL]')
