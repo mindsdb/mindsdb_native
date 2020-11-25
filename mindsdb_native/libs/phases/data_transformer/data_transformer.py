@@ -125,10 +125,10 @@ class DataTransformer(BaseModule):
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     self._apply_to_all_data(input_data, column, _tags_to_tuples, transaction_type)
                 else:
-                    self._apply_to_all_data(input_data, column, str, transaction_type)
+                    self._apply_to_all_data(input_data, column, lambda x: x if x is None else str(x), transaction_type)
 
             if data_type == DATA_TYPES.TEXT:
-                self._apply_to_all_data(input_data, column, str, transaction_type)
+                self._apply_to_all_data(input_data, column, lambda x: x if x is None else str(x), transaction_type)
 
             if data_type == DATA_TYPES.SEQUENTIAL:
                 if data_subtype == DATA_SUBTYPES.ARRAY:
