@@ -80,7 +80,6 @@ class FileDS(DataSource):
         except Exception:
             return pd.read_csv(file, sep=dialect.delimiter), col_map
 
-
     def _getDataIo(self, file):
         """
         This gets a file either url or local file and defiens what the format is as well as dialect
@@ -203,4 +202,5 @@ class FileDS(DataSource):
             # No file type identified
             return data, None, dialect
 
-   
+    def name(self):
+        return 'File, "{}"'.format(self.file)
