@@ -38,4 +38,4 @@ class GCSDS(DataSource):
         return file_ds.df, file_ds._col_map
 
     def name(self):
-        return 'GCS - {}/{}'.format(self.bucket_name, self.file_path)
+        return 'GCS - {}/{}'.format(self.bucket_name, os.path.basename(self.file_path))

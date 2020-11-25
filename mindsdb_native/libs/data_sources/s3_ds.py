@@ -39,4 +39,4 @@ class S3DS(DataSource):
         return file_ds.df, file_ds._col_map
 
     def name(self):
-        return 'S3 - {}/{}'.format(self.bucket_name, self.file_path)
+        return 'S3 - {}/{}'.format(self.bucket_name, os.path.basename(self.file_path))
