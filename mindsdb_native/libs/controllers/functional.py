@@ -305,6 +305,8 @@ def get_model_data(model_name=None, lmd=None):
     # ADAPTOR CODE
     amd = {}
 
+    amd['data_source'] = lmd['data_source_name']
+
     if 'tss' in lmd:
         if lmd['tss']['is_timeseries']:
             amd['timeseries'] = {}
@@ -472,8 +474,11 @@ def get_models():
         try:
             amd = get_model_data(model_name)
             model = {}
-            for k in ['name', 'version', 'is_active', 'predict',
-            'status', 'train_end_at', 'updated_at', 'created_at','current_phase', 'accuracy']:
+
+            KEYS = ['name', 'version', 'is_active', 'predict', 'status', 'train_end_at',
+                    'updated_at', 'created_at','current_phase', 'accuracy']
+
+            for k in KEYS:
                 if k in amd:
                     model[k] = amd[k]
                 else:
