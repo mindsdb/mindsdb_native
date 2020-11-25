@@ -55,4 +55,4 @@ class AthenaDS(SQLDataSource):
         return df, col_map
 
     def name(self):
-        return 'Athena - "{}"'.format(self._query)
+        return 'Athena - {}'.format(self._query)

@@ -29,4 +29,4 @@ class MySqlDS(SQLDataSource):
         return df, self._make_colmap(df)
 
     def name(self):
-        return 'MySQL - "{}"'.format(self._query)
+        return 'MySQL - {}'.format(self._query)

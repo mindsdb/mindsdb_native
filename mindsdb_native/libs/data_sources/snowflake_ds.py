@@ -43,4 +43,4 @@ class SnowflakeDS(SQLDataSource):
         return df, self._make_colmap(df)
 
     def name(self):
-        return 'Snowflake - "{}"'.format(self._query)
+        return 'Snowflake - {}'.format(self._query)

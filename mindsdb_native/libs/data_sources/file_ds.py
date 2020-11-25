@@ -203,4 +203,4 @@ class FileDS(DataSource):
             return data, None, dialect
 
     def name(self):
-        return 'File, "{}"'.format(self.file)
+        return 'File, {}'.format(self.file)

@@ -331,7 +331,7 @@ def get_model_data(model_name=None, lmd=None):
             amd[k] = lmd[k]
             if k == 'validation_set_accuracy':
                 if lmd['validation_set_accuracy'] is not None:
-                    amd['accuracy'] = round(lmd['validation_set_accuracy'],3)
+                    amd['accuracy'] = round(lmd['validation_set_accuracy'], 3)
                 else:
                     amd['accuracy'] = None
         else:
@@ -349,7 +349,7 @@ def get_model_data(model_name=None, lmd=None):
             continue
 
         try:
-            icm = _adapt_column(lmd['stats_v2'][col],col)
+            icm = _adapt_column(lmd['stats_v2'][col], col)
         except Exception as e:
             print(e)
             icm = {'column_name': col}

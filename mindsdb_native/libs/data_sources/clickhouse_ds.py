@@ -46,4 +46,4 @@ class ClickhouseDS(SQLDataSource):
         return df, self._make_colmap(df)
 
     def name(self):
-        return 'Clickhouse - "{}"'.format(self._query)
+        return 'Clickhouse - {}'.format(self._query)

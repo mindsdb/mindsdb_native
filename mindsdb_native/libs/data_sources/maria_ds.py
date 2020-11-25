@@ -29,4 +29,4 @@ class MariaDS(SQLDataSource):
         return df, self._make_colmap(df)
 
     def name(self):
-        return 'MariaDB - "{}"'.format(self._query)
+        return 'MariaDB - {}'.format(self._query)

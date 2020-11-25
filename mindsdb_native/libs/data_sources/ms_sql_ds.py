@@ -19,4 +19,4 @@ class MSSQLDS(SQLDataSource):
         return df, self._make_colmap(df)
 
     def name(self):
-        return 'Microsoft SQL - "{}"'.format(self._query)
+        return 'Microsoft SQL - {}'.format(self._query)

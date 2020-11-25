@@ -38,4 +38,4 @@ class MongoDS(DataSource):
         return df, self._make_colmap(df)
 
     def name(self):
-        return 'MongoDB - "{}"'.format(self._query)
+        return 'MongoDB - {}'.format(self._query)

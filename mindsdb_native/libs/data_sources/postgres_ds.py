@@ -38,4 +38,4 @@ class PostgresDS(SQLDataSource):
         return df, self._make_colmap(df)
 
     def name(self):
-        return 'Postgres - "{}"'.format(self._query)
+        return 'Postgres - {}'.format(self._query)
