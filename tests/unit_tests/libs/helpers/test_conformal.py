@@ -30,7 +30,7 @@ class TestConformal(unittest.TestCase):
         target = 'medv'
 
         x_tr = self._df_from_xy(X_train, Y_train, target)
-        p = Predictor("ConformalTest")
+        p = Predictor('ConformalTest')
         p.learn(
             from_data=x_tr,
             to_predict=target,
@@ -64,7 +64,7 @@ class TestConformal(unittest.TestCase):
             tr[target] = tr[target].astype(label_type)
             te[target] = te[target].astype(label_type)
 
-            p = Predictor(f"ConformalTest_{type_name}")
+            p = Predictor(f'ConformalTest_{type_name}')
             p.learn(
                 from_data=tr,
                 to_predict=target,
