@@ -280,7 +280,7 @@ class suppress_stdout_stderr(object):
             self.c_stderr = sys.stderr.fileno()
 
             self.save_fds = [os.dup(self.c_stdout), os.dup(self.c_stderr)]
-        except:
+        except Exception:
             print('Can\'t disable output on Jupyter notebook')
 
     def __enter__(self):
@@ -289,7 +289,7 @@ class suppress_stdout_stderr(object):
             # Assign the null pointers to stdout and stderr.
             os.dup2(self.null_fds[0],self.c_stdout)
             os.dup2(self.null_fds[1],self.c_stderr)
-        except:
+        except Exception:
             print('Can\'t disable output on Jupyter notebook')
 
     def __exit__(self, *_):
@@ -301,7 +301,7 @@ class suppress_stdout_stderr(object):
             # Close all file descriptors
             for fd in self.null_fds + self.save_fds:
                 os.close(fd)
-        except:
+        except Exception:
             print('Can\'t disable output on Jupyter notebook')
 
 def get_tensorflow_colname(col):
@@ -318,7 +318,7 @@ def disable_console_output(activate=True):
     try:
         try:
             old_tf_loglevel = os.environ['TF_CPP_MIN_LOG_LEVEL']
-        except:
+        except Exception:
             old_tf_loglevel = '2'
         # Maybe get rid of this to not supress all errors and stdout
         if activate:
@@ -335,7 +335,7 @@ def value_isnan(value):
         if isinstance(value, float):
             a = int(value)
         isnan = False
-    except:
+    except Exception:
         isnan = True
     return isnan
 

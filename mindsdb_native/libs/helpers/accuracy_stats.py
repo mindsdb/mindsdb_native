@@ -76,7 +76,7 @@ class AccStats:
                     self.real_values_bucketized.append(real_value_b)
                     self.normal_predictions_bucketized.append(predicted_value_b)
                     if has_confidence_range:
-                        self.numerical_samples_arr.append((real_value,predicted_range))
+                        self.numerical_samples_arr.append((real_value, predicted_range))
 
                 feature_existance = real_present_inputs_arr[m]
                 if n > 0:
@@ -84,26 +84,28 @@ class AccStats:
                         feature_existance[self.input_columns.index(missing_col)] = 0
 
     def get_accuracy_stats(self):
-
-        bucket_accuracy = {}
         bucket_acc_counts = {}
         for i, bucket in enumerate(self.normal_predictions_bucketized):
             if bucket not in bucket_acc_counts:
                 bucket_acc_counts[bucket] = []
 
             if len(self.numerical_samples_arr) != 0:
-                bucket_acc_counts[bucket].append(self.numerical_samples_arr[i][1][0] < self.numerical_samples_arr[i][0] < self.numerical_samples_arr[i][1][1])
+                real_val = self.numerical_samples_arr[i][0]
+                range_0 = self.numerical_samples_arr[i][1][0]
+                range_1 = self.numerical_samples_arr[i][1][1]
+
+                if min([range_0, range_1]) < real_val < max([range_0, range_1]):
+                    bucket_acc_counts[bucket].append(True)
+                else:
+                    bucket_acc_counts[bucket].append(False)
             else:
                 bucket_acc_counts[bucket].append(1 if bucket == self.real_values_bucketized[i] else 0)
 
-        for bucket in bucket_accuracy:
-            bucket_accuracy[bucket] = sum(bucket_acc_counts[bucket])/len(bucket_acc_counts[bucket])
+        bucket_accuracy = {}
+        for bucket in bucket_acc_counts:
+            bucket_accuracy[bucket] = sum(bucket_acc_counts[bucket]) / len(bucket_acc_counts[bucket])
 
-        accuracy_count = []
-        for counts in list(bucket_acc_counts.values()):
-            accuracy_count += counts
-
-        overall_accuracy = sum(accuracy_count)/len(accuracy_count)
+        overall_accuracy = sum(bucket_accuracy.values()) / len(bucket_accuracy)
 
         for bucket in range(len(self.buckets)):
             if bucket not in bucket_accuracy:

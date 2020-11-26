@@ -25,7 +25,7 @@ from mindsdb_native.libs.data_sources.file_ds import FileDS
 # These might not initialized properly since they require optional dependencies, so we wrap them in a try-except
 try:
     from mindsdb_native.libs.data_sources.s3_ds import S3DS
-except:
+except ImportError:
     print("S3 Datasource is not available by default. If you wish to use it, please install mindsdb_native[extra_data_sources]")
     S3DS = None
 

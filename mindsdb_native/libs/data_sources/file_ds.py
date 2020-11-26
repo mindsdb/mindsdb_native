@@ -139,7 +139,7 @@ class FileDS(DataSource):
                 elif bytes == xlsx_sig:
                     return data, 'xlsx', dialect
 
-            except:
+            except Exception:
                 data.seek(0)
 
         # if not excel it can be a json file or a CSV, convert from binary to stringio
@@ -153,7 +153,7 @@ class FileDS(DataSource):
             else:
                 data = StringIO(byte_str.decode('utf-8'))
 
-        except:
+        except Exception:
             log.error(traceback.format_exc())
             log.error('Could not load into string')
 
@@ -170,7 +170,7 @@ class FileDS(DataSource):
                     json.loads(data.read())
                     data.seek(0)
                     return data, 'json', dialect
-                except:
+                except Exception:
                     data.seek(0)
                     return data, None, dialect
 
@@ -195,7 +195,7 @@ class FileDS(DataSource):
                 return data, 'csv', dialect
             else:
                 return data, None, dialect
-        except:
+        except Exception:
             data.seek(0)
             log.error('Could not detect format for this file')
             log.error(traceback.format_exc())

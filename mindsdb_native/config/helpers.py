@@ -28,7 +28,7 @@ def get_and_create_default_storage_path():
     try:
         create_directory(path)
         correct_permissions = os.access(path, os.W_OK)
-    except:
+    except Exception:
         print(f'MindsDB storage directory: {path} does not exist and could not be created, trying another directory')
         correct_permissions = False
 
@@ -37,7 +37,7 @@ def get_and_create_default_storage_path():
         path = os.path.join(home, '.mindsdb_storage')
         try:
             create_directory(path)
-        except:
+        except Exception:
             print(f'MindsDB storage directory: {path} does not exist and could not be created')
 
     return path

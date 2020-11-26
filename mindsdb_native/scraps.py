@@ -131,7 +131,7 @@ def _get_params_as_dictionary(self, params):
 #         try:
 #             if any(separator in cell for separator in WORD_SEPARATORS):
 #                 return True
-#         except:
+#         except Exception:
 #             exc_type, exc_value, exc_traceback = sys.exc_info()
 #             error = traceback.format_exception(exc_type, exc_value,
 #                                       exc_traceback)
