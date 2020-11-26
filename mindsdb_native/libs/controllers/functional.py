@@ -476,7 +476,7 @@ def get_models():
             model = {}
 
             KEYS = ['name', 'version', 'is_active', 'predict', 'status', 'train_end_at',
-                    'updated_at', 'created_at','current_phase', 'accuracy']
+                    'updated_at', 'created_at','current_phase', 'accuracy', 'data_source']
 
             for k in KEYS:
                 if k in amd:
