@@ -231,6 +231,7 @@ class ModelAnalyzer(BaseModule):
                     normalizer = SelfawareNormalizer(fit_params=norm_params)
                 else:
                     normalizer = None
+                normalizer = None
 
                 nc = nc_class(model, nc_function, normalizer=normalizer)
 

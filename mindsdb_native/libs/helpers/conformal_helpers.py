@@ -135,12 +135,10 @@ class SelfawareNormalizer(BaseScorer):
         pass
 
     def score(self, true_input, y=None):
-        preds = self.prediction_cache.get(self.output_column, {})
-        sa_score = preds.get('selfaware_confidences', None)
+        sa_score = self.prediction_cache.get(f'{self.output_column}_selfaware_scores', None)
 
         if not sa_score:
-            # default case, scaling factor is 1 for all predictions
-            sa_score = np.ones(true_input.shape[0])
+            sa_score = np.ones(true_input.shape[0])  # default case, scaling factor is 1 for all predictions
         else:
             sa_score = np.array(sa_score)
 

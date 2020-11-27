@@ -358,6 +358,11 @@ class PredictTransaction(Transaction):
                                 DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
                         tol_const = 1  # std devs
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+
+                        normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
+                        if normalizer:
+                            normalizer.prediction_cache = self.hmd['predictions']
+
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
 
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
