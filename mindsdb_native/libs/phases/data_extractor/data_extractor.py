@@ -14,6 +14,11 @@ import traceback
 import pandas as pd
 import numpy as np
 
+from mindsdb_native.libs.constants.mindsdb import (
+    TRANSACTION_ANALYSE,
+    TRANSACTION_LEARN
+)
+
 
 class DataExtractor(BaseModule):
     def _data_from_when(self):
@@ -170,6 +175,9 @@ class DataExtractor(BaseModule):
                 self.transaction.lmd['data_subtypes'][col] = self.transaction.hmd['from_data'].data_subtypes[col]
 
     def run(self):
+        if self.transaction.hmd.get('from_data') is not None:
+            self.transaction.lmd['data_source_name'] = self.transaction.hmd['from_data'].name()
+
         # --- Dataset gets randomized or sorted (if timeseries) --- #
         result = self._get_prepared_input_df()
         # --- Dataset gets randomized or sorted (if timeseries) --- #

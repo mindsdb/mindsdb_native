@@ -101,15 +101,12 @@ class Predictor:
         self.breakpoint = None
         self.transaction = None
 
-
-
         if not CONFIG.SAGEMAKER:
             # If storage path is not writable, raise an exception as this can no longer be
             if not os.access(CONFIG.MINDSDB_STORAGE_PATH, os.W_OK):
                 error_message = '''Cannot write into storage path, please either set the config variable mindsdb.config.set('MINDSDB_STORAGE_PATH',<path>) or give write access to {folder}'''
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
-
 
             # If storage path is not writable, raise an exception as this can no longer be
             if not os.access(CONFIG.MINDSDB_STORAGE_PATH, os.R_OK):
@@ -118,18 +115,18 @@ class Predictor:
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
     def quick_learn(self,
-              to_predict,
-              from_data,
-              timeseries_settings=None,
-              ignore_columns=None,
-              stop_training_in_x_seconds=None,
-              backend='lightwood',
-              rebuild_model=True,
-              use_gpu=None,
-              equal_accuracy_for_all_output_categories=True,
-              output_categories_importance_dictionary=None,
-              advanced_args=None,
-              sample_settings=None):
+                    to_predict,
+                    from_data,
+                    timeseries_settings=None,
+                    ignore_columns=None,
+                    stop_training_in_x_seconds=None,
+                    backend='lightwood',
+                    rebuild_model=True,
+                    use_gpu=None,
+                    equal_accuracy_for_all_output_categories=True,
+                    output_categories_importance_dictionary=None,
+                    advanced_args=None,
+                    sample_settings=None):
 
         if advanced_args is None:
             advanced_args = {}
@@ -210,13 +207,13 @@ class Predictor:
             self.log.warning(f'Sample for training: {sample_for_training}')
 
             heavy_transaction_metadata = dict(
-                name=self.name,
-                from_data=from_ds,
-                predictions= None,
-                model_backend= backend,
-                sample_function=sample_function,
-                from_data_type=type(from_ds),
-                breakpoint = self.breakpoint
+                name = self.name,
+                from_data = from_ds,
+                predictions = None,
+                model_backend = backend,
+                sample_function = sample_function,
+                from_data_type = type(from_ds),
+                breakpoint  = self.breakpoint
             )
 
             light_transaction_metadata = dict(
@@ -298,8 +295,11 @@ class Predictor:
 
             self.transaction.run()
 
-
-    def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
+    def test(self,
+             when_data,
+             accuracy_score_functions,
+             score_using='predicted_value',
+             predict_args=None):
         """
         :param when_data: use this when you have data in either a file, a pandas data frame, or url to a file that you want to predict from
         :param accuracy_score_functions: a single function or  a dictionary for the form `{f'{target_name}': acc_func}` for when we have multiple targets

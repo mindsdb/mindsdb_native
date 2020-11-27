@@ -169,6 +169,9 @@ class DataSource:
         """
         self.df.__setitem__(key, value)
 
+    def name(self):
+        return 'DataFrame'
+
 
 class SQLDataSource(DataSource):
     def __init__(self, query):
@@ -216,3 +219,6 @@ class SQLDataSource(DataSource):
         if self._internal_col_map is None:
             _, self._internal_col_map = self.filter(where=[], limit=1, get_col_map=True)
         return self._internal_col_map
+
+    def name(self):
+        raise NotImplementedError
