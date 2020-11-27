@@ -58,6 +58,9 @@ class DataExtractor(BaseModule):
         :return:
         """
 
+        for col, f in self.transaction.lmd['apply_to_columns']:
+            df.loc[col] = df.loc[col].apply(f)
+
         # apply order by (group_by, order_by)
         if self.transaction.lmd['tss']['is_timeseries']:
             asc_values = [True for _ in self.transaction.lmd['tss']['order_by']]
