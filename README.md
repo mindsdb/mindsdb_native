@@ -23,9 +23,9 @@ MindsDB is an Explainable AutoML framework for developers built on top of Pytorc
 
 * [Installing MindsDB](https://docs.mindsdb.com/Installing/)
 * [Learning from Examples](https://docs.mindsdb.com/tutorials/BasicExample/)
-* [MindsDB Explainability GUI](http://mindsdb.com/product)
+* [MindsDB Explainability GUI](https://docs.mindsdb.com/scout/Introduction/)
 * [Frequently Asked Questions](https://docs.mindsdb.com/FAQ/)
-* [Provide Feedback to Improve MindsDB](https://mindsdb.typeform.com/to/c3CEtj)
+* [Provide Feedback to Improve MindsDB](https://mindsdb.com/contact-us/)
 
 
 
@@ -73,7 +73,6 @@ Predictor(name='home_rentals_price').learn(
 
 ```
 
-
 One line of code to **use the model**:
 
 ```python
@@ -91,39 +90,17 @@ Visit the documentation to [learn more](https://docs.mindsdb.com/)
 * **Google Colab**: You can also try MindsDB straight here [![Google Colab](https://colab.research.google.com/assets/colab-badge.svg "MindsDB")](https://colab.research.google.com/drive/1qsIkMeAQFE-MOEANd1c6KMyT44OnycSb)
 
 
-## Video Tutorial
-
-Please click on the image below to load the tutorial:
-
-[![here](https://img.youtube.com/vi/a49CvkoOdfY/0.jpg)](https://youtu.be/yr7fgqt9cfU)  
-
-(Note: Please manually set it to 720p or greater to have the text appear clearly)
-
-## MindsDB Graphical User Interface
-
-You can also work with mindsdb via its graphical user interface ([download here](http://mindsdb.com/product)).
-Please click on the image below to load the tutorial:
-
-[![here](https://img.youtube.com/vi/fOwdv4j26CA/0.jpg)](https://youtu.be/fOwdv4j26CA)  
-
-
-## MindsDB Lightwood: Machine Learning Lego Blocks
-
-Under the hood of mindsdb there is lightwood, a Pytorch based framework that breaks down machine learning problems into smaller blocks that can be glued together seamlessly. More info about [MindsDB lightwood's on GITHUB](https://github.com/mindsdb/lightwood/).
-
 ## Contributing
 
-In order to make changes to mindsdb, the ideal approach is to fork the repository than clone the fork locally `PYTHONPATH`.
+To contibute to MindsDB please checkout the [Contribution guide](https://github.com/mindsdb/mindsdb_native/blob/stable/CONTRIBUTING.md).
 
-For example: `export PYTHONPATH=$PYTHONPATH:/home/my_username/mindsdb`.
+### Current contributors 
 
-Too test your changes you can run unit tests (fast) and CI tests (slightly longer) locally.
+<a href="https://github.com/mindsdb/mindsdb_native/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=mindsdb/mindsdb_native" />
+</a>
 
-To run unit tests:
-* Install unittest: `pip install -r requirements_test.txt`
-* Run: `cd tests & python -m unittest`
-
-Once you have specific changes you want to merge into master, feel free to make a PR.
+Made with [contributors-img](https://contributors-img.web.app).
 
 ## Report Issues
 

@@ -50,7 +50,7 @@ class ConformalRegressorAdapter(RegressorAdapter):
         self.ignore_columns = fit_params['columns_to_ignore']
         self.ar = fit_params['use_previous_target']
         if self.ar:
-            self.columns.append(f'previous_{self.target}')
+            self.columns.append(f'__mdb_ts_previous_{self.target}')
 
     def fit(self, x, y):
         """
@@ -85,7 +85,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         self.ignore_columns = fit_params['columns_to_ignore']
         self.ar = fit_params['use_previous_target']
         if self.ar:
-            self.columns.append(f'previous_{self.target}')
+            self.columns.append(f'__mdb_ts_previous_{self.target}')
 
     def fit(self, x, y):
         """

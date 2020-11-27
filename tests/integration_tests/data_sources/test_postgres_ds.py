@@ -18,7 +18,6 @@ class TestPostgres(unittest.TestCase):
         LIMIT = 100
 
         postgres_ds = PostgresDS(
-            table=self.TABLE,
             host=self.HOST,
             user=self.USER,
             password=self.PASSWORD,
@@ -32,7 +31,7 @@ class TestPostgres(unittest.TestCase):
         )
 
         postgres_ds.df = break_dataset(postgres_ds.df)
-                            
+
         assert len(postgres_ds) == LIMIT
 
         F.analyse_dataset(postgres_ds)

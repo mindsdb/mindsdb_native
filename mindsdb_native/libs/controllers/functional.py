@@ -305,6 +305,8 @@ def get_model_data(model_name=None, lmd=None):
     # ADAPTOR CODE
     amd = {}
 
+    amd['data_source'] = lmd['data_source_name']
+
     if 'tss' in lmd:
         if lmd['tss']['is_timeseries']:
             amd['timeseries'] = {}
@@ -323,15 +325,15 @@ def get_model_data(model_name=None, lmd=None):
         amd['status'] = 'training'
 
     # Shared keys
-    for k in ['name', 'version', 'is_active', 'data_source', 'predict', 'current_phase',
-    'train_end_at', 'updated_at', 'created_at','data_preparation', 'validation_set_accuracy']:
+    for k in ['name', 'version', 'is_active', 'predict', 'current_phase',
+    'train_end_at', 'updated_at', 'created_at','data_preparation', 'validation_set_accuracy', 'report_uuid']:
         if k == 'predict':
             amd[k] = lmd['predict_columns']
         elif k in lmd:
             amd[k] = lmd[k]
             if k == 'validation_set_accuracy':
                 if lmd['validation_set_accuracy'] is not None:
-                    amd['accuracy'] = round(lmd['validation_set_accuracy'],3)
+                    amd['accuracy'] = round(lmd['validation_set_accuracy'], 3)
                 else:
                     amd['accuracy'] = None
         else:
@@ -349,7 +351,7 @@ def get_model_data(model_name=None, lmd=None):
             continue
 
         try:
-            icm = _adapt_column(lmd['stats_v2'][col],col)
+            icm = _adapt_column(lmd['stats_v2'][col], col)
         except Exception as e:
             print(e)
             icm = {'column_name': col}
@@ -472,8 +474,11 @@ def get_models():
         try:
             amd = get_model_data(model_name)
             model = {}
-            for k in ['name', 'version', 'is_active', 'data_source', 'predict',
-            'status', 'train_end_at', 'updated_at', 'created_at','current_phase', 'accuracy']:
+
+            KEYS = ['name', 'version', 'is_active', 'predict', 'status', 'train_end_at',
+                    'updated_at', 'created_at','current_phase', 'accuracy', 'data_source']
+
+            for k in KEYS:
                 if k in amd:
                     model[k] = amd[k]
                 else:

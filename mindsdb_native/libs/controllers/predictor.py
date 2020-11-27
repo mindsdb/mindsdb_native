@@ -83,9 +83,9 @@ def _prepare_timeseries_settings(user_provided_settings):
 
 
 class Predictor:
-    def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL):
+    def __init__(self, name, log_level=CONFIG.DEFAULT_LOG_LEVEL, run_env=None):
         """
-        This controller defines the API to a MindsDB 'mind', a mind is an object that can learn and predict from data
+        This controller defines the API to a MindsDB Predictor, an object that can learn and predict from data
 
         :param name: the namespace you want to identify this mind instance with
         :param root_folder: the folder where you want to store this mind or load from
@@ -93,12 +93,13 @@ class Predictor:
         """
         self.name = name
         self.uuid = str(uuid.uuid1())
-        self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid)
+        if CONFIG.CHECK_FOR_UPDATES:
+            self.report_uuid = check_for_updates(run_env)
+        else:
+            self.report_uuid = 'no_report'
+        self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid, report_uuid=self.report_uuid)
         self.breakpoint = None
         self.transaction = None
-
-        if CONFIG.CHECK_FOR_UPDATES:
-            check_for_updates()
 
         if not CONFIG.SAGEMAKER:
             # If storage path is not writable, raise an exception as this can no longer be
@@ -107,7 +108,6 @@ class Predictor:
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
-
             # If storage path is not writable, raise an exception as this can no longer be
             if not os.access(CONFIG.MINDSDB_STORAGE_PATH, os.R_OK):
                 error_message = '''Cannot read from storage path, please either set the config variable mindsdb.config.set('MINDSDB_STORAGE_PATH',<path>) or give write access to {folder}'''
@@ -115,22 +115,23 @@ class Predictor:
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
     def quick_learn(self,
-              to_predict,
-              from_data,
-              timeseries_settings=None,
-              ignore_columns=None,
-              stop_training_in_x_seconds=None,
-              backend='lightwood',
-              rebuild_model=True,
-              use_gpu=None,
-              equal_accuracy_for_all_output_categories=True,
-              output_categories_importance_dictionary=None,
-              advanced_args=None,
-              sample_settings=None):
+                    to_predict,
+                    from_data,
+                    timeseries_settings=None,
+                    ignore_columns=None,
+                    stop_training_in_x_seconds=None,
+                    backend='lightwood',
+                    rebuild_model=True,
+                    use_gpu=None,
+                    equal_accuracy_for_all_output_categories=True,
+                    output_categories_importance_dictionary=None,
+                    advanced_args=None,
+                    sample_settings=None):
 
         if advanced_args is None:
             advanced_args = {}
         advanced_args['quick_learn'] = True
+        advanced_args['use_selfaware_model'] = False
 
         return self.learn(to_predict, from_data, timeseries_settings, ignore_columns, stop_training_in_x_seconds, backend, rebuild_model, use_gpu, equal_accuracy_for_all_output_categories, output_categories_importance_dictionary, advanced_args, sample_settings)
 
@@ -205,21 +206,14 @@ class Predictor:
             self.log.warning(f'Sample for analysis: {sample_for_analysis}')
             self.log.warning(f'Sample for training: {sample_for_training}')
 
-            """
-            We don't implement "name" as a concept in mindsdbd data sources, this is only available for files,
-            the server doesn't handle non-file data sources at the moment, so this shouldn't prove an issue,
-            once we want to support datasources such as s3 and databases for the server we need to add name as a concept (or, preferably, before that)
-            """
-            data_source_name = from_ds.name()
-
             heavy_transaction_metadata = dict(
-                name=self.name,
-                from_data=from_ds,
-                predictions= None,
-                model_backend= backend,
-                sample_function=sample_function,
-                from_data_type=type(from_ds),
-                breakpoint = self.breakpoint
+                name = self.name,
+                from_data = from_ds,
+                predictions = None,
+                model_backend = backend,
+                sample_function = sample_function,
+                from_data_type = type(from_ds),
+                breakpoint  = self.breakpoint
             )
 
             light_transaction_metadata = dict(
@@ -229,7 +223,6 @@ class Predictor:
                 predict_columns = predict_columns,
                 model_columns_map = from_ds._col_map,
                 tss=timeseries_settings,
-                data_source = data_source_name,
                 type = transaction_type,
                 sample_settings = sample_settings,
                 stop_training_in_x_seconds = stop_training_in_x_seconds,
@@ -250,7 +243,7 @@ class Predictor:
                 data_subtypes = {},
                 equal_accuracy_for_all_output_categories = equal_accuracy_for_all_output_categories,
                 output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
-
+                report_uuid = self.report_uuid,
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
                 force_column_usage = advanced_args.get('force_column_usage', []),
@@ -287,7 +280,7 @@ class Predictor:
                     'heavy_model_metadata.pickle'
                 ))
 
-                for k in ['data_preparation', 'rebuild_model', 'data_source', 'type', 'columns_to_ignore', 'sample_margin_of_error', 'sample_confidence_level', 'stop_training_in_x_seconds']:
+                for k in ['data_preparation', 'rebuild_model', 'type', 'columns_to_ignore', 'sample_margin_of_error', 'sample_confidence_level', 'stop_training_in_x_seconds']:
                     if old_lmd[k] is not None: light_transaction_metadata[k] = old_lmd[k]
 
                 if old_hmd['from_data'] is not None:
@@ -302,8 +295,11 @@ class Predictor:
 
             self.transaction.run()
 
-
-    def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
+    def test(self,
+             when_data,
+             accuracy_score_functions,
+             score_using='predicted_value',
+             predict_args=None):
         """
         :param when_data: use this when you have data in either a file, a pandas data frame, or url to a file that you want to predict from
         :param accuracy_score_functions: a single function or  a dictionary for the form `{f'{target_name}': acc_func}` for when we have multiple targets
@@ -396,6 +392,7 @@ class Predictor:
                 type = transaction_type,
                 use_gpu = use_gpu,
                 data_preparation = {},
+                report_uuid = self.report_uuid,
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 use_database_history = advanced_args.get('use_database_history', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),

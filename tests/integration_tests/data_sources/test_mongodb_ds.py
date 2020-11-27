@@ -26,3 +26,9 @@ class TestMongoDB(unittest.TestCase):
         )
 
         F.analyse_dataset(from_data=mongodb_ds)
+
+        for val in mongodb_ds.filter([['location', 'like','ood']])['location']:
+            assert val == 'good'
+
+        assert len(mongodb_ds.filter([['rental_price', '>', 2500]], 3)) == 3
+        assert len(mongodb_ds.filter([['initial_price', '<', 0]], 3)) == 0
