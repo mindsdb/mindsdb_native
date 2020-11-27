@@ -37,6 +37,7 @@ class ModelAnalyzer(BaseModule):
         input_columns = [col for col in self.transaction.lmd['columns'] if col not in output_columns and col not in self.transaction.lmd['columns_to_ignore']]
 
         # Make predictions on the validation dataset normally and with various columns missing
+        self.transaction.model_backend.predictor.config['include_extra_data'] = True
         normal_predictions = self.transaction.model_backend.predict('validate')
 
         normal_predictions_test = self.transaction.model_backend.predict('test')
@@ -227,7 +228,7 @@ class ModelAnalyzer(BaseModule):
                 if isinstance(self.transaction.model_backend.predictor._mixer, NnMixer) and \
                         self.transaction.model_backend.predictor._mixer.is_selfaware:
                     norm_params = {'output_column': target}
-                    normalizer = SelfawareNormalizer(self.transaction.model_backend.predictor, fit_params=norm_params)
+                    normalizer = SelfawareNormalizer(fit_params=norm_params)
                 else:
                     normalizer = None
 
@@ -241,7 +242,7 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp'][target] = icp_class(nc)
 
                 if normalizer is not None:
-                    normalizer.columns = filter_cols(model.columns, model.target, model.ignore_columns)
+                    normalizer.prediction_cache = normal_predictions
 
                 if not is_classification:
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
