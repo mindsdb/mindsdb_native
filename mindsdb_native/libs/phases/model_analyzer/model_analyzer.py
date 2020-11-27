@@ -16,13 +16,11 @@ from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, Inverse
 
 
 class ModelAnalyzer(BaseModule):
-
     def run(self):
         np.seterr(divide='warn', invalid='warn')
         """
         # Runs the model on the validation set in order to evaluate the accuracy and confidence of future predictions
         """
-
         validation_df = self.transaction.input_data.validation_df
         if self.transaction.lmd['tss']['is_timeseries']:
             validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
@@ -98,6 +96,7 @@ class ModelAnalyzer(BaseModule):
                 backend=self.transaction.model_backend
             )
 
+
         # Get some information about the importance of each column
         self.transaction.lmd['column_importances'] = {}
         for col in ignorable_input_columns:
@@ -170,7 +169,7 @@ class ModelAnalyzer(BaseModule):
             self.transaction.lmd['accuracy_samples'][col] = accuracy_samples
             self.transaction.hmd['acc_stats'][col] = pickle_obj(acc_stats)
 
-        self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr)/len(overall_accuracy_arr)
+        self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr) / len(overall_accuracy_arr)
 
         # conformal prediction confidence estimation
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
