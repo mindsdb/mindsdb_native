@@ -216,6 +216,7 @@ class SQLDataSource(DataSource):
 
             query = moz_sql_parser.format(parsed_query)
             query = query.replace('"', "'")
+            query = query.replace("'.'",".")
 
             for col in modified_columns:
                 if f"'{col}'" in query:
