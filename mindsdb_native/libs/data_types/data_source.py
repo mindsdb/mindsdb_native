@@ -129,7 +129,7 @@ class DataSource:
         if cond == '<':
             df = df[pd.to_numeric(df[col], errors='coerce') < val]
         if cond == 'like':
-            df = df[df[col].to_string().str.contains(str(val).replace("%", ""))]
+            df = df[df[col].apply(str).str.contains(str(val).replace("%", ""))]
         if cond == '=':
             df = df[( df[col] == val ) | ( df[col] == str(val) )]
         if cond == '!=':
@@ -182,7 +182,7 @@ class SQLDataSource(DataSource):
     def filter(self, where=None, limit=None, get_col_map=False):
         try:
             print(self._query)
-            parsed_query = moz_sql_parser.parse(self._query)
+            parsed_query = moz_sql_parser.parse(self._query.replace('FORMT JSON'))
 
             for col, op, value in where or []:
                 past_where_clause = parsed_query.get('where', {})
