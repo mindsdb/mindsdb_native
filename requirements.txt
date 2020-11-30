@@ -1,3 +1,4 @@
+psutil >= 3.0.0
 lightwood == 0.49.0
 cython >= 0.29.2
 setuptools >= 21.2.1
@@ -21,4 +22,3 @@ flair >= 0.5,<=0.6.1
 nonconformist >= 2.1.0
 dill >= 0.2.9
 moz_sql_parser >= 3.0.0
-psutil >= 3.0.0
