@@ -129,7 +129,7 @@ class DataSource:
         if cond == '<':
             df = df[pd.to_numeric(df[col], errors='coerce') < val]
         if cond == 'like':
-            df = df[df[col].str.contains(str(val).replace("%", ""))]
+            df = df[df[col].to_string().str.contains(str(val).replace("%", ""))]
         if cond == '=':
             df = df[( df[col] == val ) | ( df[col] == str(val) )]
         if cond == '!=':
