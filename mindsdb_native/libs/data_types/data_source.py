@@ -222,7 +222,6 @@ class SQLDataSource(DataSource):
                 if f"'{col}'" in query:
                     query = query.replace(f"'{col}'", col)
 
-            print('\n\n\n\n', query, where_clause, '\n\n\n\n')
             if get_col_map:
                 return self.query(query)
             else:
