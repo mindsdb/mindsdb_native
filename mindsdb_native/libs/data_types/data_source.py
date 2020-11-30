@@ -219,7 +219,7 @@ class SQLDataSource(DataSource):
 
             for col in modified_columns:
                 if f"'{col}'" in query:
-                    query.replace(f"'{col}'", col)
+                    query = query.replace(f"'{col}'", col)
 
             print('\n\n\n\n', query, where_clause, '\n\n\n\n')
             if get_col_map:
