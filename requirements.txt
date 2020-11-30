@@ -1,4 +1,3 @@
-psutil>=5.7.0
 lightwood == 0.49.0
 cython >= 0.29.2
 setuptools >= 21.2.1
