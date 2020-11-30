@@ -3,6 +3,7 @@ from copy import deepcopy
 import pandas as pd
 import moz_sql_parser
 from moz_sql_parser.keywords import binary_ops
+import traceback
 
 from mindsdb_native.libs.constants.mindsdb import (
     DATA_TYPES_SUBTYPES,
@@ -96,13 +97,14 @@ class DataSource:
         self._internal_df.drop(columns=columns_to_drop, inplace=True)
 
     def query(self, q=None):
+        print('\n\n\n', q, '\n\n\n')
         """
         :param q: a query specific to type of datasource
         Datasources must override this method to return pandas.DataFrame
         based on :param q:
         e.g. for MySqlDS :param q: must be a SQL query
              for MongoDS :param q: must be a dictionary
-            
+
         :return: tuple(pandas.DataFrame, dict)
         """
 
@@ -179,6 +181,7 @@ class SQLDataSource(DataSource):
 
     def filter(self, where=None, limit=None, get_col_map=False):
         try:
+            print(self._query)
             parsed_query = moz_sql_parser.parse(self._query)
 
             for col, op, value in where or []:
@@ -211,7 +214,9 @@ class SQLDataSource(DataSource):
             else:
                 return self.query(query)[0]
 
-        except Exception:
+        except Exception as e:
+            print(traceback.format_exc())
+            print('Failed to filter using SQL: ', e)
             return super().filter(where=where, limit=limit, get_col_map=get_col_map)
 
     @property
