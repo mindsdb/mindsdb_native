@@ -182,6 +182,7 @@ class SQLDataSource(DataSource):
         try:
             parsed_query = moz_sql_parser.parse(self._query.replace('FORMAT JSON', ''))
 
+            modified_columns = []
             for col, op, value in where or []:
                 past_where_clause = parsed_query.get('where', {})
 
@@ -201,6 +202,7 @@ class SQLDataSource(DataSource):
                     elif 'mariadb' in self.name().lower() or 'mysql' in self.name().lower() or 'mssql' in self.name().lower():
                         col = f'CAST({col} AS TEXT)'
 
+                modified_columns.append(col)
 
                 where_clause = {op_json: [col, value]}
 
@@ -215,8 +217,11 @@ class SQLDataSource(DataSource):
             query = moz_sql_parser.format(parsed_query)
             query = query.replace('"', "'")
 
+            for col in modified_columns:
+                if f"'{col}'" in query:
+                    query.replace(f"'{col}'", col)
 
-            print('\n\n\n\n', query, '\n\n\n\n')
+            print('\n\n\n\n', query, where_clause, '\n\n\n\n')
             if get_col_map:
                 return self.query(query)
             else:
