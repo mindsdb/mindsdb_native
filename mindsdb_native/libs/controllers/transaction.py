@@ -88,7 +88,7 @@ class Transaction:
                     try:
                         self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
                     except AttributeError:
-                        model_path = self.lmd['lightwood_data']['save_path']
+                        model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'lightwood_data')
                         self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
         except FileNotFoundError as e:
             self.hmd['icp'] = {'active': False}
