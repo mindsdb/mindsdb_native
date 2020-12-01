@@ -13,7 +13,7 @@ from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
 
 def _make_pred(row):
-    return not hasattr(row, "make_predictions") or row.make_predictions
+    return not hasattr(row, 'make_predictions') or row.make_predictions
 
 
 class LightwoodBackend:
@@ -72,23 +72,18 @@ class LightwoodBackend:
         else:
             df_arr = [original_df]
 
-        df_arr = [dataframe.astype(object) for dataframe in df_arr]
-
         # Make type `object` so that dataframe cells can be python lists
         for i in range(len(df_arr)):
             for hist_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
-                df_arr[i].loc[hist_col] = df_arr[i][hist_col].astype(object)
+                df_arr[i].loc[:, hist_col] = df_arr[i][hist_col].astype(object)
 
         # Make all order column cells lists
         for i in range(len(df_arr)):
             for order_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
                 for ii in range(len(df_arr[i])):
-                    try:
-                        df_arr[i][order_col].iloc[ii] = [df_arr[i][order_col].iloc[ii]]
-                    except Exception:
-                        # Needed because of a pandas bug that causes above to fail for small dataframes
-                        label = df_arr[i].index.values[ii]
-                        df_arr[i].at[label, order_col] = [df_arr[i].at[label, order_col]]
+                    # Needed because of a pandas bug that causes above to fail for small dataframes
+                    label = df_arr[i].index.values[ii]
+                    df_arr[i].at[label, order_col] = [df_arr[i].at[label, order_col]]
 
         # Add previous rows
         for n in range(len(df_arr)):
@@ -97,8 +92,8 @@ class LightwoodBackend:
                     previous_indexes = [*range(max(0, i - window), i)]
 
                     for prev_i in reversed(previous_indexes):
-                        df_arr[n][order_col].iloc[i].append(
-                            df_arr[n][order_col].iloc[prev_i][-1]
+                        df_arr[n].iloc[i][order_col].append(
+                            df_arr[n].iloc[prev_i][order_col][-1]
                         )
 
                     # Zero pad
@@ -117,7 +112,7 @@ class LightwoodBackend:
 
                     previous_target_values_arr = []
                     for i in range(len(previous_target_values)):
-                        arr = previous_target_values[max(i-window,0):i+1]
+                        arr = previous_target_values[max(i - window, 0):i + 1]
                         while len(arr) <= window:
                             arr = [None] + arr
                         previous_target_values_arr.append(arr)
@@ -125,15 +120,13 @@ class LightwoodBackend:
                     df_arr[k][f'__mdb_ts_previous_{target_column}'] = previous_target_values_arr
                     for timestep_index in range(1, self.nr_predictions):
                         next_target_value_arr = list(df_arr[k][target_column])
-                        for del_index in range(0,timestep_index):
+                        for del_index in range(0, timestep_index):
                             del next_target_value_arr[del_index]
                             next_target_value_arr.append(0)
                         # @TODO: Maybe ignore the rows with `None` next targets for training
                         df_arr[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
 
-
         combined_df = pd.concat(df_arr)
-
 
         if 'make_predictions' in combined_df.columns:
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
