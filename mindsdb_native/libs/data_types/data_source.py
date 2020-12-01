@@ -3,6 +3,7 @@ from copy import deepcopy
 import pandas as pd
 import moz_sql_parser
 from moz_sql_parser.keywords import binary_ops
+import traceback
 
 from mindsdb_native.libs.constants.mindsdb import (
     DATA_TYPES_SUBTYPES,
@@ -102,7 +103,7 @@ class DataSource:
         based on :param q:
         e.g. for MySqlDS :param q: must be a SQL query
              for MongoDS :param q: must be a dictionary
-            
+
         :return: tuple(pandas.DataFrame, dict)
         """
 
@@ -127,7 +128,7 @@ class DataSource:
         if cond == '<':
             df = df[pd.to_numeric(df[col], errors='coerce') < val]
         if cond == 'like':
-            df = df[df[col].str.contains(str(val).replace("%", ""))]
+            df = df[df[col].apply(str).str.contains(str(val).replace("%", ""))]
         if cond == '=':
             df = df[( df[col] == val ) | ( df[col] == str(val) )]
         if cond == '!=':
@@ -179,19 +180,29 @@ class SQLDataSource(DataSource):
 
     def filter(self, where=None, limit=None, get_col_map=False):
         try:
-            parsed_query = moz_sql_parser.parse(self._query)
+            parsed_query = moz_sql_parser.parse(self._query.replace('FORMAT JSON', ''))
 
+            modified_columns = []
             for col, op, value in where or []:
                 past_where_clause = parsed_query.get('where', {})
 
                 op = op.lower()
                 op_json = binary_ops.get(op, None)
+
                 if op_json is None:
-                    log.warning(f"Operator: {op} not found in: QueryBuilder._OPERATORS\n Using it anyway.")
+                    log.warning(f"Operator: {op} not found in the sql parser operator list\n Using it anyway.")
                     op_json = op
 
                 if op == 'like':
                     value = '%' + value.strip('%') + '%'
+                    if 'clickhouse' in self.name().lower():
+                        col = f'toString({col})'
+                    elif 'postgres' in self.name().lower():
+                        col = f'{col}::text'
+                    elif 'mariadb' in self.name().lower() or 'mysql' in self.name().lower() or 'mssql' in self.name().lower():
+                        col = f'CAST({col} AS TEXT)'
+
+                modified_columns.append(col)
 
                 where_clause = {op_json: [col, value]}
 
@@ -205,13 +216,20 @@ class SQLDataSource(DataSource):
 
             query = moz_sql_parser.format(parsed_query)
             query = query.replace('"', "'")
+            query = query.replace("'.'",".")
+
+            for col in modified_columns:
+                if f"'{col}'" in query:
+                    query = query.replace(f"'{col}'", col)
 
             if get_col_map:
                 return self.query(query)
             else:
                 return self.query(query)[0]
 
-        except Exception:
+        except Exception as e:
+            print(traceback.format_exc())
+            print('Failed to filter using SQL: ', e)
             return super().filter(where=where, limit=limit, get_col_map=get_col_map)
 
     @property
