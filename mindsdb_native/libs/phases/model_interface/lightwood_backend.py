@@ -512,6 +512,9 @@ class LightwoodBackend:
                             conf = 1
                         model_confidence_dict[k][i].append(conf)
 
+            if 'selfaware_confidences' in predictions[k]:
+                formated_predictions[f'{k}_selfaware_scores'] = [c[0] for c in model_confidence_dict[k]]
+
             for k in model_confidence_dict:
                 model_confidence_dict[k] = [np.mean(x) for x in model_confidence_dict[k]]
 
@@ -520,6 +523,8 @@ class LightwoodBackend:
 
             if 'confidence_range' in predictions[k]:
                 formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
+
+
 
         if self.transaction.lmd['tss']['is_timeseries']:
             for k in list(formated_predictions.keys()):

@@ -2,7 +2,8 @@ from mindsdb_native.libs.helpers.general_helpers import pickle_obj, disable_cons
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
-from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter, clean_df
+from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
+from mindsdb_native.libs.helpers.conformal_helpers import SelfawareNormalizer, clean_df, filter_cols
 from mindsdb_native.libs.helpers.accuracy_stats import AccStats
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from sklearn.metrics import balanced_accuracy_score, r2_score
@@ -11,6 +12,7 @@ import inspect
 import numpy as np
 from copy import deepcopy
 from sklearn.preprocessing import OneHotEncoder
+from lightwood.mixers.nn import NnMixer
 from nonconformist.icp import IcpRegressor, IcpClassifier
 from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, InverseProbabilityErrFunc
 
@@ -33,6 +35,7 @@ class ModelAnalyzer(BaseModule):
         input_columns = [col for col in self.transaction.lmd['columns'] if col not in output_columns and col not in self.transaction.lmd['columns_to_ignore']]
 
         # Make predictions on the validation dataset normally and with various columns missing
+        self.transaction.model_backend.predictor.config['include_extra_data'] = True
         normal_predictions = self.transaction.model_backend.predict('validate')
 
         normal_predictions_test = self.transaction.model_backend.predict('test')
@@ -220,7 +223,15 @@ class ModelAnalyzer(BaseModule):
 
             if data_type in (DATA_TYPES.NUMERIC, DATA_TYPES.SEQUENTIAL) or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
                 model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
-                nc = nc_class(model, nc_function)
+
+                if isinstance(self.transaction.model_backend.predictor._mixer, NnMixer) and \
+                        self.transaction.model_backend.predictor._mixer.is_selfaware:
+                    norm_params = {'output_column': target}
+                    normalizer = SelfawareNormalizer(fit_params=norm_params)
+                else:
+                    normalizer = None
+
+                nc = nc_class(model, nc_function, normalizer=normalizer)
 
                 X = deepcopy(self.transaction.input_data.train_df)
                 if self.transaction.lmd['tss']['is_timeseries']:
@@ -228,6 +239,10 @@ class ModelAnalyzer(BaseModule):
                 y = X.pop(target)
 
                 self.transaction.hmd['icp'][target] = icp_class(nc)
+
+                if normalizer is not None:
+                    normalizer.prediction_cache = normal_predictions
+
                 if not is_classification:
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 
