@@ -352,16 +352,16 @@ class PredictTransaction(Transaction):
                     # preserve order that the ICP expects, else bounds are useless
                     X = X.reindex(columns=self.hmd['icp'][predicted_col].index.values)
 
+                    normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
+                    if normalizer:
+                        normalizer.prediction_cache = self.hmd['predictions']
+
                     # numerical
                     if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
                             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                                 DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
                         tol_const = 1  # std devs
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
-
-                        normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
-                        if normalizer:
-                            normalizer.prediction_cache = self.hmd['predictions']
 
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
 
