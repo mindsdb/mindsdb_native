@@ -20,5 +20,5 @@ mysql-connector-python >= 8.0.20
 portalocker >= 1.7.0
 flair >= 0.5,<=0.6.1
 nonconformist >= 2.1.0
-dill >= 0.2.9
+dill >= 0.2.9, <= 0.3.3
 moz_sql_parser >= 3.0.0
