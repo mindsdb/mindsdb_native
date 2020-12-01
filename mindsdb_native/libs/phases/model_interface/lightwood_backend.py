@@ -51,7 +51,7 @@ class LightwoodBackend:
         for _, row in original_df.iterrows():
             for col in ob_arr:
                 # @TODO: Remove if the TS encoder can handle `None`
-                if row[col] is None:
+                if row[col] is None or pd.isna(row[col]):
                     row[col] = 0.0
 
                 try:
