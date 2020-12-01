@@ -95,14 +95,14 @@ class AccStats:
             else:
                 bucket_acc_counts[bucket].append(1 if bucket == self.real_values_bucketized[i] else 0)
 
-        for bucket in bucket_accuracy:
+        for bucket in bucket_acc_counts:
             bucket_accuracy[bucket] = sum(bucket_acc_counts[bucket])/len(bucket_acc_counts[bucket])
 
         accuracy_count = []
         for counts in list(bucket_acc_counts.values()):
             accuracy_count += counts
 
-        overall_accuracy = sum(accuracy_count)/len(accuracy_count)
+        overall_accuracy = sum(accuracy_count) / len(accuracy_count)
 
         for bucket in range(len(self.buckets)):
             if bucket not in bucket_accuracy:
