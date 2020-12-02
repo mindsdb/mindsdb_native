@@ -1,37 +1,32 @@
 import pandas as pd
 import mysql.connector
 
-from mindsdb_native.libs.data_types.data_source import DataSource
+from mindsdb_native.libs.data_types.data_source import SQLDataSource
 
 
-class MySqlDS(DataSource):
+class MySqlDS(SQLDataSource):
+    def __init__(self, query, database='mysql', host='localhost',
+                 port=3306, user='root', password=''):
+        super().__init__(query)
+        self.database = database
+        self.host = host
+        self.port = int(port)
+        self.user = user
+        self.password = password
 
-    def _setup(self, table=None, query=None, database='mysql', host='localhost',
-               port=3306, user='root', password=''):
+    def query(self, q):
+        con = mysql.connector.connect(
+            host=self.host,
+            port=self.port,
+            user=self.user,
+            password=self.password,
+            database=self.database
+        )
 
-        self._database_name = database
-        self._table_name = table
-
-        if query is None:
-            query = f'SELECT * FROM {table}'
-
-        con = mysql.connector.connect(host=host,
-                                      port=port,
-                                      user=user,
-                                      password=password,
-                                      database=database)
-        df = pd.read_sql(query, con=con)
+        df = pd.read_sql(q, con=con)
         con.close()
 
-        col_map = {}
-        for col in df.columns:
-            col_map[col] = col
-
-        return df, col_map
+        return df, self._make_colmap(df)
 
     def name(self):
-        return '{}: {}/{}'.format(
-            self.__class__.__name__,
-            self._database_name,
-            self._table_name
-        )
+        return 'MySQL - {}'.format(self._query)

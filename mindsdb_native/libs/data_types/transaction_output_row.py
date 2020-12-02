@@ -38,25 +38,26 @@ class TransactionOutputRow:
             answers[pred_col] = {}
             prediction_row = {col: self._data[col][self._row_index] for col in self._data.keys()}
 
-            answers[pred_col]['predicted_value'] = prediction_row[pred_col]
-
-
-            if f'{pred_col}_model_confidence' in prediction_row:
-                answers[pred_col]['confidence'] = (prediction_row[f'{pred_col}_model_confidence'] * 3 + prediction_row[f'{pred_col}_confidence'] * 1)/4
+            if self._transaction_output._transaction.lmd['tss']['is_timeseries'] and \
+                    self._transaction_output._transaction.lmd['tss']['nr_predictions'] > 1:
+                answers[pred_col]['predicted_value'] = prediction_row[pred_col][0]
+                answers[pred_col]['all_predicted_values'] = prediction_row[pred_col]
             else:
-                answers[pred_col]['confidence'] = prediction_row[f'{pred_col}_confidence']
+                answers[pred_col]['predicted_value'] = prediction_row[pred_col]
 
-            answers[pred_col]['confidence'] = round(answers[pred_col]['confidence'], 4)
-
-            quality = 'very confident'
-            if answers[pred_col]['confidence'] < 0.8:
-                quality = 'confident'
-            if answers[pred_col]['confidence'] < 0.6:
-                quality = 'somewhat confident'
-            if answers[pred_col]['confidence'] < 0.4:
-                quality = 'not very confident'
-            if answers[pred_col]['confidence'] < 0.2:
-                quality = 'not confident'
+            if prediction_row[f'{pred_col}_confidence'] is not None:
+                answers[pred_col]['confidence'] = round(prediction_row[f'{pred_col}_confidence'], 4)
+                quality = 'very confident'
+                if answers[pred_col]['confidence'] < 0.8:
+                    quality = 'confident'
+                if answers[pred_col]['confidence'] < 0.6:
+                    quality = 'somewhat confident'
+                if answers[pred_col]['confidence'] < 0.4:
+                    quality = 'not very confident'
+                if answers[pred_col]['confidence'] < 0.2:
+                    quality = 'not confident'
+            else:
+                quality = 'missing confidence estimation'
 
             answers[pred_col]['prediction_quality'] = quality
 

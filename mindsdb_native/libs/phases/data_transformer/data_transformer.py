@@ -66,7 +66,7 @@ def _lightwood_datetime_processing(dt):
 
 def _standardize_timeseries(ts_str):
     """
-    erases square brackets, trailing whitespace, 
+    erases square brackets, trailing whitespace,
     and commas from the array as string
     """
     try:
@@ -82,7 +82,6 @@ def _clean_float_or_none(val):
         return clean_float(val)
     except Exception:
         return None
-
 
 
 class DataTransformer(BaseModule):
@@ -126,10 +125,10 @@ class DataTransformer(BaseModule):
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     self._apply_to_all_data(input_data, column, _tags_to_tuples, transaction_type)
                 else:
-                    self._apply_to_all_data(input_data, column, str, transaction_type)
+                    self._apply_to_all_data(input_data, column, lambda x: x if x is None else str(x), transaction_type)
 
             if data_type == DATA_TYPES.TEXT:
-                self._apply_to_all_data(input_data, column, str, transaction_type)
+                self._apply_to_all_data(input_data, column, lambda x: x if x is None else str(x), transaction_type)
 
             if data_type == DATA_TYPES.SEQUENTIAL:
                 if data_subtype == DATA_SUBTYPES.ARRAY:

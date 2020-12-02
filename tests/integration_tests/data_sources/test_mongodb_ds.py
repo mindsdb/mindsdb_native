@@ -1,51 +1,34 @@
-import pytest
-import logging
-from mindsdb_native import Predictor
-from mindsdb_native import F
+import unittest
+from mindsdb_native import Predictor, F
+from . import DB_CREDENTIALS
 
 
-@pytest.mark.integration
-def test_mongodb_ds():
-    from pymongo import MongoClient
-    from mindsdb_native.libs.data_sources.mongodb_ds import MongoDS
+class TestMongoDB(unittest.TestCase):
+    def setUp(self):
+        self.USER = DB_CREDENTIALS['mongodb']['user']
+        self.PASSWORD = DB_CREDENTIALS['mongodb']['password']
+        self.HOST = DB_CREDENTIALS['mongodb']['host']
+        self.PORT = int(DB_CREDENTIALS['mongodb']['port'])
+        self.DATABASE = 'test_data'
+        self.COLLECTION = 'home_rentals'
 
-    HOST = 'localhost'
-    USER = 'root'
-    PASSWORD = '123'
-    DATABASE = 'database'
-    COLLECTION_NAME = 'test_mindsdb'
-    PORT = 27017
+    def test_mongodb_ds(self):
+        from mindsdb_native import MongoDS
 
-    con = MongoClient(host=HOST,
-                      port=PORT,
-                      username=USER,
-                      password=PASSWORD)
+        mongodb_ds = MongoDS(
+            collection=self.COLLECTION,
+            query={},
+            host=self.HOST,
+            port=self.PORT,
+            user=self.USER,
+            password=self.PASSWORD,
+            database=self.DATABASE
+        )
 
-    db = con[DATABASE]
-    
-    if COLLECTION_NAME in db.list_collection_names():
-        db[COLLECTION_NAME].drop()
+        F.analyse_dataset(from_data=mongodb_ds)
 
-    collection = db[COLLECTION_NAME]
+        for val in mongodb_ds.filter([['location', 'like','ood']])['location']:
+            assert val == 'good'
 
-    for i in range(0, 200):
-        collection.insert_one({
-            'col_1': "This is string number {}".format(i),
-            'col_2': i,
-            'col_3': (i % 2) == 0
-        })
-
-    mongodb_ds = MongoDS(collection=COLLECTION_NAME,
-                         query={},
-                         host=HOST,
-                         port=PORT,
-                         user=USER,
-                         password=PASSWORD,
-                         database=DATABASE)
-
-    assert mongodb_ds.name() == 'MongoDS: database/test_mindsdb'
-
-    assert (len(mongodb_ds._df) == 200)
-
-    mdb = Predictor(name='analyse_dataset_test_predictor', log_level=logging.ERROR)
-    F.analyse_dataset(from_data=mongodb_ds)
+        assert len(mongodb_ds.filter([['rental_price', '>', 2500]], 3)) == 3
+        assert len(mongodb_ds.filter([['initial_price', '<', 0]], 3)) == 0

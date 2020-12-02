@@ -14,6 +14,11 @@ import traceback
 import pandas as pd
 import numpy as np
 
+from mindsdb_native.libs.constants.mindsdb import (
+    TRANSACTION_ANALYSE,
+    TRANSACTION_LEARN
+)
+
 
 class DataExtractor(BaseModule):
     def _data_from_when(self):
@@ -65,11 +70,10 @@ class DataExtractor(BaseModule):
             df = df.sort_values(sort_by, ascending=asc_values)
 
         # if its not a time series, randomize the input data and we are learning
-        elif self.transaction.lmd['type'] == TRANSACTION_LEARN:
+        if not self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['type'] == TRANSACTION_LEARN:
             df = df.sample(frac=1, random_state=len(df))
 
         return df
-
 
     def _get_prepared_input_df(self):
         """
@@ -84,14 +88,15 @@ class DataExtractor(BaseModule):
             df = self.transaction.hmd['from_data']
             df = df.where((pd.notnull(df)), None)
 
-        if  self.transaction.lmd['type'] == TRANSACTION_PREDICT:
+        if self.transaction.lmd['type'] == TRANSACTION_PREDICT:
             if self.transaction.hmd['when_data'] is not None:
                 df = self._data_from_when_data()
             else:
                 # if no data frame yet, make one
                 df = self._data_from_when()
 
-            if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['disable_history_fetching'] and self.transaction.lmd['tss']['is_timeseries']:
+            if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['use_database_history']:
+                self.log.warning('Using automatic database history sourcing, will be selecting rows from the same table you used to train the original model.')
                 if 'make_predictions' not in df.columns:
                     df['make_predictions'] = [True] * len(df)
 
@@ -117,9 +122,9 @@ class DataExtractor(BaseModule):
                     setup_args['query'] = create_history_query(setup_args['query'], self.transaction.lmd['tss'], self.transaction.lmd['stats_v2'], row)
 
                     if historical_df is None:
-                        historical_df = self.transaction.hmd['from_data_type'](**setup_args)._df
+                        historical_df = self.transaction.hmd['from_data_type'](**setup_args).df
                     else:
-                        historical_df = pd.concat(historical_df,self.transaction.hmd['from_data_type'](**setup_args)._df)
+                        historical_df = pd.concat(historical_df,self.transaction.hmd['from_data_type'](**setup_args).df)
 
                 historical_df['make_predictions'] = [False] * len(historical_df)
                 for col in historical_df.columns:
@@ -128,7 +133,9 @@ class DataExtractor(BaseModule):
 
                 df = pd.concat([df,historical_df])
 
-        df = self._apply_sort_conditions_to_df(df)
+        # Sorting here *should* only be needed at learn time
+        if self.transaction.lmd['type'] == TRANSACTION_LEARN:
+            df = self._apply_sort_conditions_to_df(df)
 
         # Mutable lists -> immutable tuples
         # (lists caused TypeError: uhashable type 'list' in TypeDeductor phase)
@@ -142,7 +149,6 @@ class DataExtractor(BaseModule):
                 df[colname] = df[colname].astype(str)
 
         return df
-
 
     def _validate_input_data_integrity(self):
         """
@@ -161,7 +167,6 @@ class DataExtractor(BaseModule):
                     self.transaction.error = True
                     self.transaction.errorMsg = err
                     raise ValueError(err)
-                    return
 
     def _set_user_data_subtypes(self):
         if 'from_data' in self.transaction.hmd and self.transaction.hmd['from_data'] is not None:
@@ -170,6 +175,9 @@ class DataExtractor(BaseModule):
                 self.transaction.lmd['data_subtypes'][col] = self.transaction.hmd['from_data'].data_subtypes[col]
 
     def run(self):
+        if self.transaction.hmd.get('from_data') is not None:
+            self.transaction.lmd['data_source_name'] = self.transaction.hmd['from_data'].name()
+
         # --- Dataset gets randomized or sorted (if timeseries) --- #
         result = self._get_prepared_input_df()
         # --- Dataset gets randomized or sorted (if timeseries) --- #

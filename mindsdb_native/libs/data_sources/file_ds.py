@@ -13,17 +13,72 @@ from mindsdb_native.libs.data_types.data_source import DataSource
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
+def clean_row(row):
+    n_row = []
+    for cell in row:
+        if str(cell) in ['', ' ', '  ', 'NaN', 'nan', 'NA']:
+            n_row.append(None)
+        else:
+            n_row.append(cell)
+
+    return n_row
+
+
 class FileDS(DataSource):
+    def __init__(self, file, clean_rows=True, custom_parser=None):
+        super().__init__()
+        self.file = file
+        self.clean_rows = clean_rows
+        self.custom_parser = custom_parser
 
-    def cleanRow(self, row):
-        n_row = []
-        for cell in row:
-            if str(cell) in ['', ' ', '  ', 'NaN', 'nan', 'NA']:
-                n_row.append(None)
-            else:
-                n_row.append(cell)
+    def query(self, q=None):
+        """
+        Setup from file
+        :param file: fielpath or url
+        :param clean_rows: if you want to clean rows for strange null values
+        :param custom_parser: if you want to parse the file with some custom parser
+        """
+        self._file_name = os.path.basename(self.file)
 
-        return n_row
+        # get file data io, format and dialect
+        data, fmt, dialect = self._getDataIo(self.file)
+        data.seek(0) # make sure we are at 0 in file pointer
+
+        if self.custom_parser:
+            header, file_data = self.custom_parser(data, fmt)
+
+        elif fmt == 'csv':
+            csv_reader = list(csv.reader(data, dialect))
+            header = csv_reader[0]
+            file_data =  csv_reader[1:]
+
+        elif fmt in ['xlsx', 'xls']:
+            data.seek(0)
+            df = pd.read_excel(data)
+            header = df.columns.values.tolist()
+            file_data = df.values.tolist()
+
+        elif fmt == 'json':
+            data.seek(0)
+            json_doc = json.loads(data.read())
+            df = json_normalize(json_doc)
+            header = df.columns.values.tolist()
+            file_data = df.values.tolist()
+
+        else:
+            raise ValueError('Could not load file into any format, supported formats are csv, json, xls, xlsx')
+
+        if self.clean_rows:
+            file_list_data = [clean_row(row) for row in file_data]
+        else:
+            file_list_data = file_data
+
+        col_map = dict((col, col) for col in header)
+
+        try:
+            return pd.DataFrame(file_list_data, columns=header), col_map
+        except Exception:
+            return pd.read_csv(file, sep=dialect.delimiter), col_map
 
     def _getDataIo(self, file):
         """
@@ -49,7 +104,8 @@ class FileDS(DataSource):
         # else read file from local file system
         else:
             try:
-                data = open(file, 'rb')
+                with open(file, 'rb') as fp:
+                    data = BytesIO(fp.read())
             except Exception as e:
                 error = 'Could not load file, possible exception : {exception}'.format(exception = e)
                 log.error(error)
@@ -147,53 +203,4 @@ class FileDS(DataSource):
             return data, None, dialect
 
     def name(self):
-        return '{}: {}'.format(self.__class__.__name__, self._file_name)
-
-    def _setup(self, file, clean_rows=True, custom_parser=None):
-        """
-        Setup from file
-        :param file: fielpath or url
-        :param clean_rows: if you want to clean rows for strange null values
-        :param custom_parser: if you want to parse the file with some custom parser
-        """
-        self._file_name = os.path.basename(file)
-
-        # get file data io, format and dialect
-        data, fmt, dialect = self._getDataIo(file)
-        data.seek(0) # make sure we are at 0 in file pointer
-
-        if custom_parser:
-            header, file_data = custom_parser(data, fmt)
-
-        elif fmt == 'csv':
-            csv_reader = list(csv.reader(data, dialect))
-            header = csv_reader[0]
-            file_data =  csv_reader[1:]
-
-        elif fmt in ['xlsx', 'xls']:
-            data.seek(0)
-            df = pd.read_excel(data)
-            header = df.columns.values.tolist()
-            file_data = df.values.tolist()
-
-        elif fmt == 'json':
-            data.seek(0)
-            json_doc = json.loads(data.read())
-            df = json_normalize(json_doc)
-            header = df.columns.values.tolist()
-            file_data = df.values.tolist()
-        
-        else:
-            raise ValueError('Could not load file into any format, supported formats are csv, json, xls, xlsx')
-
-        if clean_rows == True:
-            file_list_data = [self.cleanRow(row) for row in file_data]
-        else:
-            file_list_data = file_data
-
-        col_map = dict((col, col) for col in header)
-
-        try:
-            return pd.DataFrame(file_list_data, columns=header), col_map
-        except Exception:
-            return pd.read_csv(file, sep=dialect.delimiter), col_map
+        return 'File, {}'.format(os.path.basename(self.file))

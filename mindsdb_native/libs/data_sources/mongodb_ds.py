@@ -3,42 +3,39 @@ from pymongo import MongoClient
 
 from mindsdb_native.libs.data_types.data_source import DataSource
 
-
 class MongoDS(DataSource):
-    def _setup(self, collection, query=None, database='database',
-               host='localhost', port=27017, user='admin', password='123'):
+    def __init__(self, query, collection, database='database',
+                 host='localhost', port=27017, user='admin', password='123'):
+        super().__init__()
 
-        if not isinstance(collection, str):
-            raise TypeError('collection must be a str')
-        
-        self._database_name = database
-        self._collection_name = collection
-
-        if query is None:
-            query = {}
+        if not isinstance(query, dict):
+            raise TypeError('query must be a dict')
         else:
-            if not isinstance(query, dict):
-                raise TypeError('query must be a dict')
+            self._query = query
 
-        conn = MongoClient(host=host,
-                           port=port,
-                           username=user,
-                           password=password)
+        self.collection = collection
+        self.database = database
+        self.host = host
+        self.port = int(port)
+        self.user = user
+        self.password = password
 
-        db = conn[database]
-        coll = db[collection]
+    def query(self, q):
+        assert isinstance(q, dict)
 
-        df = pd.DataFrame(list(coll.find(query, {'_id': 0})))
+        conn = MongoClient(
+            host=self.host,
+            port=self.port,
+            username=self.user,
+            password=self.password
+        )
 
-        col_map = {}
-        for col in df.columns:
-            col_map[col] = col
+        db = conn[self.database]
+        coll = db[self.collection]
 
-        return df, col_map
+        df = pd.DataFrame(list(coll.find(q, {'_id': 0})))
+
+        return df, self._make_colmap(df)
 
     def name(self):
-        return '{}: {}/{}'.format(
-            self.__class__.__name__,
-            self._database_name,
-            self._collection_name
-        )
+        return 'MongoDB - {}'.format(self._query)

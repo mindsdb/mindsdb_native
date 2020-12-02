@@ -10,35 +10,33 @@ from mindsdb_native import F
 
 
 class S3DS(DataSource):
+    def __init__(self, bucket_name, file_path, access_key=None,
+                 secret_key=None, use_default_credentails=False):
+        super().__init__()
+        self.bucket_name = bucket_name
+        self.file_path = file_path
+        self.access_key = access_key
+        self.secret_key = secret_key
+        self.use_default_credentails = use_default_credentails
 
-    def _setup(self, bucket_name, file_path, access_key=None,
-               secret_key=None,use_default_credentails=False):
-
-        self._bucket_name = bucket_name
-        self._file_name = os.path.basename(file_path)
-
-        if access_key is not None and secret_key is not None:
-            s3 = boto3.client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+    def query(self, q):
+        if self.access_key is not None and secret_key is not None:
+            s3 = boto3.client('s3', aws_access_key_id=self.access_key, aws_secret_access_key=self.secret_key)
         elif use_default_credentails:
             s3 = boto3.client('s3')
         else:
             s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
 
-        self.tmp_file_name = '.tmp_mindsdb_data_file'
-
         with open(self.tmp_file_name, 'wb') as fw:
-            s3.download_fileobj(bucket_name, file_path, fw)
+            s3.download_fileobj(self.bucket_name, self.file_path, fw)
 
-        file_ds = FileDS(self.tmp_file_name)
-        return file_ds._df, file_ds._col_map
+        tmp_file_name = '.tmp_mindsdb_data_file'
 
-    def _cleanup(self):
-        os.remove(self.tmp_file_name)
+        file_ds = FileDS(tmp_file_name)
 
+        os.remove(tmp_file_name)
+
+        return file_ds.df, file_ds._col_map
 
     def name(self):
-        return '{}: {}/{}'.format(
-            self.__class__.__name__,
-            self._bucket_name,
-            self._file_name
-        )
+        return 'S3 - {}/{}'.format(self.bucket_name, os.path.basename(self.file_path))

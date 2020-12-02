@@ -5,8 +5,7 @@ on:
   pull_request:
     branches:
       - stable
-      - staging
-      
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
@@ -22,28 +21,50 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install --no-cache-dir .
+        python -m pip install --upgrade pip==20.2.4
         pip install -r optional_requirements_extra_data_sources.txt
-    - name: Install lightwood/staging if it's not mindsdb_native/stable
-      if: github.ref != 'refs/heads/stable'
-      run: |
-          pip install git+https://github.com/mindsdb/lightwood.git@staging --upgrade --no-cache-dir
-    - name: Run unit tests
-      run: |
-          pytest --run-slow --durations=20 tests/unit_tests
-      shell: bash
-    - name: Run integration tests
+        pip install --no-cache-dir -e .
+      env:
+        CHECK_FOR_UPDATES: False
+    - name: Install dependencies Linux
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
-          docker-compose up -d
-          sleep 20
-          pytest --run-integration tests/integration_tests
-          docker-compose down
+          pip install -r optional_requirements_snowflake.txt;
         fi
       shell: bash
       env:
         CHECK_FOR_UPDATES: False
+    - name: Install dependencies OSX
+      run: |
+        if [ "$RUNNER_OS" == "macOS" ]; then
+          pip install -r optional_requirements_snowflake.txt;
+        fi
+      shell: bash
+      env:
+        CHECK_FOR_UPDATES: False
+    - name: Install lightwood/staging if it's not mindsdb_native/stable
+      if: github.ref != 'refs/heads/stable'
+      run: |
+          pip install git+https://github.com/mindsdb/lightwood.git@staging --upgrade --no-cache-dir
+      env:
+        CHECK_FOR_UPDATES: False
+    - name: Run unit tests
+      run: |
+          cd tests
+          python -m unittest discover unit_tests
+          cd ..
+      shell: bash
+      env:
+        CHECK_FOR_UPDATES: False
+    - name: Run integration tests
+      run: |
+          cd tests
+          python -m unittest discover integration_tests
+          cd ..
+      shell: bash
+      env:
+        CHECK_FOR_UPDATES: False
+        DATABASE_CREDENTIALS_STRINGIFIED_JSON: ${{ secrets.DATABASE_CREDENTIALS }}
 
   deploy:
     runs-on: ubuntu-latest
