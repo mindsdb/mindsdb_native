@@ -18,7 +18,6 @@ class TestPostgres(unittest.TestCase):
         LIMIT = 100
 
         postgres_ds = PostgresDS(
-            table=self.TABLE,
             host=self.HOST,
             user=self.USER,
             password=self.PASSWORD,

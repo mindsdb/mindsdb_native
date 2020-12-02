@@ -1,37 +1,22 @@
 import pandas as pd
 import pytds
-from mindsdb_native.libs.data_types.data_source import DataSource
+from mindsdb_native.libs.data_types.data_source import SQLDataSource
 
 
-class MSSQLDS(DataSource):
-    def __init__(self, *args, **kwargs):
-        self.is_sql = True
-        super(MSSQLDS, self).__init__(*args, **kwargs)
-
-    def _setup(self, table=None, query=None, database='master', host='localhost',
+class MSSQLDS(SQLDataSource):
+    def __init__(self, query, database='master', host='localhost',
                port=1433, user='sa', password=''):
+        super().__init__(query=query)
+        self.database_ = database
+        self.host = host
+        self.port = int(port)
+        self.user = user
+        self.password = password
 
-        self._database_name = database
-        self._table_name = table
-
-        if query is None:
-            query = f'SELECT * FROM {table}'
-
-        with pytds.connect(dsn=host,
-                           user=user,
-                           password=password,
-                           database=database) as con:
-            df = pd.read_sql(query, con=con)
-
-        col_map = {}
-        for col in df.columns:
-            col_map[col] = col
-
-        return df, col_map
+    def query(self, q):
+        with pytds.connect(dsn=self.host, user=self.user, password=self.password, database=self.database) as con:
+            df = pd.read_sql(q, con=con)
+        return df, self._make_colmap(df)
 
     def name(self):
-        return '{}: {}/{}'.format(
-            self.__class__.__name__,
-            self._database_name,
-            self._table_name
-        )
+        return 'Microsoft SQL - {}'.format(self._query)

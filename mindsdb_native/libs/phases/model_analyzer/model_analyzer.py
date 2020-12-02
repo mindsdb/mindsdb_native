@@ -2,8 +2,9 @@ from mindsdb_native.libs.helpers.general_helpers import pickle_obj, disable_cons
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
-from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter, clean_df
-from mindsdb_native.libs.helpers.probabilistic_validator import ProbabilisticValidator
+from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
+from mindsdb_native.libs.helpers.conformal_helpers import SelfawareNormalizer, clean_df, filter_cols
+from mindsdb_native.libs.helpers.accuracy_stats import AccStats
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from sklearn.metrics import balanced_accuracy_score, r2_score
 
@@ -11,6 +12,7 @@ import inspect
 import numpy as np
 from copy import deepcopy
 from sklearn.preprocessing import OneHotEncoder
+from lightwood.mixers.nn import NnMixer
 from nonconformist.icp import IcpRegressor, IcpClassifier
 from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, InverseProbabilityErrFunc
 
@@ -19,9 +21,8 @@ class ModelAnalyzer(BaseModule):
     def run(self):
         np.seterr(divide='warn', invalid='warn')
         """
-        # Runs the model on the validation set in order to fit a probabilistic model that will evaluate the accuracy of future predictions
+        # Runs the model on the validation set in order to evaluate the accuracy and confidence of future predictions
         """
-
         validation_df = self.transaction.input_data.validation_df
         if self.transaction.lmd['tss']['is_timeseries']:
             validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
@@ -34,6 +35,7 @@ class ModelAnalyzer(BaseModule):
         input_columns = [col for col in self.transaction.lmd['columns'] if col not in output_columns and col not in self.transaction.lmd['columns_to_ignore']]
 
         # Make predictions on the validation dataset normally and with various columns missing
+        self.transaction.model_backend.predictor.config['include_extra_data'] = True
         normal_predictions = self.transaction.model_backend.predict('validate')
 
         normal_predictions_test = self.transaction.model_backend.predict('test')
@@ -97,6 +99,7 @@ class ModelAnalyzer(BaseModule):
                 backend=self.transaction.model_backend
             )
 
+
         # Get some information about the importance of each column
         self.transaction.lmd['column_importances'] = {}
         for col in ignorable_input_columns:
@@ -104,13 +107,12 @@ class ModelAnalyzer(BaseModule):
             # normalize from 0 to 10
             self.transaction.lmd['column_importances'][col] = 10 * max(0, accuracy_increase)
 
-        # Run Probabilistic Validator
+        # Get accuracy stats
         overall_accuracy_arr = []
         self.transaction.lmd['accuracy_histogram'] = {}
         self.transaction.lmd['confusion_matrices'] = {}
         self.transaction.lmd['accuracy_samples'] = {}
-        self.transaction.hmd['probabilistic_validators'] = {}
-
+        self.transaction.hmd['acc_stats'] = {}
 
         self.transaction.lmd['train_data_accuracy'] = {}
         self.transaction.lmd['test_data_accuracy'] = {}
@@ -158,19 +160,19 @@ class ModelAnalyzer(BaseModule):
             )
 
         for col in output_columns:
-            pval = ProbabilisticValidator(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
+            acc_stats = AccStats(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
             predictions_arr = [normal_predictions_test] + [x for x in empty_input_predictions_test.values()]
 
-            pval.fit(test_df, predictions_arr, [[ignored_column] for ignored_column in empty_input_predictions_test])
-            overall_accuracy, accuracy_histogram, cm, accuracy_samples = pval.get_accuracy_stats()
+            acc_stats.fit(test_df, predictions_arr, [[ignored_column] for ignored_column in empty_input_predictions_test])
+            overall_accuracy, accuracy_histogram, cm, accuracy_samples = acc_stats.get_accuracy_stats()
             overall_accuracy_arr.append(overall_accuracy)
 
             self.transaction.lmd['accuracy_histogram'][col] = accuracy_histogram
             self.transaction.lmd['confusion_matrices'][col] = cm
             self.transaction.lmd['accuracy_samples'][col] = accuracy_samples
-            self.transaction.hmd['probabilistic_validators'][col] = pickle_obj(pval)
+            self.transaction.hmd['acc_stats'][col] = pickle_obj(acc_stats)
 
-        self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr)/len(overall_accuracy_arr)
+        self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr) / len(overall_accuracy_arr)
 
         # conformal prediction confidence estimation
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
@@ -221,7 +223,15 @@ class ModelAnalyzer(BaseModule):
 
             if data_type in (DATA_TYPES.NUMERIC, DATA_TYPES.SEQUENTIAL) or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
                 model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
-                nc = nc_class(model, nc_function)
+
+                if isinstance(self.transaction.model_backend.predictor._mixer, NnMixer) and \
+                        self.transaction.model_backend.predictor._mixer.is_selfaware:
+                    norm_params = {'output_column': target}
+                    normalizer = SelfawareNormalizer(fit_params=norm_params)
+                else:
+                    normalizer = None
+
+                nc = nc_class(model, nc_function, normalizer=normalizer)
 
                 X = deepcopy(self.transaction.input_data.train_df)
                 if self.transaction.lmd['tss']['is_timeseries']:
@@ -229,6 +239,10 @@ class ModelAnalyzer(BaseModule):
                 y = X.pop(target)
 
                 self.transaction.hmd['icp'][target] = icp_class(nc)
+
+                if normalizer is not None:
+                    normalizer.prediction_cache = normal_predictions
+
                 if not is_classification:
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 

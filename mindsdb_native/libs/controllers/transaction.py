@@ -90,9 +90,15 @@ class Transaction:
                     except AttributeError:
                         model_path = self.lmd['lightwood_data']['save_path']
                         self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
+
+                    # restore model in normalizer
+                    if self.hmd['icp'][col].nc_function.normalizer is not None:
+                        self.hmd['icp'][col].nc_function.normalizer.model = self.hmd['icp'][col].nc_function.model.model
+
         except FileNotFoundError as e:
             self.hmd['icp'] = {'active': False}
             self.log.warning(f'Could not find mindsdb conformal predictor.')
+
         except Exception as e:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb conformal predictor in the file: {icp_fn}')
@@ -142,6 +148,8 @@ class Transaction:
                             self.hmd['icp'][key].nc_function.model.model = None
                             self.hmd['icp'][key].nc_function.model.last_x = None
                             self.hmd['icp'][key].nc_function.model.last_y = None
+                            if self.hmd['icp'][key].nc_function.normalizer is not None:
+                                self.hmd['icp'][key].nc_function.normalizer.model = None
 
                     dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
 
@@ -320,30 +328,6 @@ class PredictTransaction(Transaction):
             else:
                 output_data[column] = list(predictions_df[column])
 
-        for predicted_col in self.lmd['predict_columns']:
-            output_data[predicted_col] = list(self.hmd['predictions'][predicted_col])
-            for extra_column in [f'{predicted_col}_model_confidence', f'{predicted_col}_confidence_range']:
-                if extra_column in self.hmd['predictions']:
-                    output_data[extra_column] = self.hmd['predictions'][extra_column]
-
-            probabilistic_validator = unpickle_obj(self.hmd['probabilistic_validators'][predicted_col])
-            output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
-
-            output_data[f'model_{predicted_col}'] = deepcopy(output_data[predicted_col])
-            for row_number, predicted_value in enumerate(output_data[predicted_col]):
-
-                # Compute the feature existance vector
-                input_columns = [col for col in self.input_data.columns if col not in self.lmd['predict_columns']]
-                features_existance_vector = [False if str(output_data[col][row_number]) in ('None', 'nan', '', 'Nan', 'NAN', 'NaN') else True for col in input_columns if col not in self.lmd['columns_to_ignore']]
-
-                # Create the probabilsitic evaluation
-                probability_true_prediction = probabilistic_validator.evaluate_prediction_accuracy(
-                    features_existence=features_existance_vector,
-                    predicted_value=predicted_value
-                )
-
-                output_data[f'{predicted_col}_confidence'][row_number] = probability_true_prediction
-
         # confidence estimation
         if self.hmd['icp']['active']:
             self.lmd['all_conformal_ranges'] = {}
@@ -357,6 +341,10 @@ class PredictTransaction(Transaction):
                     icp_X.pop(col)
 
             for predicted_col in self.lmd['predict_columns']:
+                output_data[predicted_col] = list(self.hmd['predictions'][predicted_col])
+                output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
+                output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
+
                 if self.hmd['icp'].get(predicted_col, False):
                     typing_info = self.lmd['stats_v2'][predicted_col]['typing']
                     X = deepcopy(icp_X)
@@ -367,12 +355,17 @@ class PredictTransaction(Transaction):
                     # preserve order that the ICP expects, else bounds are useless
                     X = X.reindex(columns=self.hmd['icp'][predicted_col].index.values)
 
+                    normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
+                    if normalizer:
+                        normalizer.prediction_cache = self.hmd['predictions']
+
                     # numerical
                     if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
                             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                                 DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
                         tol_const = 1  # std devs
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
 
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
@@ -382,7 +375,12 @@ class PredictTransaction(Transaction):
                                 diff = sample[1, idx] - sample[0, idx]
                                 if diff <= tolerance:
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                    output_data[f'{predicted_col}_confidence_range'][sample_idx] = list(sample[:, idx])
+                                    conf_range = list(sample[:, idx])
+
+                                    # for positive numerical domains
+                                    if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
+                                        conf_range[0] = max(0, conf_range[0])
+                                    output_data[f'{predicted_col}_confidence_range'][sample_idx] = conf_range
                                     break
                             else:
                                 output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default

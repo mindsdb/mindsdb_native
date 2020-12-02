@@ -73,7 +73,11 @@ except ImportError:
 
 MindsDB = Predictor
 
-from mindsdb_native.libs.helpers.general_helpers import check_for_updates
-from mindsdb_native.config import CONFIG
-if CONFIG.CHECK_FOR_UPDATES:
-    check_for_updates()
+# Wrap in try catch since we aren't running this in the CI
+try:
+    from mindsdb_native.libs.helpers.general_helpers import check_for_updates
+    from mindsdb_native.config import CONFIG
+    if CONFIG.CHECK_FOR_UPDATES:
+        check_for_updates()
+except Exception as e:
+    print(e)

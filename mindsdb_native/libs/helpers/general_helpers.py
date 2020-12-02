@@ -93,8 +93,13 @@ def check_for_updates(run_env=None):
             log.warning(f'Cannot store token, Please add write permissions to file: {uuid_file}')
             uuid_str = f'{uuid_str}.NO_WRITE'
 
+    try:
+        mdb_status = _get_mindsdb_status(run_env)
+    except:
+        mdb_status = 'error_getting'
+
     token = '{system}|{version}|{uid}|{notebook}|{mindsdb_status}'.format(
-        system=platform.system(), version=__version__, uid=uuid_str, notebook=_get_notebook(),mindsdb_status=_get_mindsdb_status(run_env))
+        system=platform.system(), version=__version__, uid=uuid_str, notebook=_get_notebook(),mindsdb_status=mdb_status)
     try:
         ret = requests.get('https://public.api.mindsdb.com/updates/mindsdb_native/{token}'.format(token=token), headers={'referer': 'http://check.mindsdb.com/?token={token}'.format(token=token)})
         ret = ret.json()

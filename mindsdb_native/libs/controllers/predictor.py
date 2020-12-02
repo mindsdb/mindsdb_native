@@ -12,7 +12,7 @@ from mindsdb_native.libs.controllers.transaction import (
     LearnTransaction, PredictTransaction
 )
 from mindsdb_native.libs.constants.mindsdb import *
-from mindsdb_native.libs.helpers.general_helpers import check_for_updates, load_lmd, load_hmd
+from mindsdb_native.libs.helpers.general_helpers import load_lmd, load_hmd
 from mindsdb_native.libs.helpers.locking import MDBLock
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
@@ -93,15 +93,17 @@ class Predictor:
         """
         self.name = name
         self.uuid = str(uuid.uuid1())
-        if CONFIG.CHECK_FOR_UPDATES:
-            self.report_uuid = check_for_updates(run_env)
-        else:
-            self.report_uuid = 'no_report'
+        # Wrap in try catch since we aren't running this in the CI
+        self.report_uuid = 'no_report'
+        try:
+            from mindsdb_native.libs.helpers.general_helpers import check_for_updates
+            if CONFIG.CHECK_FOR_UPDATES:
+                self.report_uuid = check_for_updates(run_env)
+        except Exception as e:
+            print(e)
         self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid, report_uuid=self.report_uuid)
         self.breakpoint = None
         self.transaction = None
-
-
 
         if not CONFIG.SAGEMAKER:
             # If storage path is not writable, raise an exception as this can no longer be
@@ -110,7 +112,6 @@ class Predictor:
                 self.log.warning(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
-
             # If storage path is not writable, raise an exception as this can no longer be
             if not os.access(CONFIG.MINDSDB_STORAGE_PATH, os.R_OK):
                 error_message = '''Cannot read from storage path, please either set the config variable mindsdb.config.set('MINDSDB_STORAGE_PATH',<path>) or give write access to {folder}'''
@@ -118,18 +119,18 @@ class Predictor:
                 raise ValueError(error_message.format(folder=CONFIG.MINDSDB_STORAGE_PATH))
 
     def quick_learn(self,
-              to_predict,
-              from_data,
-              timeseries_settings=None,
-              ignore_columns=None,
-              stop_training_in_x_seconds=None,
-              backend='lightwood',
-              rebuild_model=True,
-              use_gpu=None,
-              equal_accuracy_for_all_output_categories=True,
-              output_categories_importance_dictionary=None,
-              advanced_args=None,
-              sample_settings=None):
+                    to_predict,
+                    from_data,
+                    timeseries_settings=None,
+                    ignore_columns=None,
+                    stop_training_in_x_seconds=None,
+                    backend='lightwood',
+                    rebuild_model=True,
+                    use_gpu=None,
+                    equal_accuracy_for_all_output_categories=True,
+                    output_categories_importance_dictionary=None,
+                    advanced_args=None,
+                    sample_settings=None):
 
         if advanced_args is None:
             advanced_args = {}
@@ -210,13 +211,13 @@ class Predictor:
             self.log.warning(f'Sample for training: {sample_for_training}')
 
             heavy_transaction_metadata = dict(
-                name=self.name,
-                from_data=from_ds,
-                predictions= None,
-                model_backend= backend,
-                sample_function=sample_function,
-                from_data_type=type(from_ds),
-                breakpoint = self.breakpoint
+                name = self.name,
+                from_data = from_ds,
+                predictions = None,
+                model_backend = backend,
+                sample_function = sample_function,
+                from_data_type = type(from_ds),
+                breakpoint  = self.breakpoint
             )
 
             light_transaction_metadata = dict(
@@ -256,7 +257,7 @@ class Predictor:
                 data_split_indexes = advanced_args.get('data_split_indexes', None),
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
                 force_predict = advanced_args.get('force_predict', False),
-                mixer_class = advanced_args.get('use_mixers', None),
+                use_mixers = advanced_args.get('use_mixers', None),
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
                 debug = advanced_args.get('debug', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
@@ -299,8 +300,11 @@ class Predictor:
 
             self.transaction.run()
 
-
-    def test(self, when_data, accuracy_score_functions, score_using='predicted_value', predict_args=None):
+    def test(self,
+             when_data,
+             accuracy_score_functions,
+             score_using='predicted_value',
+             predict_args=None):
         """
         :param when_data: use this when you have data in either a file, a pandas data frame, or url to a file that you want to predict from
         :param accuracy_score_functions: a single function or  a dictionary for the form `{f'{target_name}': acc_func}` for when we have multiple targets
