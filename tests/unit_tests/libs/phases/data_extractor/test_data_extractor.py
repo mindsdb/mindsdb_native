@@ -20,7 +20,7 @@ class TestDataExtractor(unittest.TestCase):
             'numeric_float': np.linspace(0, n_points, n_points),
             'categorical_str': [f'category_{random.randint(0, 5)}' for i in range(n_points)]
         })
-        print(df['categorical_str'])
+
         try:
             predictor.learn(
                 from_data=df,
