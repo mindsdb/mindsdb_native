@@ -235,7 +235,7 @@ class LearnTransaction(Transaction):
             if self.lmd['quick_learn'] is None:
                 n_cols = len(self.input_data.columns)
                 n_cells = n_cols * len(self.input_data.sample_df())
-                if n_cols >= 80 and n_cells > int(1e5) and not self.lmd['force_model_analysis']:
+                if n_cols >= 80 and n_cells > int(1e5):
                     self.log.warning('Data has too many columns, setting quick_learn to True')
                     self.lmd['quick_learn'] = True
 
