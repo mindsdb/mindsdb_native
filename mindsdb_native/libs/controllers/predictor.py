@@ -262,8 +262,7 @@ class Predictor:
                 debug = advanced_args.get('debug', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
                 quick_learn = advanced_args.get('quick_learn', False),
-                quick_predict = advanced_args.get('quick_predict', False),
-                force_model_analysis = advanced_args.get('force_model_analysis', False)
+                quick_predict = advanced_args.get('quick_predict', False)
             )
 
             if rebuild_model is False:

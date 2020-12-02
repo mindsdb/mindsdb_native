@@ -231,13 +231,17 @@ class LearnTransaction(Transaction):
             self.save_metadata()
             self._call_phase_module(module_name='ModelInterface', mode='train')
 
-            MODEL_ANALYZER_COLUMNS_LIMIT = 100
+            # quick_learn can be set to False explicitly
+            if self.lmd['quick_learn'] is None:
+                n_cols = len(self.input_data.columns)
+                n_cells = n_cols * len(self.input_data.sample_df())
+                if n_cols >= 80 and n_cells > int(1e5) and not self.lmd['force_model_analysis']:
+                    self.lmd['quick_learn'] = True
 
             if not self.lmd['quick_learn']:
-                if len(self.input_data.columns) <= MODEL_ANALYZER_COLUMNS_LIMIT or self.lmd['force_model_analysis']:
-                    self.lmd['current_phase'] = MODEL_STATUS_ANALYZING
-                    self.save_metadata()
-                    self._call_phase_module(module_name='ModelAnalyzer')
+                self.lmd['current_phase'] = MODEL_STATUS_ANALYZING
+                self.save_metadata()
+                self._call_phase_module(module_name='ModelAnalyzer')
 
             self.lmd['current_phase'] = MODEL_STATUS_TRAINED
             self.save_metadata()
