@@ -50,7 +50,7 @@ class AccStats:
 
                 real_value = row[self.col_name]
                 predicted_value = predictions_arr[n][self.col_name][m]
-                
+
                 try:
                     predicted_value = predicted_value if self.col_stats['typing']['data_type'] != DATA_TYPES.NUMERIC else float(predicted_value)
                 except Exception:
@@ -84,7 +84,6 @@ class AccStats:
                         feature_existance[self.input_columns.index(missing_col)] = 0
 
     def get_accuracy_stats(self):
-
         bucket_accuracy = {}
         bucket_acc_counts = {}
         for i, bucket in enumerate(self.normal_predictions_bucketized):
@@ -96,14 +95,14 @@ class AccStats:
             else:
                 bucket_acc_counts[bucket].append(1 if bucket == self.real_values_bucketized[i] else 0)
 
-        for bucket in bucket_accuracy:
+        for bucket in bucket_acc_counts:
             bucket_accuracy[bucket] = sum(bucket_acc_counts[bucket])/len(bucket_acc_counts[bucket])
 
         accuracy_count = []
         for counts in list(bucket_acc_counts.values()):
             accuracy_count += counts
 
-        overall_accuracy = sum(accuracy_count)/len(accuracy_count)
+        overall_accuracy = sum(accuracy_count) / len(accuracy_count)
 
         for bucket in range(len(self.buckets)):
             if bucket not in bucket_accuracy:

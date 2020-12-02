@@ -1,3 +1,5 @@
+import os
+
 from mindsdb_native.libs.data_types.data_source import DataSource
 from mindsdb_native.libs.data_sources.file_ds import FileDS
 from pandas import DataFrame
@@ -12,16 +14,11 @@ def getDS(from_data):
     :param input: a string or an object
     :return: a datasource
     '''
-
     if isinstance(from_data, DataSource):
-        from_ds = from_data
-
+        return from_data
     elif isinstance(from_data, DataFrame):
-        from_ds = DataSource(from_data)
-
-    else:  # assume is a file
-        from_ds = FileDS(from_data)
-        if from_ds is None:
-            log.error('No data matched the input data')
-
-    return from_ds
+        return DataSource(from_data)
+    elif isinstance(from_data, str):
+        if os.path.isfile(from_data) or from_data.startswith('http:') or from_data.startswith('https:'):
+            return FileDS(from_data)
+    raise ValueError('from_data must be one of: [DataSource, DataFrame, file path, file URL]')

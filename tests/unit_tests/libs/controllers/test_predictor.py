@@ -284,7 +284,7 @@ class TestPredictor(unittest.TestCase):
         F.export_predictor(name)
         try:
             F.delete_model(f'{name}-new')
-        except:
+        except Exception:
             pass
         F.import_model(f'{name}.zip', f'{name}-new')
         p = Predictor(name=f'{name}-new')

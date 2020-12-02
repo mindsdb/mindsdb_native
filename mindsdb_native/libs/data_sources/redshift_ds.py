@@ -37,7 +37,4 @@ class RedshiftDS(SQLDataSource):
         return df, self._make_colmap(df)
 
     def name(self):
-        return '{}: {}'.format(
-            self.__class__.__name__,
-            self.database
-        )
+        return 'Redshift - {}'.format(self._query)
