@@ -339,10 +339,10 @@ class Predictor:
             return accuracy_dict
 
     def quick_predict(self,
-                when_data,
-                use_gpu=None,
-                advanced_args=None,
-                backend=None):
+                      when_data,
+                      use_gpu=None,
+                      advanced_args=None,
+                      backend=None):
 
         if advanced_args is None:
             advanced_args = {}
