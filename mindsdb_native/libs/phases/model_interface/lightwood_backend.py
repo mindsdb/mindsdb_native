@@ -322,7 +322,6 @@ class LightwoodBackend:
         )
         lightwood_test_ds = lightwood_train_ds.make_child(test_df)
 
-        self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
         Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.transaction.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
 
         logging.getLogger().setLevel(logging.DEBUG)
@@ -441,7 +440,8 @@ class LightwoodBackend:
             if (best_accuracy - nn_mixer_predictor_accuracy) < SMALL_ACCURACY_DIFFERENCE:
                 self.predictor = nn_mixer_predictor
 
-        self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
+        save_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
+        self.predictor.save(path_to=save_path)
 
     def predict(self, mode='predict', ignore_columns=None, all_mixers=False):
         if ignore_columns is None:
@@ -465,7 +465,8 @@ class LightwoodBackend:
             df, _, timeseries_row_mapping = self._ts_reshape(df)
 
         if self.predictor is None:
-            self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
+            predictor_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
+            self.predictor = lightwood.Predictor(load_from_path=predictor_path)
 
         # not the most efficient but least prone to bug and should be fast enough
         if len(ignore_columns) > 0:
