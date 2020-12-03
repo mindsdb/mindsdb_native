@@ -13,7 +13,7 @@ from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
 
 def _make_pred(row):
-    return not hasattr(row, "make_predictions") or row.make_predictions
+    return not hasattr(row, 'make_predictions') or row.make_predictions
 
 
 class LightwoodBackend:
@@ -51,7 +51,7 @@ class LightwoodBackend:
         for _, row in original_df.iterrows():
             for col in ob_arr:
                 # @TODO: Remove if the TS encoder can handle `None`
-                if row[col] is None:
+                if row[col] is None or pd.isna(row[col]):
                     row[col] = 0.0
 
                 try:
@@ -75,18 +75,15 @@ class LightwoodBackend:
         # Make type `object` so that dataframe cells can be python lists
         for i in range(len(df_arr)):
             for hist_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
-                df_arr[i][hist_col] = df_arr[i][hist_col].astype(object)
+                df_arr[i].loc[:, hist_col] = df_arr[i][hist_col].astype(object)
 
         # Make all order column cells lists
         for i in range(len(df_arr)):
             for order_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
                 for ii in range(len(df_arr[i])):
-                    try:
-                        df_arr[i][order_col].iloc[ii] = [df_arr[i][order_col].iloc[ii]]
-                    except Exception:
-                        # Needed because of a pandas bug that causes above to fail for small dataframes
-                        label = df_arr[i].index.values[ii]
-                        df_arr[i].at[label, order_col] = [df_arr[i].at[label, order_col]]
+                    # Needed because of a pandas bug that causes above to fail for small dataframes
+                    label = df_arr[i].index.values[ii]
+                    df_arr[i].at[label, order_col] = [df_arr[i].at[label, order_col]]
 
         # Add previous rows
         for n in range(len(df_arr)):
@@ -95,8 +92,8 @@ class LightwoodBackend:
                     previous_indexes = [*range(max(0, i - window), i)]
 
                     for prev_i in reversed(previous_indexes):
-                        df_arr[n][order_col].iloc[i].append(
-                            df_arr[n][order_col].iloc[prev_i][-1]
+                        df_arr[n].iloc[i][order_col].append(
+                            df_arr[n].iloc[prev_i][order_col][-1]
                         )
 
                     # Zero pad
@@ -115,7 +112,7 @@ class LightwoodBackend:
 
                     previous_target_values_arr = []
                     for i in range(len(previous_target_values)):
-                        arr = previous_target_values[max(i-window,0):i+1]
+                        arr = previous_target_values[max(i - window, 0):i + 1]
                         while len(arr) <= window:
                             arr = [None] + arr
                         previous_target_values_arr.append(arr)
@@ -123,15 +120,13 @@ class LightwoodBackend:
                     df_arr[k][f'__mdb_ts_previous_{target_column}'] = previous_target_values_arr
                     for timestep_index in range(1, self.nr_predictions):
                         next_target_value_arr = list(df_arr[k][target_column])
-                        for del_index in range(0,timestep_index):
+                        for del_index in range(0, timestep_index):
                             del next_target_value_arr[del_index]
                             next_target_value_arr.append(0)
                         # @TODO: Maybe ignore the rows with `None` next targets for training
                         df_arr[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
 
-
         combined_df = pd.concat(df_arr)
-
 
         if 'make_predictions' in combined_df.columns:
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
@@ -327,7 +322,6 @@ class LightwoodBackend:
         )
         lightwood_test_ds = lightwood_train_ds.make_child(test_df)
 
-        self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
         Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.transaction.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
 
         logging.getLogger().setLevel(logging.DEBUG)
@@ -446,7 +440,8 @@ class LightwoodBackend:
             if (best_accuracy - nn_mixer_predictor_accuracy) < SMALL_ACCURACY_DIFFERENCE:
                 self.predictor = nn_mixer_predictor
 
-        self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
+        save_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
+        self.predictor.save(path_to=save_path)
 
     def predict(self, mode='predict', ignore_columns=None, all_mixers=False):
         if ignore_columns is None:
@@ -470,7 +465,8 @@ class LightwoodBackend:
             df, _, timeseries_row_mapping = self._ts_reshape(df)
 
         if self.predictor is None:
-            self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
+            predictor_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
+            self.predictor = lightwood.Predictor(load_from_path=predictor_path)
 
         # not the most efficient but least prone to bug and should be fast enough
         if len(ignore_columns) > 0:
@@ -517,6 +513,9 @@ class LightwoodBackend:
                             conf = 1
                         model_confidence_dict[k][i].append(conf)
 
+            if 'selfaware_confidences' in predictions[k]:
+                formated_predictions[f'{k}_selfaware_scores'] = [c[0] for c in model_confidence_dict[k]]
+
             for k in model_confidence_dict:
                 model_confidence_dict[k] = [np.mean(x) for x in model_confidence_dict[k]]
 
@@ -525,6 +524,8 @@ class LightwoodBackend:
 
             if 'confidence_range' in predictions[k]:
                 formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
+
+
 
         if self.transaction.lmd['tss']['is_timeseries']:
             for k in list(formated_predictions.keys()):

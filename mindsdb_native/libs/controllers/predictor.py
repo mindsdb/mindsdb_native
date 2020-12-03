@@ -13,7 +13,7 @@ from mindsdb_native.libs.controllers.transaction import (
     LearnTransaction, PredictTransaction, MutatingTransaction
 )
 from mindsdb_native.libs.constants.mindsdb import *
-from mindsdb_native.libs.helpers.general_helpers import check_for_updates, load_lmd, load_hmd
+from mindsdb_native.libs.helpers.general_helpers import load_lmd, load_hmd
 from mindsdb_native.libs.helpers.locking import MDBLock
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 
@@ -94,10 +94,14 @@ class Predictor:
         """
         self.name = name
         self.uuid = str(uuid.uuid1())
-        if CONFIG.CHECK_FOR_UPDATES:
-            self.report_uuid = check_for_updates(run_env)
-        else:
-            self.report_uuid = 'no_report'
+        # Wrap in try catch since we aren't running this in the CI
+        self.report_uuid = 'no_report'
+        try:
+            from mindsdb_native.libs.helpers.general_helpers import check_for_updates
+            if CONFIG.CHECK_FOR_UPDATES:
+                self.report_uuid = check_for_updates(run_env)
+        except Exception as e:
+            print(e)
         self.log = MindsdbLogger(log_level=log_level, uuid=self.uuid, report_uuid=self.report_uuid)
         self.breakpoint = None
         self.transaction = None
@@ -254,7 +258,7 @@ class Predictor:
                 data_split_indexes = advanced_args.get('data_split_indexes', None),
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
                 force_predict = advanced_args.get('force_predict', False),
-                mixer_class = advanced_args.get('use_mixers', None),
+                use_mixers = advanced_args.get('use_mixers', None),
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
                 debug = advanced_args.get('debug', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
