@@ -133,6 +133,9 @@ class DataExtractor(BaseModule):
 
                 df = pd.concat([df,historical_df])
 
+        for col, f in self.transaction.lmd.get('apply_to_columns', {}).items():
+            df.loc[:, col] = df[col].apply(f)
+
         # Sorting here *should* only be needed at learn time
         if self.transaction.lmd['type'] == TRANSACTION_LEARN:
             df = self._apply_sort_conditions_to_df(df)
