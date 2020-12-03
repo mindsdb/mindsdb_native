@@ -90,9 +90,15 @@ class Transaction:
                     except AttributeError:
                         model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'lightwood_data')
                         self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
+
+                    # restore model in normalizer
+                    if self.hmd['icp'][col].nc_function.normalizer is not None:
+                        self.hmd['icp'][col].nc_function.normalizer.model = self.hmd['icp'][col].nc_function.model.model
+
         except FileNotFoundError as e:
             self.hmd['icp'] = {'active': False}
             self.log.warning(f'Could not find mindsdb conformal predictor.')
+
         except Exception as e:
             self.log.error(e)
             self.log.error(f'Could not load mindsdb conformal predictor in the file: {icp_fn}')
@@ -142,6 +148,8 @@ class Transaction:
                             self.hmd['icp'][key].nc_function.model.model = None
                             self.hmd['icp'][key].nc_function.model.last_x = None
                             self.hmd['icp'][key].nc_function.model.last_y = None
+                            if self.hmd['icp'][key].nc_function.normalizer is not None:
+                                self.hmd['icp'][key].nc_function.normalizer.model = None
 
                     dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
 
@@ -344,12 +352,17 @@ class PredictTransaction(Transaction):
                     # preserve order that the ICP expects, else bounds are useless
                     X = X.reindex(columns=self.hmd['icp'][predicted_col].index.values)
 
+                    normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
+                    if normalizer:
+                        normalizer.prediction_cache = self.hmd['predictions']
+
                     # numerical
                     if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
                             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                                 DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
                         tol_const = 1  # std devs
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
 
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):

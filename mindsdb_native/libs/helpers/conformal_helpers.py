@@ -1,5 +1,6 @@
 from nonconformist.base import RegressorAdapter
 from nonconformist.base import ClassifierAdapter
+from nonconformist.nc import BaseScorer
 from mindsdb_native.libs.constants.mindsdb import *
 
 import torch
@@ -120,3 +121,25 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         except KeyError:
             # Not all mixers return class probabilities yet
             return ys
+
+
+class SelfawareNormalizer(BaseScorer):
+    def __init__(self, fit_params=None):
+        super(SelfawareNormalizer, self).__init__()
+        self.prediction_cache = None
+        self.output_column = fit_params['output_column']
+
+    def fit(self, x, y):
+        """No fitting is needed, as we instantiate this object
+        once the self-aware NN is already trained in Lightwood."""
+        pass
+
+    def score(self, true_input, y=None):
+        sa_score = self.prediction_cache.get(f'{self.output_column}_selfaware_scores', None)
+
+        if not sa_score:
+            sa_score = np.ones(true_input.shape[0])  # default case, scaling factor is 1 for all predictions
+        else:
+            sa_score = np.array(sa_score)
+
+        return sa_score
