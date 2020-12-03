@@ -519,12 +519,7 @@ class LightwoodBackend:
                 model_confidence_dict[k] = [np.mean(x) for x in model_confidence_dict[k]]
 
             for k in model_confidence_dict:
-                formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]
-
-            if 'confidence_range' in predictions[k]:
-                formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
-
-
+                formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]s
 
         if self.transaction.lmd['tss']['is_timeseries']:
             for k in list(formated_predictions.keys()):
