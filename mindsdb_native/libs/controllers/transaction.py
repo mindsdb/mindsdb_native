@@ -234,7 +234,7 @@ class LearnTransaction(Transaction):
             # quick_learn can be set to False explicitly
             if self.lmd['quick_learn'] is None:
                 n_cols = len(self.input_data.columns)
-                n_cells = n_cols * len(self.input_data._sample_df)
+                n_cells = n_cols * len(self.input_data._sample_df or self.input_data.data_frame)
                 if n_cols >= 80 and n_cells > int(1e5):
                     self.log.warning('Data has too many columns, setting quick_learn to True')
                     self.lmd['quick_learn'] = True
