@@ -267,10 +267,10 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp'][target].calibrate(X.values, y)
 
 
-        all_conformal_ranges = self.hmd['icp'][predicted_col].predict(X.values)
+        all_conformal_ranges = self.transaction.hmd['icp'][predicted_col].predict(X.values)
 
         tol_const = 1  # std devs
-        tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+        tolerance = self.transaction.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
         confidence_ranges = []
 
         for sample_idx in range(all_conformal_ranges.shape[0]):
@@ -283,7 +283,7 @@ class ModelAnalyzer(BaseModule):
                     conf_range = list(sample[:, idx])
 
                     # for positive numerical domains
-                    if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
+                    if self.transaction.lmd['stats_v2'][predicted_col].get('positive_domain', False):
                         conf_range[0] = max(0, conf_range[0])
                     confidence_ranges.append(conf_range)
                     break
