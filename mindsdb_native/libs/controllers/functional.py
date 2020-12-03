@@ -167,11 +167,6 @@ def rename_model(old_model_name, new_model_name):
         lmd['name'] = new_model_name
         hmd['name'] = new_model_name
 
-        try:
-            lmd['lightwood_data']['save_path'] = lmd['lightwood_data'][
-                'save_path'].replace(old_model_name, new_model_name)
-        except Exception:
-            return False
 
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
                             new_model_name, 'light_model_metadata.pickle'),
@@ -198,13 +193,6 @@ def delete_model(model_name):
     :return: bool (True/False) True if model was deleted
     """
     with MDBLock('exclusive', 'delete_' + model_name):
-        lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'))
-
-        try:
-            os.remove(lmd['lightwood_data']['save_path'])
-        except Exception:
-            pass
-
         shutil.rmtree(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name))
 
 
@@ -239,9 +227,6 @@ def import_model(model_archive_path, new_name=None):
     )
 
     with MDBLock('exclusive', 'detele_' + lmd['name']):
-        if 'lightwood_data' in lmd and 'save_path' in lmd['lightwood_data']:
-            lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, lmd['name'], 'lightwood_data')
-
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, lmd['name'], 'light_model_metadata.pickle'), 'wb') as fp:
             pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
 
