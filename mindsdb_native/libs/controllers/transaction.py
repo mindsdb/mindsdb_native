@@ -220,6 +220,14 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
+            # quick_learn can be set to False explicitly
+            if self.lmd['quick_learn'] is None:
+                n_cols = len(self.input_data.columns)
+                n_cells = n_cols * self.lmd['data_preparation']['used_row_count']
+                if n_cols >= 80 and n_cells > int(1e5):
+                    self.log.warning('Data has too many columns, setting quick_learn to True')
+                    self.lmd['quick_learn'] = True
+
             self._call_phase_module(module_name='DataCleaner')
             self.save_metadata()
 
@@ -230,14 +238,6 @@ class LearnTransaction(Transaction):
             self.lmd['current_phase'] = MODEL_STATUS_TRAINING
             self.save_metadata()
             self._call_phase_module(module_name='ModelInterface', mode='train')
-
-            # quick_learn can be set to False explicitly
-            if self.lmd['quick_learn'] is None:
-                n_cols = len(self.input_data.columns)
-                n_cells = n_cols * len(self.input_data._sample_df or self.input_data.data_frame)
-                if n_cols >= 80 and n_cells > int(1e5):
-                    self.log.warning('Data has too many columns, setting quick_learn to True')
-                    self.lmd['quick_learn'] = True
 
             if self.lmd['quick_learn']:
                 predict_method = self.session.predict
