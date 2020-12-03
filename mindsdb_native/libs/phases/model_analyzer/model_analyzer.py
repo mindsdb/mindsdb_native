@@ -267,27 +267,31 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp'][target].calibrate(X.values, y)
 
 
-                all_conformal_ranges = self.hmd['icp'][predicted_col].predict(X.values)
+        all_conformal_ranges = self.hmd['icp'][predicted_col].predict(X.values)
 
-                        for sample_idx in range(all_conformal_ranges.shape[0]):
-                            sample = all_conformal_ranges[sample_idx, :, :]
-                            for idx in range(sample.shape[1]):
-                                significance = (99 - idx) / 100
-                                diff = sample[1, idx] - sample[0, idx]
-                                if diff <= tolerance:
-                                    output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                    conf_range = list(sample[:, idx])
+        tol_const = 1  # std devs
+        tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+        confidence_ranges = []
 
-                                    # for positive numerical domains
-                                    if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
-                                        conf_range[0] = max(0, conf_range[0])
-                                    output_data[f'{predicted_col}_confidence_range'][sample_idx] = conf_range
-                                    break
-                            else:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
-                                bounds = sample[:, 0]
-                                sigma = (bounds[1] - bounds[0]) / 2
-                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
+        for sample_idx in range(all_conformal_ranges.shape[0]):
+            sample = all_conformal_ranges[sample_idx, :, :]
+            for idx in range(sample.shape[1]):
+                significance = (99 - idx) / 100
+                diff = sample[1, idx] - sample[0, idx]
+                if diff <= tolerance:
+                    output_data[f'{predicted_col}_confidence'][sample_idx] = significance
+                    conf_range = list(sample[:, idx])
+
+                    # for positive numerical domains
+                    if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
+                        conf_range[0] = max(0, conf_range[0])
+                    confidence_ranges.append(conf_range)
+                    break
+            else:
+                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
+                bounds = sample[:, 0]
+                sigma = (bounds[1] - bounds[0]) / 2
+                confidence_ranges.append([bounds[0] - sigma, bounds[1] + sigma])
 
         # @TODO Limiting to 4 as to not kill the GUI, sample later (or maybe only select latest?)
         if self.transaction.lmd['tss']['is_timeseries'] and len(normal_predictions[output_columns[0]]) < pow(10,4):
@@ -296,6 +300,6 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.lmd['test_data_plot'][col] = {
                     'real': list(validation_df[output_column])
                     ,'predicted': list(normal_predictions[output_column])
-                    ,'confidence': list(normal_predictions[f'{output_column}_confidence_range'])
+                    ,'confidence': confidence_ranges
                     ,'order_by': list(validation_df[self.transaction.lmd['tss']['order_by'][0]])
                 }
