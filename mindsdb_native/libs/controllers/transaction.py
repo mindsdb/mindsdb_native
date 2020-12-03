@@ -239,11 +239,7 @@ class LearnTransaction(Transaction):
                     self.log.warning('Data has too many columns, setting quick_learn to True')
                     self.lmd['quick_learn'] = True
 
-            if not self.lmd['quick_learn']:
-                self.lmd['current_phase'] = MODEL_STATUS_ANALYZING
-                self.save_metadata()
-                self._call_phase_module(module_name='ModelAnalyzer')
-            else:
+            if self.lmd['quick_learn']:
                 predict_method = self.session.predict
                 def predict_method_wrapper(*args, **kwargs):
                     if 'advanced_args' not in kwargs:
@@ -251,6 +247,10 @@ class LearnTransaction(Transaction):
                     kwargs['advanced_args']['quick_predict'] = True
                     return predict_method(*args, **kwargs)
                 self.session.predict = predict_method_wrapper
+            else:
+                self.lmd['current_phase'] = MODEL_STATUS_ANALYZING
+                self.save_metadata()
+                self._call_phase_module(module_name='ModelAnalyzer')
 
             self.lmd['current_phase'] = MODEL_STATUS_TRAINED
             self.save_metadata()
