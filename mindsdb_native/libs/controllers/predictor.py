@@ -346,7 +346,7 @@ class Predictor:
     def attach_datasource(self, setup_args, ds_class=None):
         self.transaction = MutatingTransaction(self,{},{})
         self.transaction.run(functools.partial(self._attach_datasource, setup_args=setup_args, ds_class=ds_class))
-        
+
     def quick_predict(self,
                 when_data,
                 use_gpu=None,
@@ -406,17 +406,11 @@ class Predictor:
                 type = transaction_type,
                 use_gpu = use_gpu,
                 data_preparation = {},
-<<<<<<< HEAD
-                run_confidence_variation_analysis = run_confidence_variation_analysis,
-                force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
-                disable_history_fetching = advanced_args.get('disable_history_fetching', False)
-=======
                 report_uuid = self.report_uuid,
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 use_database_history = advanced_args.get('use_database_history', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
                 quick_predict = advanced_args.get('quick_predict', False)
->>>>>>> staging
             )
 
             self.transaction = PredictTransaction(
