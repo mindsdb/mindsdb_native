@@ -302,6 +302,6 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.lmd['test_data_plot'][col] = {
                     'real': list(validation_df[output_column])
                     ,'predicted': list(normal_predictions[output_column])[0:200]
-                    ,'confidence': confidence_ranges[0:200]
+                    ,'confidence': None if confidence_ranges is None else confidence_ranges[0:200]
                     ,'order_by': list(validation_df[self.transaction.lmd['tss']['order_by'][0]])[0:200]
                 }
