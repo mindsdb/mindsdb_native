@@ -271,29 +271,33 @@ class ModelAnalyzer(BaseModule):
         if self.transaction.lmd['tss']['is_timeseries'] and len(normal_predictions[output_columns[0]]) < pow(10,4):
             self.transaction.lmd['test_data_plot'] = {}
             for output_column in output_columns:
-                all_conformal_ranges = self.transaction.hmd['icp'][output_column].predict(X.values)
 
-                tol_const = 1  # std devs
-                tolerance = self.transaction.lmd['stats_v2']['train_std_dev'][output_column] * tol_const
-                confidence_ranges = []
+                if self.transaction.lmd['stats_v2'][output_column]['typing']['data_type'] in DATA_TYPES.NUMERIC:
 
-                for sample_idx in range(all_conformal_ranges.shape[0]):
-                    sample = all_conformal_ranges[sample_idx, :, :]
-                    for idx in range(sample.shape[1]):
-                        diff = sample[1, idx] - sample[0, idx]
-                        if diff <= tolerance:
-                            conf_range = list(sample[:, idx])
-                            # for positive numerical domains
-                            if self.transaction.lmd['stats_v2'][output_column].get('positive_domain', False):
-                                conf_range[0] = max(0, conf_range[0])
-                            confidence_ranges.append(conf_range)
-                            break
-                    else:
-                        confidence_ranges.append(0.9901)  # default
-                        bounds = sample[:, 0]
-                        sigma = (bounds[1] - bounds[0]) / 2
-                        confidence_ranges.append([bounds[0] - sigma, bounds[1] + sigma])
+                    all_conformal_ranges = self.transaction.hmd['icp'][output_column].predict(X.values)
 
+                    tol_const = 1  # std devs
+                    tolerance = self.transaction.lmd['stats_v2']['train_std_dev'][output_column] * tol_const
+                    confidence_ranges = []
+
+                    for sample_idx in range(all_conformal_ranges.shape[0]):
+                        sample = all_conformal_ranges[sample_idx, :, :]
+                        for idx in range(sample.shape[1]):
+                            diff = sample[1, idx] - sample[0, idx]
+                            if diff <= tolerance:
+                                conf_range = list(sample[:, idx])
+                                # for positive numerical domains
+                                if self.transaction.lmd['stats_v2'][output_column].get('positive_domain', False):
+                                    conf_range[0] = max(0, conf_range[0])
+                                confidence_ranges.append(conf_range)
+                                break
+                        else:
+                            confidence_ranges.append(0.9901)  # default
+                            bounds = sample[:, 0]
+                            sigma = (bounds[1] - bounds[0]) / 2
+                            confidence_ranges.append([bounds[0] - sigma, bounds[1] + sigma])
+                else:
+                    confidence_ranges = None
 
                 self.transaction.lmd['test_data_plot'][col] = {
                     'real': list(validation_df[output_column])
