@@ -32,3 +32,20 @@ class TestQuickInterface(unittest.TestCase):
         for pred in predictions['hours-per-week']:
             assert isinstance(pred,int)
             assert pred > 0
+
+    def test_quick_predict_output(self):
+        df = pd.DataFrame({
+            'x1': [x for x in range(100)],
+            'x2': [x*2 for x in range(100)],
+            'y': [y*3 for y in range(100)]
+        })
+
+        p1 = mindsdb_native.Predictor(name='test1')
+        p1.learn(from_data=df, to_predict='y')
+        pred1 = p1.predict(when_data={'x1': 3, 'x2': 5})
+
+        p2 = mindsdb_native.Predictor(name='test2')
+        p2.quick_learn(from_data=df, to_predict='y')
+        pred2 = p2.predict(when_data={'x1': 3, 'x2': 5})
+
+        assert set(pred1.keys()) == set(pred2.keys())
