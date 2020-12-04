@@ -95,11 +95,18 @@ class FileDS(DataSource):
 
         # get data from either url or file load in memory
         if file.startswith('http:') or file.startswith('https:'):
-            r = requests.get(file, stream=True)
+            print('Getting file')
+            try:
+                print(file)
+                r = requests.get(file, stream=True)
+            except Exception as e:
+                print(e)
+            print('Got file')
             if r.status_code == 200:
                 for chunk in r:
                     data.write(chunk)
             data.seek(0)
+            print('Read data')
 
         # else read file from local file system
         else:
