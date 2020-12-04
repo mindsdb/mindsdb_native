@@ -117,7 +117,7 @@ class Transaction:
 
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'heavy_model_metadata.pickle')
         save_hmd = {}
-        null_out_fields = ['from_data', 'icp', 'breakpoint']
+        null_out_fields = ['from_data', 'icp', 'breakpoint','sample_function']
         for k in null_out_fields:
             save_hmd[k] = None
 
