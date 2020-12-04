@@ -319,10 +319,6 @@ class PredictTransaction(Transaction):
 
         self._call_phase_module(module_name='ModelInterface', mode='predict')
 
-        if self.lmd['quick_predict']:
-            self.output_data = self.hmd['predictions']
-            return
-
         output_data = {col: [] for col in self.lmd['columns']}
 
         if 'make_predictions' in self.input_data.data_frame.columns:
@@ -338,11 +334,12 @@ class PredictTransaction(Transaction):
         for column in self.input_data.columns:
             if column in self.lmd['predict_columns']:
                 output_data[f'__observed_{column}'] = list(predictions_df[column])
+                output_data[column] = self.hmd['predictions'][column]
             else:
                 output_data[column] = list(predictions_df[column])
 
         # confidence estimation
-        if self.hmd['icp']['active']:
+        if self.hmd['icp']['active'] and not self.lmd['quick_predict']:
             self.lmd['all_conformal_ranges'] = {}
             icp_X = deepcopy(predictions_df)
 
@@ -420,6 +417,10 @@ class PredictTransaction(Transaction):
                                         break
                                 else:
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
+        else:
+            for predicted_col in self.lmd['predict_columns']:
+                output_data[f'{predicted_col}_confidence'] = None
+                output_data[f'{predicted_col}_confidence_range'] = None
 
         self.output_data = PredictTransactionOutputData(
             transaction=self,
