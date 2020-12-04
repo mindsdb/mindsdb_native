@@ -194,18 +194,10 @@ def evaluate_regression_accuracy(
         predictions,
         true_values,
         backend,
-        use_conf_intervals=True,
         **kwargs
     ):
-    if use_conf_intervals:
-        pred_confidence_intervals = predictions[f'{column}_confidence_range']
-        within_interval = 0
-        for true, interval in zip(true_values, pred_confidence_intervals):
-            if true >= interval[0] and true <= interval[1]:
-                within_interval += 1
-        return within_interval/len(true_values)
-    else:
-        return r2_score(true_values, predictions[column])
+    r2 = r2_score(true_values, predictions[column])
+    return r2 if r2 > 0 else 0
 
 
 def evaluate_classification_accuracy(column, predictions, true_values, **kwargs):

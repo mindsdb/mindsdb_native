@@ -27,7 +27,7 @@ class TestEvaluateAccuracy(unittest.TestCase):
 
         accuracy = evaluate_accuracy(predictions, data_frame, col_stats, output_columns)
 
-        assert round(accuracy, 2) == 0.75
+        assert round(accuracy, 2) > 0.75
 
     def test_evaluate_classification(self):
         predictions = {
@@ -56,7 +56,7 @@ class TestEvaluateAccuracy(unittest.TestCase):
                 [1, 3],
                 [4, 4],
             ],
-            'y2': [0, 0, 1, 1]
+            'y2': [1, 0, 1, 0]
         }
 
         col_stats = {
@@ -66,11 +66,11 @@ class TestEvaluateAccuracy(unittest.TestCase):
 
         output_columns = ['y1', 'y2']
 
-        data_frame = pd.DataFrame({'y1': [1, 2, 3, 5], 'y2': [1, 0, 1, 0]})
+        data_frame = pd.DataFrame({'y1': [1, 2, 3, 4], 'y2': [1, 0, 1, 0]})
 
         accuracy = evaluate_accuracy(predictions, data_frame, col_stats, output_columns)
 
-        assert round(accuracy, 2) == round((0.75 + 0.5)/2, 2)
+        assert accuracy == 1
 
     def test_evaluate_array(self):
         predictions = {

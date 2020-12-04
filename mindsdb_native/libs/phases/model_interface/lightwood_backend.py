@@ -409,8 +409,7 @@ class LightwoodBackend:
                 self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df,
                 self.transaction.lmd['stats_v2'],
                 self.transaction.lmd['predict_columns'],
-                backend=self,
-                use_conf_intervals=False # r2_score will be used for regression
+                backend=self
             )
 
             predictors_and_accuracies.append((
@@ -521,11 +520,6 @@ class LightwoodBackend:
 
             for k in model_confidence_dict:
                 formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]
-
-            if 'confidence_range' in predictions[k]:
-                formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
-
-
 
         if self.transaction.lmd['tss']['is_timeseries']:
             for k in list(formated_predictions.keys()):
