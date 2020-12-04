@@ -22,6 +22,10 @@ class DataSplitter(BaseModule):
 
         if len(group_by) > 0:
             for i, row in self.transaction.input_data.data_frame.iterrows():
+                print(group_by)
+                print(row)
+                print(i)
+                print(row[group_by])
                 all_indexes[tuple(row[group_by])].append(i)
 
         train_indexes = defaultdict(list)
