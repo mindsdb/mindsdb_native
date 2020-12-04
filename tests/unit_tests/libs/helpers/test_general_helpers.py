@@ -74,7 +74,6 @@ class TestEvaluateAccuracy(unittest.TestCase):
 
         assert round(accuracy, 2) == round((0.75 + 0.5)/2, 2)
 
-    @unittest.skip('regression accuracy based on confidence range is removed')
     def test_evaluate_array(self):
         predictions = {
             'y': [[1], [2], [3], [4]]
