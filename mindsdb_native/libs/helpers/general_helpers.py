@@ -196,7 +196,8 @@ def evaluate_regression_accuracy(
         backend,
         **kwargs
     ):
-    return r2_score(true_values, predictions[column])
+    r2 = r2_score(true_values, predictions[column])
+    return r2 if r2 > 0 else 0
 
 
 def evaluate_classification_accuracy(column, predictions, true_values, **kwargs):
