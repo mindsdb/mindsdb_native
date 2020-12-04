@@ -30,7 +30,7 @@ def _ts_order_col_to_cell_lists(df, historical_columns):
             df.at[label, order_col] = [df.at[label, order_col]]
     return df
 
-def _ts_add_previous_rows(df, historical_columns):
+def _ts_add_previous_rows(df, historical_columns, window):
     for order_col in historical_columns:
         for i in range(len(df)):
             previous_indexes = [*range(max(0, i - window), i)]
@@ -48,7 +48,7 @@ def _ts_add_previous_rows(df, historical_columns):
             df.iloc[i][order_col].reverse()
     return df
 
-def _ts_add_previous_target(df, predict_columns, nr_predictions):
+def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
     for target_column in predict_columns:
         previous_target_values = list(df[target_column])
         del previous_target_values[-1]
@@ -133,9 +133,9 @@ class LightwoodBackend:
         # Make type `object` so that dataframe cells can be python lists
         df_arr = pool.map(partial(_ts_to_obj, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
         df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
-        df_arr = pool.map(partial(_ts_add_previous_rows, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
+        df_arr = pool.map(partial(_ts_add_previous_rows, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'], window=window), df_arr)
         if self.transaction.lmd['tss']['use_previous_target']:
-            df_arr = pool.map(partial(_ts_add_previous_target, predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions), df_arr)
+            df_arr = pool.map(partial(_ts_add_previous_target, predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window), df_arr)
         print(df_arr)
         exit()
 
