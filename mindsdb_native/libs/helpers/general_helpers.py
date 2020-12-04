@@ -193,7 +193,6 @@ def evaluate_regression_accuracy(
         column,
         predictions,
         true_values,
-        backend,
         **kwargs
     ):
     return r2_score(true_values, predictions[column])
