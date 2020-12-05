@@ -337,6 +337,20 @@ class LightwoodBackend:
                 mixer_classes = use_mixers
             else:
                 mixer_classes = [use_mixers]
+
+            for i in range(len(mixer_classes)):
+                if isinstance(mixer_classes[i], str):
+                    for mx_cls in lightwood.mixers.BaseMixer.__subclasses__():
+                        if mx_cls.__name__ == mixer_classes[i]:
+                            mixer_classes[i] = mx_cls
+                            break
+                    else:
+                        raise ValueError(f'Mixer "{mixer_classes[i]}" doesn\'t exist')
+                elif isinstance(mixer_classes[i], lightwood.mixers.BaseMixer):
+                    pass
+                else:
+                    raise ValueError(f'Invalid value "{mixer_classes[i]}" in use_mixers')
+
         else:
             mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
             if stop_training_after is not None:
