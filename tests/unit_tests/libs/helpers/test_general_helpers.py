@@ -100,7 +100,7 @@ class TestEvaluateAccuracy(unittest.TestCase):
 
         accuracy = evaluate_accuracy(predictions, data_frame, col_stats, output_columns)
 
-        assert round(accuracy, 2)  == 0.8
+        assert round(accuracy, 2) == 0.8
 
     def test_evaluate_weird_data_types(self):
         for dtype, data_subtype in [
