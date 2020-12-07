@@ -339,8 +339,6 @@ class Predictor:
 
             return accuracy_dict
 
-<<<<<<< HEAD
-=======
     def _attach_datasource(self, setup_args, ds_class, lmd, hmd):
         lmd['setup_args'] = setup_args
         if ds_class is not None:
@@ -362,7 +360,6 @@ class Predictor:
 
         return self.predict(when_data, use_gpu, advanced_args, backend)
 
->>>>>>> 47a1f58482d3193603007ab0904948dc13d35cc2
     def predict(self,
                 when_data,
                 use_gpu=None,
