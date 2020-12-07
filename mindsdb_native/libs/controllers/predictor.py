@@ -3,13 +3,14 @@ import sys
 import psutil
 import uuid
 import pickle
+import functools
 
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import (
-    LearnTransaction, PredictTransaction
+    LearnTransaction, PredictTransaction, MutatingTransaction
 )
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import load_lmd, load_hmd
@@ -338,6 +339,30 @@ class Predictor:
 
             return accuracy_dict
 
+<<<<<<< HEAD
+=======
+    def _attach_datasource(self, setup_args, ds_class, lmd, hmd):
+        lmd['setup_args'] = setup_args
+        if ds_class is not None:
+            hmd['from_data_type'] = ds_class
+
+    def attach_datasource(self, setup_args, ds_class=None):
+        self.transaction = MutatingTransaction(self,{},{})
+        self.transaction.run(functools.partial(self._attach_datasource, setup_args=setup_args, ds_class=ds_class))
+
+    def quick_predict(self,
+                when_data,
+                use_gpu=None,
+                advanced_args=None,
+                backend=None):
+
+        if advanced_args is None:
+            advanced_args = {}
+        advanced_args['quick_predict'] = True
+
+        return self.predict(when_data, use_gpu, advanced_args, backend)
+
+>>>>>>> 47a1f58482d3193603007ab0904948dc13d35cc2
     def predict(self,
                 when_data,
                 use_gpu=None,

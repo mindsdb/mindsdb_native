@@ -117,7 +117,7 @@ class Transaction:
 
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'heavy_model_metadata.pickle')
         save_hmd = {}
-        null_out_fields = ['from_data', 'icp', 'breakpoint']
+        null_out_fields = ['from_data', 'icp', 'breakpoint','sample_function']
         for k in null_out_fields:
             save_hmd[k] = None
 
@@ -199,6 +199,12 @@ class Transaction:
         raise NotImplementedError
 
 
+class MutatingTransaction(Transaction):
+    def run(self, mutating_callback):
+        self.load_metadata()
+        mutating_callback(self.lmd, self.hmd)
+        self.save_metadata()
+
 class LearnTransaction(Transaction):
     def _run(self):
         try:
@@ -277,7 +283,6 @@ class AnalyseTransaction(Transaction):
         self._call_phase_module(module_name='TypeDeductor', input_data=self.input_data)
         self._call_phase_module(module_name='DataAnalyzer', input_data=self.input_data)
         self.lmd['current_phase'] = MODEL_STATUS_DONE
-
 
 class PredictTransaction(Transaction):
     def run(self):

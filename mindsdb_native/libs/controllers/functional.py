@@ -299,8 +299,9 @@ def get_model_data(model_name=None, lmd=None):
         else:
             amd['timeseries'] = None
 
-    if 'stats_v2' in lmd:
-        amd['data_analysis_v2'] = lmd['stats_v2']
+    amd['data_analysis_v2'] = lmd.get('stats_v2',None)
+    amd['setup_args'] = lmd.get('setup_args',None)
+    amd['test_data_plot'] = lmd.get('test_data_plot',None)
 
     if lmd['current_phase'] == MODEL_STATUS_TRAINED:
         amd['status'] = 'complete'
