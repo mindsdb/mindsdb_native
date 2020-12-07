@@ -99,14 +99,12 @@ class ModelAnalyzer(BaseModule):
                 backend=self.transaction.model_backend
             )
 
-
         # Get some information about the importance of each column
         self.transaction.lmd['column_importances'] = {}
         for col in ignorable_input_columns:
             accuracy_increase = (normal_accuracy - empty_input_accuracy[col])
             # normalize from 0 to 10
             self.transaction.lmd['column_importances'][col] = 10 * max(0, accuracy_increase)
-            assert self.transaction.lmd['column_importances'][col] >= 0
             assert self.transaction.lmd['column_importances'][col] <= 10
 
         # Get accuracy stats
@@ -307,4 +305,3 @@ class ModelAnalyzer(BaseModule):
                     ,'confidence': deepcopy(None if confidence_ranges is None else confidence_ranges[0:200])
                     ,'order_by': deepcopy(list(validation_df[self.transaction.lmd['tss']['order_by'][0]])[0:200])
                 }
-                print(self.transaction.lmd['test_data_plot'][col])
