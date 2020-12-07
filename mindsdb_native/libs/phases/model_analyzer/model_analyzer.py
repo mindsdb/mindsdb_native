@@ -105,7 +105,14 @@ class ModelAnalyzer(BaseModule):
         for col in ignorable_input_columns:
             accuracy_increase = (normal_accuracy - empty_input_accuracy[col])
             # normalize from 0 to 10
-            self.transaction.lmd['column_importances'][col] = 10 * max(0, accuracy_increase)
+            if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.NUMERIC:
+                # in case of numeric data type accuracy_increace can be greater
+                # than 1.0 because numerical accuracy is computed with r2_score
+                self.transaction.lmd['column_importances'][col] = 10 * min(max(0, accuracy_increase), 1.0)
+            else:
+                self.transaction.lmd['column_importances'][col] = 10 * max(0, accuracy_increase)
+            assert self.transaction.lmd['column_importances'][col] >= 0
+            assert self.transaction.lmd['column_importances'][col] <= 10
 
         # Get accuracy stats
         overall_accuracy_arr = []
