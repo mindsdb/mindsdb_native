@@ -42,10 +42,14 @@ class TestQuickInterface(unittest.TestCase):
 
         p1 = mindsdb_native.Predictor(name='test1')
         p1.learn(from_data=df, to_predict='y')
-        pred1 = p1.predict(when_data={'x1': 3, 'x2': 5})
+        pred1_1 = p1.predict(when_data={'x1': 3, 'x2': 5})
+        pred1_2 = p1.quick_predict(when_data={'x1': 3, 'x2': 5})
 
         p2 = mindsdb_native.Predictor(name='test2')
         p2.quick_learn(from_data=df, to_predict='y')
-        pred2 = p2.predict(when_data={'x1': 3, 'x2': 5})
+        pred2_1 = p2.predict(when_data={'x1': 3, 'x2': 5})
+        pred2_2 = p2.quick_predict(when_data={'x1': 3, 'x2': 5})
 
-        assert set(pred1.keys()) == set(pred2.keys())
+        assert set(pred1_1.keys()) == set(pred2_1.keys())
+        assert isinstance(pred1_2, dict)
+        assert isinstance(pred2_2, dict)
