@@ -357,6 +357,7 @@ class Predictor:
         if advanced_args is None:
             advanced_args = {}
         advanced_args['quick_predict'] = True
+        advanced_args['return_raw_predictions'] = True
 
         return self.predict(when_data, use_gpu, advanced_args, backend)
 
@@ -411,7 +412,8 @@ class Predictor:
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 use_database_history = advanced_args.get('use_database_history', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
-                quick_predict = advanced_args.get('quick_predict', False)
+                quick_predict = advanced_args.get('quick_predict', False),
+                return_raw_predictions = advanced_args.get('return_raw_predictions', False)
             )
 
             self.transaction = PredictTransaction(
