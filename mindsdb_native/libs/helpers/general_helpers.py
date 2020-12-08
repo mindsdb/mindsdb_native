@@ -237,7 +237,7 @@ def evaluate_accuracy(predictions,
                       backend=None,
                       return_dict=False,
                       **kwargs):
-    column_scores = []
+    column_scores = {}
     for column in output_columns:
         col_type = col_stats[column]['typing']['data_type']
         col_subtype = col_stats[column]['typing']['data_subtype']

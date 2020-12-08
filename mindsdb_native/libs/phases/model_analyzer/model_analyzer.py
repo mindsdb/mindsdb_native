@@ -165,10 +165,20 @@ class ModelAnalyzer(BaseModule):
             )
 
         for col in output_columns:
-            acc_stats = AccStats(col_stats=self.transaction.lmd['stats_v2'][col], col_name=col, input_columns=input_columns)
+            acc_stats = AccStats(
+                col_stats=self.transaction.lmd['stats_v2'][col],
+                col_name=col,
+                input_columns=input_columns
+            )
+
             predictions_arr = [normal_predictions_test] + [x for x in empty_input_predictions_test.values()]
 
-            acc_stats.fit(test_df, predictions_arr, [[ignored_column] for ignored_column in empty_input_predictions_test])
+            acc_stats.fit(
+                test_df,
+                predictions_arr,
+                [[ignored_column] for ignored_column in empty_input_predictions_test]
+            )
+
             overall_accuracy, accuracy_histogram, cm, accuracy_samples = acc_stats.get_accuracy_stats()
             overall_accuracy_arr.append(overall_accuracy)
 
@@ -252,7 +262,13 @@ class ModelAnalyzer(BaseModule):
                 if not is_classification:
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 
-                X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns, fit_params['columns_to_ignore'])
+                X = clean_df(
+                    X,
+                    self.transaction.lmd['stats_v2'],
+                    output_columns,
+                    fit_params['columns_to_ignore']
+                )
+
                 self.transaction.hmd['icp'][target].index = X.columns
                 self.transaction.hmd['icp'][target].fit(X.values, y.values)
                 self.transaction.hmd['icp']['active'] = True
@@ -269,7 +285,13 @@ class ModelAnalyzer(BaseModule):
                         y = np.array([cats.index(i) for i in y])
                     y = y.astype(int)
 
-                X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns, fit_params['columns_to_ignore'])
+                X = clean_df(
+                    X,
+                    self.transaction.lmd['stats_v2'],
+                    output_columns,
+                    fit_params['columns_to_ignore']
+                )
+
                 self.transaction.hmd['icp'][target].calibrate(X.values, y)
 
 
