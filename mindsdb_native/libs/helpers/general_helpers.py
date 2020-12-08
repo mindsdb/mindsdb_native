@@ -261,7 +261,7 @@ def evaluate_accuracy(predictions,
             backend=backend,
             **kwargs
         )
-        column_scores[columns] = column_score
+        column_scores[column] = column_score
 
     if return_dict:
         pass
