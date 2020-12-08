@@ -197,7 +197,7 @@ def evaluate_regression_accuracy(
         **kwargs
     ):
     r2 = r2_score(true_values, predictions[column])
-    return r2 if r2 > 0 else 0
+    return max(r2, 0)
 
 
 def evaluate_classification_accuracy(column, predictions, true_values, **kwargs):
@@ -222,15 +222,12 @@ def evaluate_array_accuracy(column, predictions, true_values, **kwargs):
     true_values = list(true_values)
     acc_f = balanced_accuracy_score if kwargs['categorical'] else r2_score
     for i in range(len(predictions[column])):
-        if isinstance(true_values[i],list):
-            accuracy += acc_f(predictions[column][i],true_values[i])
+        if isinstance(true_values[i], list):
+            accuracy += max(0, acc_f(predictions[column][i], true_values[i]))
         else:
             # For the T+1 usecase
-            accuracy = acc_f([x[0] for x in predictions[column]], true_values)
-            return accuracy
-
-    accuracy = accuracy/len(predictions[column])
-    return accuracy
+            return max(0, acc_f([x[0] for x in predictions[column]], true_values))
+    return accuracy / len(predictions[column])
 
 
 def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backend=None, **kwargs):
@@ -261,6 +258,7 @@ def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backen
         column_scores.append(column_score)
 
     score = sum(column_scores) / len(column_scores) if column_scores else 0.0
+
     if score == 0:
         score = 0.00000001
     return score

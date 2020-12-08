@@ -5,6 +5,7 @@ from mindsdb_native.libs.helpers.general_helpers import (evaluate_accuracy)
 
 
 class TestEvaluateAccuracy(unittest.TestCase):
+    @unittest.skip('regression accuracy based on confidence range is removed')
     def test_evaluate_regression(self):
         predictions = {
             'y': [1, 2, 3, 4],
@@ -47,6 +48,7 @@ class TestEvaluateAccuracy(unittest.TestCase):
 
         assert round(accuracy, 2) == 0.75
 
+    @unittest.skip('regression accuracy based on confidence range is removed')
     def test_evaluate_two_columns(self):
         predictions = {
             'y1': [1, 2, 3, 4],
@@ -98,7 +100,7 @@ class TestEvaluateAccuracy(unittest.TestCase):
 
         accuracy = evaluate_accuracy(predictions, data_frame, col_stats, output_columns)
 
-        assert round(accuracy, 2)  == 0.8
+        assert round(accuracy, 2) == 0.8
 
     def test_evaluate_weird_data_types(self):
         for dtype, data_subtype in [
@@ -107,7 +109,7 @@ class TestEvaluateAccuracy(unittest.TestCase):
             (DATA_TYPES.FILE_PATH, None)
         ]:
             predictions = {
-                'y': ["1", "2", "3", "4"]
+                'y': ['1', '2', '3', '4']
             }
 
             col_stats = {
@@ -117,7 +119,7 @@ class TestEvaluateAccuracy(unittest.TestCase):
 
             output_columns = ['y']
 
-            data_frame = pd.DataFrame({'y': ["1", "2", "3", "5"]})
+            data_frame = pd.DataFrame({'y': ['1', '2', '3', '5']})
 
             accuracy = evaluate_accuracy(predictions, data_frame, col_stats,
                                          output_columns)
