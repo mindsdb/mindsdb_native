@@ -1,6 +1,8 @@
 import copy
 import traceback
 from pathlib import Path
+import multiprocessing as mp
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -15,6 +17,59 @@ from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 def _make_pred(row):
     return not hasattr(row, 'make_predictions') or row.make_predictions
 
+def _ts_to_obj(df, historical_columns):
+    for hist_col in historical_columns:
+        df.loc[:, hist_col] = df[hist_col].astype(object)
+        return df
+
+def _ts_order_col_to_cell_lists(df, historical_columns):
+    for order_col in historical_columns:
+        for ii in range(len(df)):
+            # Needed because of a pandas bug that causes above to fail for small dataframes
+            label = df.index.values[ii]
+            df.at[label, order_col] = [df.at[label, order_col]]
+    return df
+
+def _ts_add_previous_rows(df, historical_columns, window):
+    for order_col in historical_columns:
+        for i in range(len(df)):
+            previous_indexes = [*range(max(0, i - window), i)]
+
+            for prev_i in reversed(previous_indexes):
+                df.iloc[i][order_col].append(
+                    df.iloc[prev_i][order_col][-1]
+                )
+
+            # Zero pad
+            # @TODO: Remove since RNN encoder can do without (???)
+            df.iloc[i][order_col].extend(
+                [0] * (1 + window - len(df.iloc[i][order_col]))
+            )
+            df.iloc[i][order_col].reverse()
+    return df
+
+def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
+    for target_column in predict_columns:
+        previous_target_values = list(df[target_column])
+        del previous_target_values[-1]
+        previous_target_values = [None] + previous_target_values
+
+        previous_target_values_arr = []
+        for i in range(len(previous_target_values)):
+            arr = previous_target_values[max(i - window, 0):i + 1]
+            while len(arr) <= window:
+                arr = [None] + arr
+            previous_target_values_arr.append(arr)
+
+        df[f'__mdb_ts_previous_{target_column}'] = previous_target_values_arr
+        for timestep_index in range(1, nr_predictions):
+            next_target_value_arr = list(df[target_column])
+            for del_index in range(0, timestep_index):
+                del next_target_value_arr[del_index]
+                next_target_value_arr.append(0)
+            # @TODO: Maybe ignore the rows with `None` next targets for training
+            df[f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
+    return df
 
 class LightwoodBackend:
     def __init__(self, transaction):
@@ -72,59 +127,14 @@ class LightwoodBackend:
         else:
             df_arr = [original_df]
 
+        pool = mp.Pool(processes = (mp.cpu_count() - 1))
+
         # Make type `object` so that dataframe cells can be python lists
-        for i in range(len(df_arr)):
-            for hist_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
-                df_arr[i].loc[:, hist_col] = df_arr[i][hist_col].astype(object)
-
-        # Make all order column cells lists
-        for i in range(len(df_arr)):
-            for order_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
-                for ii in range(len(df_arr[i])):
-                    # Needed because of a pandas bug that causes above to fail for small dataframes
-                    label = df_arr[i].index.values[ii]
-                    df_arr[i].at[label, order_col] = [df_arr[i].at[label, order_col]]
-
-        # Add previous rows
-        for n in range(len(df_arr)):
-            for order_col in ob_arr + self.transaction.lmd['tss']['historical_columns']:
-                for i in range(len(df_arr[n])):
-                    previous_indexes = [*range(max(0, i - window), i)]
-
-                    for prev_i in reversed(previous_indexes):
-                        df_arr[n].iloc[i][order_col].append(
-                            df_arr[n].iloc[prev_i][order_col][-1]
-                        )
-
-                    # Zero pad
-                    # @TODO: Remove since RNN encoder can do without (???)
-                    df_arr[n].iloc[i][order_col].extend(
-                        [0] * (1 + window - len(df_arr[n].iloc[i][order_col]))
-                    )
-                    df_arr[n].iloc[i][order_col].reverse()
-
+        df_arr = pool.map(partial(_ts_to_obj, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
+        df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
+        df_arr = pool.map(partial(_ts_add_previous_rows, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'], window=window), df_arr)
         if self.transaction.lmd['tss']['use_previous_target']:
-            for target_column in self.transaction.lmd['predict_columns']:
-                for k in range(len(df_arr)):
-                    previous_target_values = list(df_arr[k][target_column])
-                    del previous_target_values[-1]
-                    previous_target_values = [None] + previous_target_values
-
-                    previous_target_values_arr = []
-                    for i in range(len(previous_target_values)):
-                        arr = previous_target_values[max(i - window, 0):i + 1]
-                        while len(arr) <= window:
-                            arr = [None] + arr
-                        previous_target_values_arr.append(arr)
-
-                    df_arr[k][f'__mdb_ts_previous_{target_column}'] = previous_target_values_arr
-                    for timestep_index in range(1, self.nr_predictions):
-                        next_target_value_arr = list(df_arr[k][target_column])
-                        for del_index in range(0, timestep_index):
-                            del next_target_value_arr[del_index]
-                            next_target_value_arr.append(0)
-                        # @TODO: Maybe ignore the rows with `None` next targets for training
-                        df_arr[k][f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
+            df_arr = pool.map(partial(_ts_add_previous_target, predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window), df_arr)
 
         combined_df = pd.concat(df_arr)
 
@@ -142,6 +152,8 @@ class LightwoodBackend:
         if len(combined_df) == 0:
             raise Exception(f'Not enough historical context to make a timeseries prediction. Please provide a number of rows greater or equal to the window size. If you can\'t get enough rows, consider lowering your window size. If you want to force timeseries predictions lacking historical context please set the `allow_incomplete_history` advanced argument to `True`, but this might lead to subpar predictions.')
 
+        pool.close()
+        pool.join()
         return combined_df, secondary_type_dict, timeseries_row_mapping
 
     def _create_lightwood_config(self, secondary_type_dict):
@@ -322,7 +334,6 @@ class LightwoodBackend:
         )
         lightwood_test_ds = lightwood_train_ds.make_child(test_df)
 
-        self.transaction.lmd['lightwood_data']['save_path'] = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
         Path(CONFIG.MINDSDB_STORAGE_PATH).joinpath(self.transaction.lmd['name']).mkdir(mode=0o777, exist_ok=True, parents=True)
 
         logging.getLogger().setLevel(logging.DEBUG)
@@ -338,6 +349,20 @@ class LightwoodBackend:
                 mixer_classes = use_mixers
             else:
                 mixer_classes = [use_mixers]
+
+            for i in range(len(mixer_classes)):
+                if isinstance(mixer_classes[i], str):
+                    for mx_cls in lightwood.mixers.BaseMixer.__subclasses__():
+                        if mx_cls.__name__ == mixer_classes[i]:
+                            mixer_classes[i] = mx_cls
+                            break
+                    else:
+                        raise ValueError(f'Mixer "{mixer_classes[i]}" doesn\'t exist')
+                elif isinstance(mixer_classes[i], lightwood.mixers.BaseMixer):
+                    pass
+                else:
+                    raise ValueError(f'Invalid value "{mixer_classes[i]}" in use_mixers')
+
         else:
             mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
             if stop_training_after is not None:
@@ -410,8 +435,7 @@ class LightwoodBackend:
                 self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df,
                 self.transaction.lmd['stats_v2'],
                 self.transaction.lmd['predict_columns'],
-                backend=self,
-                use_conf_intervals=False # r2_score will be used for regression
+                backend=self
             )
 
             predictors_and_accuracies.append((
@@ -441,7 +465,8 @@ class LightwoodBackend:
             if (best_accuracy - nn_mixer_predictor_accuracy) < SMALL_ACCURACY_DIFFERENCE:
                 self.predictor = nn_mixer_predictor
 
-        self.predictor.save(path_to=self.transaction.lmd['lightwood_data']['save_path'])
+        save_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
+        self.predictor.save(path_to=save_path)
 
     def predict(self, mode='predict', ignore_columns=None, all_mixers=False):
         if ignore_columns is None:
@@ -465,7 +490,8 @@ class LightwoodBackend:
             df, _, timeseries_row_mapping = self._ts_reshape(df)
 
         if self.predictor is None:
-            self.predictor = lightwood.Predictor(load_from_path=self.transaction.lmd['lightwood_data']['save_path'])
+            predictor_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
+            self.predictor = lightwood.Predictor(load_from_path=predictor_path)
 
         # not the most efficient but least prone to bug and should be fast enough
         if len(ignore_columns) > 0:
@@ -520,11 +546,6 @@ class LightwoodBackend:
 
             for k in model_confidence_dict:
                 formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]
-
-            if 'confidence_range' in predictions[k]:
-                formated_predictions[f'{k}_confidence_range'] = predictions[k]['confidence_range']
-
-
 
         if self.transaction.lmd['tss']['is_timeseries']:
             for k in list(formated_predictions.keys()):

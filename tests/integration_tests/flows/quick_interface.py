@@ -27,8 +27,29 @@ class TestQuickInterface(unittest.TestCase):
         assert test_predictor.report_uuid == 'no_report'
 
         # Make some predictions with quick_predict and make sure they look alright
-        predictions = test_predictor.quick_predict(df_test)
+        predictions = test_predictor.predict(df_test)
         assert len(predictions['hours-per-week']) == len(df_test)
         for pred in predictions['hours-per-week']:
             assert isinstance(pred,int)
             assert pred > 0
+
+    def test_quick_predict_output(self):
+        df = pd.DataFrame({
+            'x1': [x for x in range(100)],
+            'x2': [x*2 for x in range(100)],
+            'y': [y*3 for y in range(100)]
+        })
+
+        p1 = mindsdb_native.Predictor(name='test1')
+        p1.learn(from_data=df, to_predict='y')
+        pred1_1 = p1.predict(when_data={'x1': 3, 'x2': 5})
+        pred1_2 = p1.quick_predict(when_data={'x1': 3, 'x2': 5})
+
+        p2 = mindsdb_native.Predictor(name='test2')
+        p2.quick_learn(from_data=df, to_predict='y')
+        pred2_1 = p2.predict(when_data={'x1': 3, 'x2': 5})
+        pred2_2 = p2.quick_predict(when_data={'x1': 3, 'x2': 5})
+
+        assert set(pred1_1.keys()) == set(pred2_1.keys())
+        assert isinstance(pred1_2, dict)
+        assert isinstance(pred2_2, dict)

@@ -37,8 +37,8 @@ class ModelAnalyzer(BaseModule):
         # Make predictions on the validation dataset normally and with various columns missing
         self.transaction.model_backend.predictor.config['include_extra_data'] = True
         normal_predictions = self.transaction.model_backend.predict('validate')
-
         normal_predictions_test = self.transaction.model_backend.predict('test')
+
         normal_accuracy = evaluate_accuracy(
             normal_predictions,
             validation_df,
@@ -99,13 +99,13 @@ class ModelAnalyzer(BaseModule):
                 backend=self.transaction.model_backend
             )
 
-
         # Get some information about the importance of each column
         self.transaction.lmd['column_importances'] = {}
         for col in ignorable_input_columns:
             accuracy_increase = (normal_accuracy - empty_input_accuracy[col])
             # normalize from 0 to 10
             self.transaction.lmd['column_importances'][col] = 10 * max(0, accuracy_increase)
+            assert self.transaction.lmd['column_importances'][col] <= 10
 
         # Get accuracy stats
         overall_accuracy_arr = []
@@ -265,3 +265,43 @@ class ModelAnalyzer(BaseModule):
 
                 X = clean_df(X, self.transaction.lmd['stats_v2'], output_columns, fit_params['columns_to_ignore'])
                 self.transaction.hmd['icp'][target].calibrate(X.values, y)
+
+
+        # @TODO Limiting to 4 as to not kill the GUI, sample later (or maybe only select latest?)
+        if self.transaction.lmd['tss']['is_timeseries'] and len(normal_predictions[output_columns[0]]) < pow(10,4):
+            self.transaction.lmd['test_data_plot'] = {}
+            for output_column in output_columns:
+
+                if self.transaction.lmd['stats_v2'][output_column]['typing']['data_type'] in DATA_TYPES.NUMERIC:
+
+                    all_conformal_ranges = self.transaction.hmd['icp'][output_column].predict(X.values)
+
+                    tol_const = 1  # std devs
+                    tolerance = self.transaction.lmd['stats_v2']['train_std_dev'][output_column] * tol_const
+                    confidence_ranges = []
+
+                    for sample_idx in range(all_conformal_ranges.shape[0]):
+                        sample = all_conformal_ranges[sample_idx, :, :]
+                        for idx in range(sample.shape[1]):
+                            diff = sample[1, idx] - sample[0, idx]
+                            if diff <= tolerance:
+                                conf_range = list(sample[:, idx])
+                                # for positive numerical domains
+                                if self.transaction.lmd['stats_v2'][output_column].get('positive_domain', False):
+                                    conf_range[0] = max(0, conf_range[0])
+                                confidence_ranges.append(conf_range)
+                                break
+                        else:
+                            confidence_ranges.append(0.9901)  # default
+                            bounds = sample[:, 0]
+                            sigma = (bounds[1] - bounds[0]) / 2
+                            confidence_ranges.append([bounds[0] - sigma, bounds[1] + sigma])
+                else:
+                    confidence_ranges = None
+
+                self.transaction.lmd['test_data_plot'][col] = {
+                    'real': deepcopy(list(validation_df[output_column]))
+                    ,'predicted': deepcopy(list(normal_predictions[output_column])[0:200])
+                    ,'confidence': deepcopy(None if confidence_ranges is None else confidence_ranges[0:200])
+                    ,'order_by': deepcopy(list(validation_df[self.transaction.lmd['tss']['order_by'][0]])[0:200])
+                }

@@ -3,13 +3,14 @@ import sys
 import psutil
 import uuid
 import pickle
+import functools
 
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import getDS
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import (
-    LearnTransaction, PredictTransaction
+    LearnTransaction, PredictTransaction, MutatingTransaction
 )
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import load_lmd, load_hmd
@@ -261,8 +262,9 @@ class Predictor:
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
                 debug = advanced_args.get('debug', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
-                quick_learn = advanced_args.get('quick_learn', False),
-                quick_predict = advanced_args.get('quick_predict', False)
+                quick_learn = advanced_args.get('quick_learn', None),
+                quick_predict = advanced_args.get('quick_predict', False),
+                apply_to_columns = advanced_args.get('apply_to_columns', {})
             )
 
             if rebuild_model is False:
@@ -337,6 +339,15 @@ class Predictor:
 
             return accuracy_dict
 
+    def _attach_datasource(self, setup_args, ds_class, lmd, hmd):
+        lmd['setup_args'] = setup_args
+        if ds_class is not None:
+            hmd['from_data_type'] = ds_class
+
+    def attach_datasource(self, setup_args, ds_class=None):
+        self.transaction = MutatingTransaction(self,{},{})
+        self.transaction.run(functools.partial(self._attach_datasource, setup_args=setup_args, ds_class=ds_class))
+
     def quick_predict(self,
                 when_data,
                 use_gpu=None,
@@ -346,6 +357,7 @@ class Predictor:
         if advanced_args is None:
             advanced_args = {}
         advanced_args['quick_predict'] = True
+        advanced_args['return_raw_predictions'] = True
 
         return self.predict(when_data, use_gpu, advanced_args, backend)
 
@@ -400,7 +412,8 @@ class Predictor:
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 use_database_history = advanced_args.get('use_database_history', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
-                quick_predict = advanced_args.get('quick_predict', False)
+                quick_predict = advanced_args.get('quick_predict', False),
+                return_raw_predictions = advanced_args.get('return_raw_predictions', False)
             )
 
             self.transaction = PredictTransaction(

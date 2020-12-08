@@ -88,7 +88,7 @@ class Transaction:
                     try:
                         self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
                     except AttributeError:
-                        model_path = self.lmd['lightwood_data']['save_path']
+                        model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'lightwood_data')
                         self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
 
                     # restore model in normalizer
@@ -117,7 +117,7 @@ class Transaction:
 
         fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'heavy_model_metadata.pickle')
         save_hmd = {}
-        null_out_fields = ['from_data', 'icp', 'breakpoint']
+        null_out_fields = ['from_data', 'icp', 'breakpoint','sample_function']
         for k in null_out_fields:
             save_hmd[k] = None
 
@@ -199,6 +199,12 @@ class Transaction:
         raise NotImplementedError
 
 
+class MutatingTransaction(Transaction):
+    def run(self, mutating_callback):
+        self.load_metadata()
+        mutating_callback(self.lmd, self.hmd)
+        self.save_metadata()
+
 class LearnTransaction(Transaction):
     def _run(self):
         try:
@@ -220,6 +226,14 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
+            # quick_learn can be set to False explicitly
+            if self.lmd['quick_learn'] is None:
+                n_cols = len(self.input_data.columns)
+                n_cells = n_cols * self.lmd['data_preparation']['used_row_count']
+                if n_cols >= 80 and n_cells > int(1e5):
+                    self.log.warning('Data has too many columns, setting quick_learn to True')
+                    self.lmd['quick_learn'] = True
+
             self._call_phase_module(module_name='DataCleaner')
             self.save_metadata()
 
@@ -231,7 +245,15 @@ class LearnTransaction(Transaction):
             self.save_metadata()
             self._call_phase_module(module_name='ModelInterface', mode='train')
 
-            if not self.lmd['quick_learn']:
+            if self.lmd['quick_learn']:
+                predict_method = self.session.predict
+                def predict_method_wrapper(*args, **kwargs):
+                    if 'advanced_args' not in kwargs:
+                        kwargs['advanced_args'] = {}
+                    kwargs['advanced_args']['quick_predict'] = True
+                    return predict_method(*args, **kwargs)
+                self.session.predict = predict_method_wrapper
+            else:
                 self.lmd['current_phase'] = MODEL_STATUS_ANALYZING
                 self.save_metadata()
                 self._call_phase_module(module_name='ModelAnalyzer')
@@ -261,7 +283,6 @@ class AnalyseTransaction(Transaction):
         self._call_phase_module(module_name='TypeDeductor', input_data=self.input_data)
         self._call_phase_module(module_name='DataAnalyzer', input_data=self.input_data)
         self.lmd['current_phase'] = MODEL_STATUS_DONE
-
 
 class PredictTransaction(Transaction):
     def run(self):
@@ -303,9 +324,8 @@ class PredictTransaction(Transaction):
 
         self._call_phase_module(module_name='ModelInterface', mode='predict')
 
-        if self.lmd['quick_predict']:
-            self.output_data = self.hmd['predictions']
-            return
+        if self.lmd['return_raw_predictions']:
+            return self.hmd['predictions']
 
         output_data = {col: [] for col in self.lmd['columns']}
 
@@ -322,11 +342,12 @@ class PredictTransaction(Transaction):
         for column in self.input_data.columns:
             if column in self.lmd['predict_columns']:
                 output_data[f'__observed_{column}'] = list(predictions_df[column])
+                output_data[column] = self.hmd['predictions'][column]
             else:
                 output_data[column] = list(predictions_df[column])
 
         # confidence estimation
-        if self.hmd['icp']['active']:
+        if self.hmd['icp']['active'] and not self.lmd['quick_predict']:
             self.lmd['all_conformal_ranges'] = {}
             icp_X = deepcopy(predictions_df)
 
@@ -404,6 +425,10 @@ class PredictTransaction(Transaction):
                                         break
                                 else:
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
+        else:
+            for predicted_col in self.lmd['predict_columns']:
+                output_data[f'{predicted_col}_confidence'] = None
+                output_data[f'{predicted_col}_confidence_range'] = None
 
         self.output_data = PredictTransactionOutputData(
             transaction=self,

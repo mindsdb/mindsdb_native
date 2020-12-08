@@ -1,7 +1,4 @@
-
 import os
-
-from snowflake import connector
 
 from mindsdb_native.libs.data_types.data_source import SQLDataSource
 
@@ -21,6 +18,8 @@ class SnowflakeDS(SQLDataSource):
         self.port = int(port)
 
     def query(self, q):
+        # Note: This import will *break* the requests package in certain cases, guarding against it so that we only touch this odious libray when absolutely necessary (more info here: https://github.com/boto/boto3/issues/2577)
+        from snowflake import connector
         con = connector.connect(
             host=self.host,
             user=self.user,
