@@ -315,16 +315,6 @@ class DataAnalyzer(BaseModule):
                     if stats_v2[col_name]['histogram']['x'][0] >= 0:
                         stats_v2[col_name]['positive_domain'] = True
 
-
-            if data_type == DATA_TYPES.TEXT:
-                lang_dist = get_language_dist(col_data)
-                nr_words, word_dist, nr_words_dist = analyze_sentences(col_data)
-
-                stats_v2[col_name]['avg_words_per_sentence'] = nr_words / len(col_data)
-                stats_v2[col_name]['word_dist'] = shrink_word_dist(word_dist)
-                stats_v2[col_name]['nr_words_dist'] = nr_words_dist
-                stats_v2[col_name]['lang_dist'] = lang_dist
-
             stats_v2[col_name]['nr_warnings'] = 0
             for x in stats_v2[col_name].values():
                 if isinstance(x, dict) and 'warning' in x:

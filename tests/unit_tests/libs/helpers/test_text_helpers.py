@@ -13,6 +13,7 @@ from mindsdb_native.libs.helpers.text_helpers import get_identifier_description
 
 
 class TestTextHelpers(unittest.TestCase):
+    @unittest.skip('language analysis is temporarily not used')
     def test_language_analysis(self):
         SENTENCES = {
             'en': [
@@ -46,7 +47,6 @@ class TestTextHelpers(unittest.TestCase):
             assert 'Unknown' in lang_dist
             assert lang_dist['Unknown'] == 0
             assert lang_dist[lang] == len(SENTENCES[lang])
-
 
     def test_identifiers(self):
         N = 300
