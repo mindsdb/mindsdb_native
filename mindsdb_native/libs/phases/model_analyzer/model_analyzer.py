@@ -49,6 +49,8 @@ class ModelAnalyzer(BaseModule):
         )
 
         normal_accuracy = sum(normal_accs.values()) / len(normal_accs)
+        if normal_accuracy == 0:
+            normal_accuracy = 0.00000001
 
         for col in output_columns:
             reals = validation_df[col]
