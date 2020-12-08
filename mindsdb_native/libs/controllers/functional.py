@@ -369,6 +369,11 @@ def get_model_data(model_name=None, lmd=None):
             else:
                 accuracy_samples = None
 
+            if 'normal_accuracy' in lmd and col in lmd['normal_accuracy']:
+                normal_accuracy = lmd['normal_accuracy'][col]
+            else:
+                normal_accuracy = None
+
             # Model analysis building for each of the predict columns
             mao = {
                 'column_name': col
@@ -394,6 +399,7 @@ def get_model_data(model_name=None, lmd=None):
               }
               ,"confusion_matrix": confusion_matrix
               ,"accuracy_samples": accuracy_samples
+              ,"normal_accuracy": normal_accuracy
             }
 
 
