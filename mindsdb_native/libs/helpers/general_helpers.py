@@ -237,7 +237,7 @@ def evaluate_accuracy(predictions,
                       backend=None,
                       return_dict=False,
                       **kwargs):
-    column_scores = {}
+    column_scores = []
     for column in output_columns:
         col_type = col_stats[column]['typing']['data_type']
         col_subtype = col_stats[column]['typing']['data_subtype']
@@ -261,13 +261,10 @@ def evaluate_accuracy(predictions,
             backend=backend,
             **kwargs
         )
-        column_scores[column] = column_score
+        column_scores.append(column_score)
 
-    if return_dict:
-        pass
-    else:
-        score = sum(column_scores.values()) / len(column_scores) if column_scores else 0.0
-        return 0.00000001 if score == 0 else score
+    score = sum(column_scores.values()) / len(column_scores) if column_scores else 0.0
+    return 0.00000001 if score == 0 else score
 
 
 class suppress_stdout_stderr(object):
