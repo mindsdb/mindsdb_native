@@ -230,7 +230,13 @@ def evaluate_array_accuracy(column, predictions, true_values, **kwargs):
     return accuracy / len(predictions[column])
 
 
-def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backend=None, **kwargs):
+def evaluate_accuracy(predictions,
+                      data_frame,
+                      col_stats,
+                      output_columns,
+                      backend=None,
+                      return_dict=False,
+                      **kwargs):
     column_scores = []
     for column in output_columns:
         col_type = col_stats[column]['typing']['data_type']
@@ -255,13 +261,16 @@ def evaluate_accuracy(predictions, data_frame, col_stats, output_columns, backen
             backend=backend,
             **kwargs
         )
-        column_scores.append(column_score)
+        column_scores[columns] = column_score
 
-    score = sum(column_scores) / len(column_scores) if column_scores else 0.0
+    if return_dict:
+        pass
+    else:
+        score = sum(column_scores.values()) / len(column_scores) if column_scores else 0.0
 
-    if score == 0:
-        score = 0.00000001
-    return score
+        if score == 0:
+            score = 0.00000001
+        return score
 
 
 class suppress_stdout_stderr(object):
