@@ -267,10 +267,7 @@ def evaluate_accuracy(predictions,
         pass
     else:
         score = sum(column_scores.values()) / len(column_scores) if column_scores else 0.0
-
-        if score == 0:
-            score = 0.00000001
-        return score
+        return 0.00000001 if score == 0 else score
 
 
 class suppress_stdout_stderr(object):

@@ -39,13 +39,16 @@ class ModelAnalyzer(BaseModule):
         normal_predictions = self.transaction.model_backend.predict('validate')
         normal_predictions_test = self.transaction.model_backend.predict('test')
 
-        normal_accuracy = evaluate_accuracy(
+        normal_accs = evaluate_accuracy(
             normal_predictions,
             validation_df,
             self.transaction.lmd['stats_v2'],
             output_columns,
-            backend=self.transaction.model_backend
+            backend=self.transaction.model_backend,
+            return_dict=True
         )
+
+        normal_accuracy = sum(normal_accs.values()) / len(normal_accs)
 
         for col in output_columns:
             reals = validation_df[col]
@@ -171,6 +174,7 @@ class ModelAnalyzer(BaseModule):
             self.transaction.lmd['confusion_matrices'][col] = cm
             self.transaction.lmd['accuracy_samples'][col] = accuracy_samples
             self.transaction.hmd['acc_stats'][col] = pickle_obj(acc_stats)
+            self.transaction.lmd['normal_accuracy'] = normal_accs[col]
 
         self.transaction.lmd['validation_set_accuracy'] = sum(overall_accuracy_arr) / len(overall_accuracy_arr)
 
