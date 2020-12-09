@@ -184,7 +184,7 @@ class ModelAnalyzer(BaseModule):
 
         self.transaction.lmd['validation_set_accuracy'] = normal_accuracy
         if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.NUMERIC:
-            self.transaction.lmd['validation_set_accuracy_accuracy_r2'] = normal_accuracy
+            self.transaction.lmd['validation_set_accuracy_r2'] = normal_accuracy
 
         # conformal prediction confidence estimation
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
