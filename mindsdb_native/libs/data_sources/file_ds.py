@@ -78,7 +78,7 @@ class FileDS(DataSource):
         try:
             return pd.DataFrame(file_list_data, columns=header), col_map
         except Exception:
-            return pd.read_csv(file, sep=dialect.delimiter), col_map
+            return pd.read_csv(self.file, sep=dialect.delimiter), col_map
 
     def _getDataIo(self, file):
         """
