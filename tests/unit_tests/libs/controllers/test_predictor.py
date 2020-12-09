@@ -242,7 +242,7 @@ class TestPredictor(unittest.TestCase):
         assert isinstance(amd['predict'], (list, str))
         assert isinstance(amd['is_active'], bool)
 
-        for k in ['validation_set_accuracy', 'accuracy']:
+        for k in ['validation_set_accuracy', 'validation_set_accuracy_r2']:
             assert isinstance(amd[k], float)
 
         for k in amd['data_preparation']:

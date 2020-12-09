@@ -182,8 +182,9 @@ class ModelAnalyzer(BaseModule):
             self.transaction.lmd['accuracy_samples'][col] = accuracy_samples
             self.transaction.hmd['acc_stats'][col] = pickle_obj(acc_stats)
 
-        self.transaction.lmd['validation_set_normal_accuracy'] = normal_accuracy
-        self.transaction.lmd['validation_set_confidence_accuracy'] = sum(overall_accuracy_arr) / len(overall_accuracy_arr)
+        self.transaction.lmd['validation_set_accuracy'] = normal_accuracy
+        if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.NUMERIC:
+            self.transaction.lmd['validation_set_accuracy_accuracy_r2'] = normal_accuracy
 
         # conformal prediction confidence estimation
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
