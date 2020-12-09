@@ -263,7 +263,7 @@ def evaluate_accuracy(predictions,
         )
         column_scores.append(column_score)
 
-    score = sum(column_scores.values()) / len(column_scores) if column_scores else 0.0
+    score = sum(column_scores) / len(column_scores) if column_scores else 0.0
     return 0.00000001 if score == 0 else score
 
 
