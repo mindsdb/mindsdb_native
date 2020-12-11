@@ -233,50 +233,6 @@ def import_model(model_archive_path, new_name=None):
     print('Model files loaded')
 
 
-def _adapt_column(col_stats, col):
-    icm = {
-        'column_name': col,
-        'data_type': col_stats['typing']['data_type'],
-        'data_subtype': col_stats['typing']['data_subtype'],
-    }
-
-    icm['data_type_distribution'] = {
-        'type': "categorical"
-        ,'x': []
-        ,'y': []
-    }
-    for k in col_stats['typing']['data_type_dist']:
-        icm['data_type_distribution']['x'].append(k)
-        icm['data_type_distribution']['y'].append(col_stats['typing']['data_type_dist'][k])
-
-    icm['data_subtype_distribution'] = {
-        'type': "categorical"
-        ,'x': []
-        ,'y': []
-    }
-    for k in col_stats['typing']['data_subtype_dist']:
-        icm['data_subtype_distribution']['x'].append(k)
-        icm['data_subtype_distribution']['y'].append(col_stats['typing']['data_subtype_dist'][k])
-
-    icm['data_distribution'] = {}
-    icm['data_distribution']['data_histogram'] = {
-        "type": "categorical",
-        'x': [],
-        'y': []
-    }
-    icm['data_distribution']['clusters'] = [
-         {
-             "group": [],
-             "members": []
-         }
-     ]
-
-    for i in range(len(col_stats['histogram']['x'])):
-        icm['data_distribution']['data_histogram']['x'].append(col_stats['histogram']['x'][i])
-        icm['data_distribution']['data_histogram']['y'].append(col_stats['histogram']['y'][i])
-    return icm
-
-
 def get_model_data(model_name=None, lmd=None):
     if model_name is None and lmd is None:
         raise ValueError('provide either model name or lmd')
@@ -328,23 +284,11 @@ def get_model_data(model_name=None, lmd=None):
     if 'validation_set_accuracy_r2' in lmd:
         amd['accuracy_r2'] = lmd['validation_set_accuracy_r2']
 
-    amd['data_analysis'] = {
-        'target_columns_metadata': []
-        ,'input_columns_metadata': []
-    }
-
     amd['model_analysis'] = []
 
     for col in lmd['model_columns_map'].keys():
         if col in lmd['columns_to_ignore']:
             continue
-
-        try:
-            icm = _adapt_column(lmd['stats_v2'][col], col)
-        except Exception as e:
-            print(e)
-            icm = {'column_name': col}
-            #continue
 
         amd['force_vectors'] = {}
         if col in lmd['predict_columns']:
@@ -358,9 +302,6 @@ def get_model_data(model_name=None, lmd=None):
                 for missing_column in lmd['columnless_prediction_distribution'][col]:
                     amd['force_vectors'][col]['missing_data_distribution'][missing_column] = lmd['columnless_prediction_distribution'][col][missing_column]
                     amd['force_vectors'][col]['missing_data_distribution'][missing_column]['type'] = 'categorical'
-
-                icm['importance_score'] = None
-            amd['data_analysis']['target_columns_metadata'].append(icm)
 
             if 'confusion_matrices' in lmd and col in lmd['confusion_matrices']:
                 confusion_matrix = lmd['confusion_matrices'][col]
@@ -417,15 +358,6 @@ def get_model_data(model_name=None, lmd=None):
                 mao['accuracy_histogram']['x'] = [f'{x}' for x in lmd['accuracy_histogram'][col]['buckets']]
                 mao['accuracy_histogram']['y'] = lmd['accuracy_histogram'][col]['accuracies']
 
-                if lmd['columns_buckets_importances'] is not None and col in lmd['columns_buckets_importances']:
-                    for output_col_bucket in lmd['columns_buckets_importances'][col]:
-                        x_explained_member = []
-                        for input_col in lmd['columns_buckets_importances'][col][output_col_bucket]:
-                            stats = lmd['columns_buckets_importances'][col][output_col_bucket][input_col]
-                            adapted_sub_incol = _adapt_column(stats, input_col)
-                            x_explained_member.append(adapted_sub_incol)
-                        mao['accuracy_histogram']['x_explained'].append(x_explained_member)
-
                 for icol in lmd['model_columns_map'].keys():
                     if icol in lmd['columns_to_ignore']:
                         continue
@@ -441,11 +373,6 @@ def get_model_data(model_name=None, lmd=None):
                     mao[key] = lmd[key]
 
             amd['model_analysis'].append(mao)
-        else:
-            if 'column_importances' in lmd and lmd['column_importances'] is not None:
-                if not lmd['tss']['is_timeseries'] or col not in lmd['tss']['order_by']:
-                    icm['importance_score'] = lmd['column_importances'][col]
-            amd['data_analysis']['input_columns_metadata'].append(icm)
 
     return amd
 
