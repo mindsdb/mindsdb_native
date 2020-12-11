@@ -140,7 +140,6 @@ class Predictor:
 
         return self.learn(to_predict, from_data, timeseries_settings, ignore_columns, stop_training_in_x_seconds, backend, rebuild_model, use_gpu, equal_accuracy_for_all_output_categories, output_categories_importance_dictionary, advanced_args, sample_settings)
 
-
     def learn(self,
               to_predict,
               from_data,
