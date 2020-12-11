@@ -17,7 +17,7 @@ class TestMSSQL(unittest.TestCase):
         PORT = DB_CREDENTIALS['mssql']['port']
 
         mssql_ds = MSSQLDS(
-            query='SELECT * FROM dbo.insurance LIMIT 233',
+            query='SELECT * FROM dbo.insurance LIMIT',
             host=HOST,
             user=USER,
             password=PASSWORD,
@@ -25,5 +25,5 @@ class TestMSSQL(unittest.TestCase):
             port=PORT
         )
 
-        assert (len(mssql_ds.df) == 233)
-        F.analyse_dataset(from_data=mssql_ds)
+        assert (len(mssql_ds.df) > 200)
+        analysis = F.analyse_dataset(from_data=mssql_ds)
