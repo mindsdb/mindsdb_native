@@ -325,6 +325,9 @@ def get_model_data(model_name=None, lmd=None):
         else:
             amd[k] = None
 
+    if 'validation_set_accuracy_r2' in lmd:
+        amd['accuracy_r2'] = lmd['validation_set_accuracy_r2']
+
     amd['data_analysis'] = {
         'target_columns_metadata': []
         ,'input_columns_metadata': []
