@@ -248,10 +248,6 @@ class TestPredictor(unittest.TestCase):
         for k in amd['data_preparation']:
             assert isinstance(amd['data_preparation'][k], (int, float))
 
-        for k in amd['data_analysis']:
-            assert (len(amd['data_analysis'][k]) > 0)
-            assert isinstance(amd['data_analysis'][k][0], dict)
-
         model_analysis = amd['model_analysis']
         assert (len(model_analysis) > 0)
         assert isinstance(model_analysis[0], dict)
