@@ -21,6 +21,7 @@ from mindsdb_native.libs.data_sources.maria_ds import MariaDS
 from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
 from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 from mindsdb_native.libs.data_sources.file_ds import FileDS
+from mindsdb_native.libs.data_sources.sqlite3_ds import SQLite3DS
 
 # These might not initialized properly since they require optional dependencies, so we wrap them in a try-except
 try:
