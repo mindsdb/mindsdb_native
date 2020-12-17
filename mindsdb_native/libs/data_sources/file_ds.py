@@ -77,7 +77,9 @@ class FileDS(DataSource):
 
         try:
             return pd.DataFrame(file_list_data, columns=header), col_map
-        except Exception:
+        except Exception as e:
+            log.error(f"Error creating dataframe from handled data: {e}")
+            log.error("pd.read_csv data handler would be used.")
             return pd.read_csv(self.file, sep=dialect.delimiter), col_map
 
     def _getDataIo(self, file):
