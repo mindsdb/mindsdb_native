@@ -25,7 +25,6 @@ def _ts_to_obj(df, historical_columns):
 def _ts_order_col_to_cell_lists(df, historical_columns):
     for order_col in historical_columns:
         for ii in range(len(df)):
-            # Needed because of a pandas bug that causes above to fail for small dataframes
             label = df.index.values[ii]
             df.at[label, order_col] = [df.at[label, order_col]]
     return df
@@ -288,8 +287,8 @@ class LightwoodBackend:
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
         if self.transaction.lmd['quick_learn']:
-            self.transaction.input_data.train_df = pd.concat([copy.deepcopy(self.transaction.input_data.train_df),copy.deepcopy(self.transaction.input_data.test_df)])
-            self.transaction.input_data.test_df = copy.deepcopy(self.transaction.input_data.validation_df)
+            self.transaction.input_data.train_df = pd.concat([copy.deepcopy(self.transaction.input_data.train_df),copy.deepcopy(self.transaction.input_data.test_df)]).reset_index()
+            self.transaction.input_data.test_df = copy.deepcopy(self.transaction.input_data.validation_df).reset_index()
 
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
