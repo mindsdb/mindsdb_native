@@ -186,16 +186,22 @@ class FileDS(DataSource):
             data.seek(0)
             first_few_lines = []
             i = 0
+
+            # need to have some templates to deduce a dialect
+            # but it is not a good idea to deduce dialect by header row
+            # data[0]
             for line in data:
                 if line in ['\r\n','\n']:
                     continue
                 first_few_lines.append(line)
                 i += 1
-                if i > 0:
+                if i > 2:
                     break
 
             accepted_delimiters = [',','\t', ';']
-            dialect = csv.Sniffer().sniff(''.join(first_few_lines[0]), delimiters=accepted_delimiters)
+
+            #provide template from data if it is possible
+            dialect = csv.Sniffer().sniff(''.join(first_few_lines[-1]), delimiters=accepted_delimiters)
             data.seek(0)
             # if csv dialect identified then return csv
             if dialect:
