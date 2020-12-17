@@ -248,12 +248,14 @@ def get_model_data(model_name=None, lmd=None):
 
     amd['data_source'] = lmd['data_source_name']
 
+    amd['timeseries'] = {
+        'is_timeseries': False
+    }
     if 'tss' in lmd:
         if lmd['tss']['is_timeseries']:
             amd['timeseries'] = {}
             amd['timeseries']['user_settings'] = lmd['tss']
-        else:
-            amd['timeseries'] = None
+
 
     amd['data_analysis_v2'] = lmd.get('stats_v2',None)
     amd['setup_args'] = lmd.get('setup_args',None)
