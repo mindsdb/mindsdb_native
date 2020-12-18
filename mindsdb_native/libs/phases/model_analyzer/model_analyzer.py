@@ -86,7 +86,9 @@ class ModelAnalyzer(BaseModule):
         empty_input_predictions_test = {}
 
         ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH
-                           and (not self.transaction.lmd['tss']['is_timeseries'] or x not in self.transaction.lmd['tss']['order_by'])]
+                                   and (not self.transaction.lmd['tss']['is_timeseries'] or
+                                        (x not in self.transaction.lmd['tss']['order_by'] and
+                                         x not in self.transaction.lmd['tss']['historical_columns']))]
 
         for col in ignorable_input_columns:
             empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
