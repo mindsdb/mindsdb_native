@@ -162,7 +162,7 @@ class FileDS(DataSource):
             else:
                 data = StringIO(byte_str.decode('utf-8'))
 
-        except:
+        except Exception:
             log.error(traceback.format_exc())
             log.error('Could not load into string')
 
@@ -179,7 +179,7 @@ class FileDS(DataSource):
                     json.loads(data.read())
                     data.seek(0)
                     return data, 'json', dialect
-                except:
+                except Exception:
                     data.seek(0)
                     return data, None, dialect
 
@@ -205,9 +205,8 @@ class FileDS(DataSource):
             # if csv dialect identified then return csv
             if dialect:
                 return data, 'csv', dialect
-            else:
-                return data, None, dialect
-        except:
+            return data, None, dialect
+        except Exception:
             data.seek(0)
             log.error('Could not detect format for this file')
             log.error(traceback.format_exc())
