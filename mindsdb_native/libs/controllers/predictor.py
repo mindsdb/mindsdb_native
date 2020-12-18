@@ -98,7 +98,7 @@ class Predictor:
         self.report_uuid = 'no_report'
         try:
             from mindsdb_native.libs.helpers.general_helpers import check_for_updates
-            if CONFIG.CHECK_FOR_UPDATES:
+            if CONFIG.CHECK_FOR_UPDATES and CONFIG.telemetry_enabled():
                 self.report_uuid = check_for_updates(run_env)
         except Exception as e:
             print(e)

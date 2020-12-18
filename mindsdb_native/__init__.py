@@ -78,7 +78,7 @@ MindsDB = Predictor
 try:
     from mindsdb_native.libs.helpers.general_helpers import check_for_updates
     from mindsdb_native.config import CONFIG
-    if CONFIG.CHECK_FOR_UPDATES:
+    if CONFIG.CHECK_FOR_UPDATES and CONFIG.telemetry_enabled():
         check_for_updates()
 except Exception as e:
     print(e)
