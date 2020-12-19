@@ -1,5 +1,5 @@
 from pyathena import connect
-from pyathena.util import as_pandas
+from pyathena.pandas.util import as_pandas
 
 from mindsdb_native.libs.data_types.data_source import SQLDataSource
 
