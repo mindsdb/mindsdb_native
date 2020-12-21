@@ -10,7 +10,7 @@ class TestFileDS(unittest.TestCase):
     def setUpClass(cls):
         cls.issued_csv = "issued.csv"
         with open(cls.issued_csv, "w") as f:
-            f.write("PronounceGIF, x\n")
+            f.write("x, y\n")
             for _ in range(20):
                 f.write('"With a hard g like gift", "With a hard g like gift"\n')
                 f.write('"With a hard ""g,"" like ""gift""", "With a hard ""g,"" like ""gift"""\n')
