@@ -30,25 +30,21 @@ class FileDS(DataSource):
         self.file = file
         self.clean_rows = clean_rows
         self.custom_parser = custom_parser
+        self.dialect = None
+        self.col_map = None
 
-    def query(self, q=None):
-        """
-        Setup from file
-        :param file: fielpath or url
-        :param clean_rows: if you want to clean rows for strange null values
-        :param custom_parser: if you want to parse the file with some custom parser
-        """
+    def _handle_source(self):
         self._file_name = os.path.basename(self.file)
 
         # get file data io, format and dialect
-        data, fmt, dialect = self._getDataIo(self.file)
+        data, fmt, self.dialect = self._getDataIo(self.file)
         data.seek(0) # make sure we are at 0 in file pointer
 
         if self.custom_parser:
             header, file_data = self.custom_parser(data, fmt)
 
         elif fmt == 'csv':
-            csv_reader = list(csv.reader(data, dialect))
+            csv_reader = list(csv.reader(data, self.dialect))
             header = csv_reader[0]
             file_data =  csv_reader[1:]
 
@@ -73,12 +69,23 @@ class FileDS(DataSource):
         else:
             file_list_data = file_data
 
-        col_map = dict((col, col) for col in header)
+        self.col_map = dict((col, col) for col in header)
+        return pd.DataFrame(file_list_data, columns=header), self.col_map
+
+    def query(self, q=None):
+        """
+        Setup from file
+        :param file: fielpath or url
+        :param clean_rows: if you want to clean rows for strange null values
+        :param custom_parser: if you want to parse the file with some custom parser
+        """
 
         try:
-            return pd.DataFrame(file_list_data, columns=header), col_map
-        except Exception:
-            return pd.read_csv(self.file, sep=dialect.delimiter), col_map
+            return self._handle_source()
+        except Exception as e:
+            log.error(f"Error creating dataframe from handled data: {e}")
+            log.error("pd.read_csv data handler would be used.")
+            return pd.read_csv(self.file, sep=self.dialect.delimiter), self.col_map
 
     def _getDataIo(self, file):
         """
@@ -146,7 +153,7 @@ class FileDS(DataSource):
                 elif bytes == xlsx_sig:
                     return data, 'xlsx', dialect
 
-            except:
+            except Exception:
                 data.seek(0)
 
         # if not excel it can be a json file or a CSV, convert from binary to stringio
@@ -160,7 +167,7 @@ class FileDS(DataSource):
             else:
                 data = StringIO(byte_str.decode('utf-8'))
 
-        except:
+        except Exception:
             log.error(traceback.format_exc())
             log.error('Could not load into string')
 
@@ -177,7 +184,7 @@ class FileDS(DataSource):
                     json.loads(data.read())
                     data.seek(0)
                     return data, 'json', dialect
-                except:
+                except Exception:
                     data.seek(0)
                     return data, None, dialect
 
@@ -186,23 +193,25 @@ class FileDS(DataSource):
             data.seek(0)
             first_few_lines = []
             i = 0
-            for line in data:
-                if line in ['\r\n','\n']:
-                    continue
+
+            # need to have sample to deduce a dialect
+            # but it is not a good idea to deduce dialect by header row
+            # data[0]
+            for i, line in enumerate(data):
                 first_few_lines.append(line)
-                i += 1
-                if i > 0:
+                if i > 10:
                     break
 
             accepted_delimiters = [',','\t', ';']
-            dialect = csv.Sniffer().sniff(''.join(first_few_lines[0]), delimiters=accepted_delimiters)
+
+            #provide sample from data if it is possible
+            dialect = csv.Sniffer().sniff(''.join(first_few_lines), delimiters=accepted_delimiters)
             data.seek(0)
             # if csv dialect identified then return csv
             if dialect:
                 return data, 'csv', dialect
-            else:
-                return data, None, dialect
-        except:
+            return data, None, dialect
+        except Exception:
             data.seek(0)
             log.error('Could not detect format for this file')
             log.error(traceback.format_exc())
