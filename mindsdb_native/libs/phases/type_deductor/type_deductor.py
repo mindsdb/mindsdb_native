@@ -334,7 +334,8 @@ class TypeDeductor(BaseModule):
                     if col_name not in self.transaction.lmd['predict_columns']:
                         if (self.transaction.lmd.get('tss', None) and
                                 self.transaction.lmd['tss']['is_timeseries'] and
-                                col_name in self.transaction.lmd['tss']['order_by']):
+                                col_name in self.transaction.lmd['tss']['order_by'] and
+                                col_name in self.transaction.lmd['tss']['group_by']):
                             pass
                         else:
                             self.transaction.lmd['columns_to_ignore'].append(col_name)
