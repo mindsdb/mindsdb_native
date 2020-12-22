@@ -20,7 +20,7 @@ def _make_pred(row):
 def _ts_to_obj(df, historical_columns):
     for hist_col in historical_columns:
         df.loc[:, hist_col] = df[hist_col].astype(object)
-        return df
+    return df
 
 def _ts_order_col_to_cell_lists(df, historical_columns):
     for order_col in historical_columns:
