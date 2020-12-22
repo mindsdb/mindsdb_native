@@ -63,7 +63,7 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
         df[f'__mdb_ts_previous_{target_column}'] = previous_target_values_arr
         for timestep_index in range(1, nr_predictions):
             next_target_value_arr = list(df[target_column])
-            for del_index in range(0, timestep_index):
+            for del_index in range(0, min(timestep_index, len(next_target_value_arr))):
                 del next_target_value_arr[del_index]
                 next_target_value_arr.append(0)
             # @TODO: Maybe ignore the rows with `None` next targets for training
