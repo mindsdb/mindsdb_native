@@ -5,6 +5,7 @@
 """
 
 
+import os.path
 import logging
 from .helpers import *
 import mindsdb_native.libs.constants.mindsdb as CONST
@@ -32,6 +33,11 @@ class Config:
 
     # Default options for unning on sagemaker
     SAGEMAKER = if_env_else('SAGEMAKER', False)
+
+    @classmethod
+    def telemetry_enabled(cls):
+        telemetry_file = os.path.join(cls.MINDSDB_STORAGE_PATH, '..', 'telemetry.lock')
+        return not os.path.exists(telemetry_file)
 
 
 CONFIG = Config()

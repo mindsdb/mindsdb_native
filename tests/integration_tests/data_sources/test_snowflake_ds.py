@@ -5,6 +5,7 @@ from . import DB_CREDENTIALS, break_dataset
 
 
 class TestSnowflake(unittest.TestCase):
+    @unittest.skip('Snowflake too buggy')
     def test_snowflake_ds(self):
         if os.name == 'nt':
             print('Snowflake datasource (SnowflakeDS) can\'t be used on windows at the moment due to the connector not working')

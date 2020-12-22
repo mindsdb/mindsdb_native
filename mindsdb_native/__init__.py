@@ -21,6 +21,7 @@ from mindsdb_native.libs.data_sources.maria_ds import MariaDS
 from mindsdb_native.libs.data_sources.mysql_ds import MySqlDS
 from mindsdb_native.libs.data_sources.clickhouse_ds import ClickhouseDS
 from mindsdb_native.libs.data_sources.file_ds import FileDS
+from mindsdb_native.libs.data_sources.sqlite3_ds import SQLite3DS
 
 # These might not initialized properly since they require optional dependencies, so we wrap them in a try-except
 try:
@@ -77,7 +78,7 @@ MindsDB = Predictor
 try:
     from mindsdb_native.libs.helpers.general_helpers import check_for_updates
     from mindsdb_native.config import CONFIG
-    if CONFIG.CHECK_FOR_UPDATES:
+    if CONFIG.CHECK_FOR_UPDATES and CONFIG.telemetry_enabled():
         check_for_updates()
 except Exception as e:
     print(e)

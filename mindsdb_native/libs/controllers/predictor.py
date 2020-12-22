@@ -98,7 +98,7 @@ class Predictor:
         self.report_uuid = 'no_report'
         try:
             from mindsdb_native.libs.helpers.general_helpers import check_for_updates
-            if CONFIG.CHECK_FOR_UPDATES:
+            if CONFIG.CHECK_FOR_UPDATES and CONFIG.telemetry_enabled():
                 self.report_uuid = check_for_updates(run_env)
         except Exception as e:
             print(e)
@@ -263,7 +263,8 @@ class Predictor:
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
                 quick_learn = advanced_args.get('quick_learn', None),
                 quick_predict = advanced_args.get('quick_predict', False),
-                apply_to_columns = advanced_args.get('apply_to_columns', {})
+                apply_to_columns = advanced_args.get('apply_to_columns', {}),
+                disable_column_importance = advanced_args.get('disable_column_importance', False)
             )
 
             if rebuild_model is False:

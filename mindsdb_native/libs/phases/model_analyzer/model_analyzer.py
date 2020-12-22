@@ -85,27 +85,28 @@ class ModelAnalyzer(BaseModule):
         empty_input_accuracy = {}
         empty_input_predictions_test = {}
 
-        ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH
-                           and (not self.transaction.lmd['tss']['is_timeseries'] or x not in self.transaction.lmd['tss']['order_by'])]
+        if not self.transaction.lmd['disable_column_importance']:
+            ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH
+                            and (not self.transaction.lmd['tss']['is_timeseries'] or x not in self.transaction.lmd['tss']['order_by'])]
 
-        for col in ignorable_input_columns:
-            empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
-            empty_input_predictions_test[col] = self.transaction.model_backend.predict('test', ignore_columns=[col])
-            empty_input_accuracy[col] = evaluate_accuracy(
-                empty_input_predictions[col],
-                validation_df,
-                self.transaction.lmd['stats_v2'],
-                output_columns,
-                backend=self.transaction.model_backend
-            )
+            for col in ignorable_input_columns:
+                empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
+                empty_input_predictions_test[col] = self.transaction.model_backend.predict('test', ignore_columns=[col])
+                empty_input_accuracy[col] = evaluate_accuracy(
+                    empty_input_predictions[col],
+                    validation_df,
+                    self.transaction.lmd['stats_v2'],
+                    output_columns,
+                    backend=self.transaction.model_backend
+                )
 
-        # Get some information about the importance of each column
-        self.transaction.lmd['column_importances'] = {}
-        for col in ignorable_input_columns:
-            accuracy_increase = (normal_accuracy - empty_input_accuracy[col])
-            # normalize from 0 to 10
-            self.transaction.lmd['column_importances'][col] = 10 * max(0, accuracy_increase)
-            assert self.transaction.lmd['column_importances'][col] <= 10
+            # Get some information about the importance of each column
+            self.transaction.lmd['column_importances'] = {}
+            for col in ignorable_input_columns:
+                accuracy_increase = (normal_accuracy - empty_input_accuracy[col])
+                # normalize from 0 to 10
+                self.transaction.lmd['column_importances'][col] = 10 * max(0, accuracy_increase)
+                assert self.transaction.lmd['column_importances'][col] <= 10
 
         # Get accuracy stats
         overall_accuracy_arr = []
