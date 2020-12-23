@@ -249,17 +249,18 @@ class TestPredictorTimeseries(unittest.TestCase):
     def test_ts_add_previous_target(self):
         df = pd.DataFrame({'a': [*range(1, 10)]})
 
-        for nr_predictions, window in zip([1, 2, 3, 4], [2, 3, 4, 5]):
-            new_df = _ts_add_previous_target(
-                df,
-                ['a'],
-                nr_predictions=nr_predictions,
-                window=window
-            )
+        for nr_predictions in [1, 2, 3, 4]:
+            for window in [2, 3, 4, 5]:
+                new_df = _ts_add_previous_target(
+                    df,
+                    ['a'],
+                    nr_predictions=nr_predictions,
+                    window=window
+                )
 
-            for x in new_df['__mdb_ts_previous_a']:
-                assert len(x) == window
+                for x in new_df['__mdb_ts_previous_a']:
+                    assert len(x) == window
 
-            for i in range(1, nr_predictions):
-                # make sure column exists
-                new_df['a_timestep_{}'.format(i)]
+                for i in range(1, nr_predictions):
+                    # make sure column exists
+                    new_df['a_timestep_{}'.format(i)]
