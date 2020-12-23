@@ -17,10 +17,12 @@ from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 def _make_pred(row):
     return not hasattr(row, 'make_predictions') or row.make_predictions
 
+
 def _ts_to_obj(df, historical_columns):
     for hist_col in historical_columns:
         df.loc[:, hist_col] = df[hist_col].astype(object)
         return df
+
 
 def _ts_order_col_to_cell_lists(df, historical_columns):
     for order_col in historical_columns:
@@ -28,6 +30,7 @@ def _ts_order_col_to_cell_lists(df, historical_columns):
             label = df.index.values[ii]
             df.at[label, order_col] = [df.at[label, order_col]]
     return df
+
 
 def _ts_add_previous_rows(df, historical_columns, window):
     for order_col in historical_columns:
@@ -47,6 +50,7 @@ def _ts_add_previous_rows(df, historical_columns, window):
             df.iloc[i][order_col].reverse()
     return df
 
+
 def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
     for target_column in predict_columns:
         previous_target_values = list(df[target_column])
@@ -55,20 +59,21 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
 
         previous_target_values_arr = []
         for i in range(len(previous_target_values)):
-            arr = previous_target_values[max(i - window, 0):i + 1]
-            while len(arr) <= window:
-                arr = [None] + arr
+            prev_vals = previous_target_values[max(i - window, 0):i]
+            arr = [None] * (window - len(prev_vals))
+            arr.extend(prev_vals)
             previous_target_values_arr.append(arr)
 
         df[f'__mdb_ts_previous_{target_column}'] = previous_target_values_arr
         for timestep_index in range(1, nr_predictions):
             next_target_value_arr = list(df[target_column])
-            for del_index in range(0, timestep_index):
+            for del_index in range(0, min(timestep_index, len(next_target_value_arr))):
                 del next_target_value_arr[del_index]
                 next_target_value_arr.append(0)
             # @TODO: Maybe ignore the rows with `None` next targets for training
             df[f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
     return df
+
 
 class LightwoodBackend:
     def __init__(self, transaction):
