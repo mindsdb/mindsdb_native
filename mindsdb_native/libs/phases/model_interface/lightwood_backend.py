@@ -59,7 +59,7 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
 
         previous_target_values_arr = []
         for i in range(len(previous_target_values)):
-            prev_vals = previous_target_values[max(i - window, 0):i]
+            prev_vals = previous_target_values[max(i - window + 1, 0):i + 1]
             arr = [None] * (window - len(prev_vals))
             arr.extend(prev_vals)
             previous_target_values_arr.append(arr)
