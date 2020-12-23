@@ -28,7 +28,7 @@ from unit_tests.utils import (
 )
 
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
-
+from mindsdb_native.libs.phases.model_interface.lightwood_backend import _ts_add_previous_target
 
 class TestPredictorTimeseries(unittest.TestCase):
     def setUp(self):
@@ -245,3 +245,23 @@ class TestPredictorTimeseries(unittest.TestCase):
             # Need to somehow test the internal ordering here (??)
             assert str(row['order_ai_id']) == str(columns_test[2][i])
             assert str(row['3_valued_group_by']) == str(columns_test[3][i])
+
+    def test_ts_add_previous_target(self):
+        df = pd.DataFrame({'a': [*range(1, 10)]})
+
+        nr_predictions = 4
+        window = 5
+
+        new_df = _ts_add_previous_target(
+            df,
+            ['a'],
+            nr_predictions=nr_predictions,
+            window=window
+        )
+
+        for x in new_df['__mdb_ts_previous_a']:
+            assert len(x) == window
+
+        for i in range(1, nr_predictions):
+            # make sure column exists
+            new_df['a_timestep_{}'.format(i)]
