@@ -16,7 +16,7 @@ class AthenaDS(SQLDataSource):
         :param secret_key: Secret Key used if supplied else used default credentials.
         :param region_name: Region used if supplied else used default region.
         """
-        super().__init__()
+        super().__init__(query)
 
         if (not database or not table) and not query:
             raise ValueError('Either database and table or query should be passed.')
