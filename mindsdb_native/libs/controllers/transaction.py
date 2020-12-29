@@ -381,13 +381,11 @@ class PredictTransaction(Transaction):
                     if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
                             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                                 DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
-                        tol_const = 2  # std devs
-                        # tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
+                        std_tol = 2  # std devs
+                        spread_tol = 0.2
                         bins = self.lmd['stats_v2'][predicted_col]['histogram']['x']
-                        diffs = []
-                        for a, b in zip(*[iter(bins)] * 2):
-                            diffs.append(abs(a - b))
-                        tolerance = (sum(diffs) / len(diffs)) * tol_const
+                        tolerance = min(self.lmd['stats_v2']['train_std_dev'][predicted_col] * std_tol,
+                                        (bins[-1] - bins[0]) * spread_tol)
 
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
 
