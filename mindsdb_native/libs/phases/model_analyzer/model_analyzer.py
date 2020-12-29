@@ -14,7 +14,7 @@ from copy import deepcopy
 from sklearn.preprocessing import OneHotEncoder
 from lightwood.mixers.nn import NnMixer
 from nonconformist.icp import IcpRegressor, IcpClassifier
-from nonconformist.nc import RegressorNc, AbsErrorErrFunc, ClassifierNc, InverseProbabilityErrFunc
+from nonconformist.nc import RegressorNc, SignErrorErrFunc, ClassifierNc, InverseProbabilityErrFunc
 
 
 class ModelAnalyzer(BaseModule):
@@ -230,7 +230,7 @@ class ModelAnalyzer(BaseModule):
 
             else:
                 adapter = ConformalRegressorAdapter
-                nc_function = AbsErrorErrFunc()
+                nc_function = SignErrorErrFunc()
                 nc_class = RegressorNc
                 icp_class = IcpRegressor
 
