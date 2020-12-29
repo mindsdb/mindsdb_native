@@ -42,6 +42,58 @@ def filter_cols(columns, target, ignore):
     return cols
 
 
+def get_significance_level(X, Y, icp, target, typing_info, lmd):
+    # numerical
+    if typing_info['data_type'] == DATA_TYPES.NUMERIC or (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                                                          DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
+        # ICP gets all possible bounds
+        all_ranges = icp.predict(X.values)
+        min_error = 1
+        confidence = 0
+
+        # iterate over possible confidence levels until
+        # spread equals or surpasses some multiplier of datasets standard deviation
+        # TODO use only these levels
+        # l = list(range(0, 10)) + list(range(10, 30, 5)) + list(range(40, 100, 10))
+        # conf is then [(100-i)/100 for i in l]
+
+        for significance in range(all_ranges.shape[2]):
+            ranges = all_ranges[:, :, significance]  # shape (B, 2)
+            within = ((Y >= ranges[:, 0]) & (Y <= ranges[:, 1]))
+            acc = sum(within)/len(within)
+            error = abs(acc - significance/100)
+            if error <= min_error:
+                min_error = error
+                confidence = 1-significance/100
+            else:
+                return confidence
+        else:
+            return 0
+
+    # categorical
+    elif (typing_info['data_type'] == DATA_TYPES.CATEGORICAL or                         # categorical
+            (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and                      # time-series w/ cat target
+             DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())) and \
+            lmd['stats_v2'][target]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:    # no tag support yet
+
+        # max permitted error rate
+        significances = list(range(20)) + list(range(20, 100, 10))
+        all_ranges = np.array(
+            [icp.predict(df.values, significance=s / 100)
+             for s in significances])
+        lmd['all_conformal_ranges'][target] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+
+        for sample_idx in range(lmd['all_conformal_ranges'][target].shape[0]):
+            sample = lmd['all_conformal_ranges'][target][sample_idx, :, :]
+            for idx in range(sample.shape[1]):
+                conf = (99 - significances[idx]) / 100
+                if np.sum(sample[:, idx]) == 1:
+                    output_data[f'{target}_confidence'][sample_idx] = conf
+                    break
+            else:
+                output_data[f'{target}_confidence'][sample_idx] = 0.005
+
+
 class ConformalRegressorAdapter(RegressorAdapter):
     def __init__(self, model, fit_params=None):
         super(ConformalRegressorAdapter, self).__init__(model, fit_params)
