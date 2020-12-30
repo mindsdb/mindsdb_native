@@ -4,6 +4,7 @@ from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
 from mindsdb_native.libs.helpers.conformal_helpers import SelfawareNormalizer, clean_df, get_significance_level
+from mindsdb_native.libs.helpers.conformal_helpers import BoostedSignErrorErrFunc
 from mindsdb_native.libs.helpers.accuracy_stats import AccStats
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from sklearn.metrics import balanced_accuracy_score, r2_score
@@ -83,7 +84,7 @@ class ModelAnalyzer(BaseModule):
 
             else:
                 adapter = ConformalRegressorAdapter
-                nc_function = SignErrorErrFunc()
+                nc_function = BoostedSignErrorErrFunc()
                 nc_class = RegressorNc
                 icp_class = IcpRegressor
 
@@ -148,10 +149,10 @@ class ModelAnalyzer(BaseModule):
                     if split == 'cal':
                         # calibrate conformal estimator with validation dataset
                         self.transaction.hmd['icp'][target].calibrate(X.values, y)
+                    # TODO: cover categorical case here and guard min val size
                     elif split == 'test':
                         conf = get_significance_level(X, y, icp, target, typing_info, self.transaction.lmd)
                     else:
-                        # TODO: cover categorical case here
                         ranges = self.transaction.hmd['icp'][target].predict(X.values)[:, :, int(100*(0.99-conf))]
                         normal_predictions[f'{target}_confidence_range'] = ranges
 

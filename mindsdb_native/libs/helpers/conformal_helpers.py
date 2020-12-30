@@ -1,12 +1,13 @@
 from nonconformist.base import RegressorAdapter
 from nonconformist.base import ClassifierAdapter
-from nonconformist.nc import BaseScorer
+from nonconformist.nc import BaseScorer, RegressionErrFunc
 from mindsdb_native.libs.constants.mindsdb import *
 
 import torch
 import numpy as np
 import pandas as pd
 from copy import deepcopy
+from scipy.interpolate import interp1d
 from torch.nn.functional import softmax
 
 
@@ -89,6 +90,30 @@ def get_significance_level(X, Y, icp, target, typing_info, lmd):
             else:
                 output_data[f'{target}_confidence'][sample_idx] = 0.005
     """
+
+
+class BoostedSignErrorErrFunc(RegressionErrFunc):
+    """Calculates signed error nonconformity for regression problems. Applies linear interpolation
+    for nonconformity scores when we have less than 100 samples in the validation dataset.
+    """
+
+    def __init__(self):
+        super(BoostedSignErrorErrFunc, self).__init__()
+
+    def apply(self, prediction, y):
+        return prediction - y
+
+    def apply_inverse(self, nc, significance):
+        nc = np.sort(nc)[::-1]
+        if nc.size < 100:
+            x = np.arange(nc.shape[0])
+            interp = interp1d(x, nc)
+            nc = interp(np.linspace(0, nc.size-1, 100))
+        upper = int(np.floor((significance / 2) * (nc.size + 1)))
+        lower = int(np.floor((1 - significance / 2) * (nc.size + 1)))
+        upper = min(max(upper, 0), nc.size - 1)
+        lower = max(min(lower, nc.size - 1), 0)
+        return np.vstack([-nc[lower], nc[upper]])
 
 
 class ConformalRegressorAdapter(RegressorAdapter):
