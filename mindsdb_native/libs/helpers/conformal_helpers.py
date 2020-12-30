@@ -74,7 +74,7 @@ def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
         return conf, pvals
 
     # default
-    return 0.005, np.zeros_like((X.size, 2))
+    return 0.005, np.zeros_like((X.size, 2)).reshape(1, -1)
 
 
 class BoostedSignErrorErrFunc(RegressionErrFunc):
@@ -90,7 +90,7 @@ class BoostedSignErrorErrFunc(RegressionErrFunc):
 
     def apply_inverse(self, nc, significance):
         nc = np.sort(nc)[::-1]
-        if nc.size < 100:
+        if 1 < nc.size < 100:
             x = np.arange(nc.shape[0])
             interp = interp1d(x, nc)
             nc = interp(np.linspace(0, nc.size-1, 100))

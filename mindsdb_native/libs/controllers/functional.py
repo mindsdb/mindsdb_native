@@ -241,6 +241,7 @@ def get_model_data(model_name=None, lmd=None):
         pass
     elif model_name is not None:
         with MDBLock('shared', 'get_data_' + model_name):
+            print(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle')
             lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'))
 
     # ADAPTOR CODE
