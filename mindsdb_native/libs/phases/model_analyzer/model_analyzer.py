@@ -40,6 +40,7 @@ class ModelAnalyzer(BaseModule):
         normal_predictions_test = self.transaction.model_backend.predict('test')
 
         # conformal prediction confidence estimation
+        # TODO: implement prediction cache for speedup
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
         self.transaction.hmd['label_encoders'] = {}
         self.transaction.hmd['icp'] = {'active': False}
@@ -122,10 +123,12 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp'][target].index = X.columns
                 self.transaction.hmd['icp'][target].fit(X.values, y.values)
                 self.transaction.hmd['icp']['active'] = True
+                conf = 0
 
-                for split, df in zip(('val', 'test'), (validation_df, test_df)):
+                for split, df in zip(('cal', 'test', 'val'), (validation_df, test_df, validation_df)):
                     X = deepcopy(df)
                     if self.transaction.lmd['tss']['is_timeseries']:
+                        # TODO: erase all ts_reshaping from ICP code, inefficient
                         X, _, _ = self.transaction.model_backend._ts_reshape(X)
                     y = X.pop(target).values
 
@@ -142,12 +145,15 @@ class ModelAnalyzer(BaseModule):
                         fit_params['columns_to_ignore']
                     )
 
-                    if split == 'val':
+                    if split == 'cal':
                         # calibrate conformal estimator with validation dataset
                         self.transaction.hmd['icp'][target].calibrate(X.values, y)
+                    elif split == 'test':
+                        conf = get_significance_level(X, y, icp, target, typing_info, self.transaction.lmd)
                     else:
-                        # TODO: find confidence level for this target by minimizing (pred-true) error with test set
-                        get_significance_level(X, y, icp, target, typing_info, self.transaction.lmd)
+                        # TODO: cover categorical case here
+                        ranges = self.transaction.hmd['icp'][target].predict(X.values)[:, :, int(100*(0.99-conf))]
+                        normal_predictions[f'{target}_confidence_range'] = ranges
 
         # get accuracy metric
         normal_accuracy = evaluate_accuracy(
@@ -157,6 +163,7 @@ class ModelAnalyzer(BaseModule):
             output_columns,
             backend=self.transaction.model_backend
         )
+        print(normal_accuracy)
 
         # check if predictor was trained successfully
         for col in output_columns:

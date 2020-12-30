@@ -48,29 +48,25 @@ def get_significance_level(X, Y, icp, target, typing_info, lmd):
                                                           DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
         # ICP gets all possible bounds
         all_ranges = icp.predict(X.values)
-        min_error = 1
-        confidence = 0
 
         # iterate over possible confidence levels until
         # spread equals or surpasses some multiplier of datasets standard deviation
-        # TODO use only these levels
-        # l = list(range(0, 10)) + list(range(10, 30, 5)) + list(range(40, 100, 10))
-        # conf is then [(100-i)/100 for i in l]
-
-        for significance in range(all_ranges.shape[2]):
+        significances = [*range(0, 10), *range(10, 30, 5), *range(40, 100, 10)]
+        for significance in significances:
             ranges = all_ranges[:, :, significance]  # shape (B, 2)
-            within = ((Y >= ranges[:, 0]) & (Y <= ranges[:, 1]))
-            acc = sum(within)/len(within)
-            error = abs(acc - significance/100)
-            if error <= min_error:
-                min_error = error
-                confidence = 1-significance/100
-            else:
+            spread = np.mean(ranges[:, 1] - ranges[:, 0])
+            std_tol = 1
+            tolerance = lmd['stats_v2']['train_std_dev'][target] * std_tol
+
+            if spread <= tolerance:
+                confidence = (99-significance)/100
                 return confidence
         else:
             return 0
 
-    # categorical
+            # categorical
+    # TODO this
+    """
     elif (typing_info['data_type'] == DATA_TYPES.CATEGORICAL or                         # categorical
             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and                      # time-series w/ cat target
              DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())) and \
@@ -92,6 +88,7 @@ def get_significance_level(X, Y, icp, target, typing_info, lmd):
                     break
             else:
                 output_data[f'{target}_confidence'][sample_idx] = 0.005
+    """
 
 
 class ConformalRegressorAdapter(RegressorAdapter):
