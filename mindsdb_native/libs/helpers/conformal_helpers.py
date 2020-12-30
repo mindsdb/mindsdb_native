@@ -43,53 +43,38 @@ def filter_cols(columns, target, ignore):
     return cols
 
 
-def get_significance_level(X, Y, icp, target, typing_info, lmd):
+def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
+    """ Returns confidence and confidence ranges for predictions"""
     # numerical
     if typing_info['data_type'] == DATA_TYPES.NUMERIC or (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                                                           DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
-        # ICP gets all possible bounds
+        # ICP gets all possible bounds (shape: (B, 2, 99))
         all_ranges = icp.predict(X.values)
 
-        # iterate over possible confidence levels until
-        # spread equals or surpasses some multiplier of datasets standard deviation
+        # iterate over confidence levels until spread >= a multiplier of the dataset stddev
         significances = [*range(0, 10), *range(10, 30, 5), *range(40, 100, 10)]
         for significance in significances:
-            ranges = all_ranges[:, :, significance]  # shape (B, 2)
+            ranges = all_ranges[:, :, significance]
             spread = np.mean(ranges[:, 1] - ranges[:, 0])
-            std_tol = 1
             tolerance = lmd['stats_v2']['train_std_dev'][target] * std_tol
 
             if spread <= tolerance:
                 confidence = (99-significance)/100
-                return confidence
-        else:
-            return 0
+                return confidence, ranges
 
-            # categorical
-    # TODO this
-    """
+    # categorical
     elif (typing_info['data_type'] == DATA_TYPES.CATEGORICAL or                         # categorical
             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and                      # time-series w/ cat target
              DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())) and \
             lmd['stats_v2'][target]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:    # no tag support yet
 
-        # max permitted error rate
-        significances = list(range(20)) + list(range(20, 100, 10))
-        all_ranges = np.array(
-            [icp.predict(df.values, significance=s / 100)
-             for s in significances])
-        lmd['all_conformal_ranges'][target] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+        pvals = icp.predict(X.values)
+        confs = np.subtract(1, pvals.min(axis=1))
+        conf = confs.mean()
+        return conf, pvals
 
-        for sample_idx in range(lmd['all_conformal_ranges'][target].shape[0]):
-            sample = lmd['all_conformal_ranges'][target][sample_idx, :, :]
-            for idx in range(sample.shape[1]):
-                conf = (99 - significances[idx]) / 100
-                if np.sum(sample[:, idx]) == 1:
-                    output_data[f'{target}_confidence'][sample_idx] = conf
-                    break
-            else:
-                output_data[f'{target}_confidence'][sample_idx] = 0.005
-    """
+    # default
+    return 0.005, np.zeros_like((X.size, 2))
 
 
 class BoostedSignErrorErrFunc(RegressionErrFunc):

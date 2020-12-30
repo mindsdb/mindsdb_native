@@ -3,7 +3,7 @@ from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
-from mindsdb_native.libs.helpers.conformal_helpers import SelfawareNormalizer, clean_df, get_significance_level
+from mindsdb_native.libs.helpers.conformal_helpers import SelfawareNormalizer, clean_df, get_conf_range
 from mindsdb_native.libs.helpers.conformal_helpers import BoostedSignErrorErrFunc
 from mindsdb_native.libs.helpers.accuracy_stats import AccStats
 from mindsdb_native.libs.data_types.mindsdb_logger import log
@@ -15,7 +15,7 @@ from copy import deepcopy
 from sklearn.preprocessing import OneHotEncoder
 from lightwood.mixers.nn import NnMixer
 from nonconformist.icp import IcpRegressor, IcpClassifier
-from nonconformist.nc import RegressorNc, SignErrorErrFunc, ClassifierNc, InverseProbabilityErrFunc
+from nonconformist.nc import RegressorNc, ClassifierNc, MarginErrFunc
 
 
 class ModelAnalyzer(BaseModule):
@@ -39,6 +39,7 @@ class ModelAnalyzer(BaseModule):
         self.transaction.model_backend.predictor.config['include_extra_data'] = True
         normal_predictions = self.transaction.model_backend.predict('validate')
         normal_predictions_test = self.transaction.model_backend.predict('test')
+        self.transaction.lmd['test_data_plot'] = {}
 
         # conformal prediction confidence estimation
         # TODO: implement prediction cache for speedup
@@ -67,6 +68,7 @@ class ModelAnalyzer(BaseModule):
             fit_params['columns_to_ignore'].extend([f'{target}_timestep_{i}' for i in range(1, fit_params['nr_preds'])])
 
             if is_classification:
+                fit_params['smoothing'] = False
                 if data_subtype != DATA_SUBTYPES.TAGS:
                     all_classes = np.array(self.transaction.lmd['stats_v2'][target]['histogram']['x'])
                     enc = OneHotEncoder(sparse=False, handle_unknown='ignore')
@@ -78,7 +80,7 @@ class ModelAnalyzer(BaseModule):
                     self.transaction.hmd['label_encoders'][target] = None
 
                 adapter = ConformalClassifierAdapter
-                nc_function = InverseProbabilityErrFunc()
+                nc_function = MarginErrFunc()
                 nc_class = ClassifierNc
                 icp_class = IcpClassifier
 
@@ -124,37 +126,41 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp'][target].index = X.columns
                 self.transaction.hmd['icp'][target].fit(X.values, y.values)
                 self.transaction.hmd['icp']['active'] = True
-                conf = 0
 
-                for split, df in zip(('cal', 'test', 'val'), (validation_df, test_df, validation_df)):
-                    X = deepcopy(df)
-                    if self.transaction.lmd['tss']['is_timeseries']:
-                        # TODO: erase all ts_reshaping from ICP code, inefficient
-                        X, _, _ = self.transaction.model_backend._ts_reshape(X)
-                    y = X.pop(target).values
+                icp_df = deepcopy(validation_df)
+                if self.transaction.lmd['tss']['is_timeseries']:
+                    # TODO: erase all ts_reshaping from ICP code, inefficient
+                    icp_df, _, _ = self.transaction.model_backend._ts_reshape(icp_df)
+                y = icp_df.pop(target).values
 
-                    if is_classification:
-                        if isinstance(enc.categories_[0][0], str):
-                            cats = enc.categories_[0].tolist()
-                            y = np.array([cats.index(i) for i in y])
-                        y = y.astype(int)
+                if is_classification:
+                    if isinstance(enc.categories_[0][0], str):
+                        cats = enc.categories_[0].tolist()
+                        y = np.array([cats.index(i) for i in y])
+                    y = y.astype(int)
 
-                    X = clean_df(
-                        X,
-                        self.transaction.lmd['stats_v2'],
-                        output_columns,
-                        fit_params['columns_to_ignore']
-                    )
+                icp_df = clean_df(
+                    icp_df,
+                    self.transaction.lmd['stats_v2'],
+                    output_columns,
+                    fit_params['columns_to_ignore']
+                )
 
-                    if split == 'cal':
-                        # calibrate conformal estimator with validation dataset
-                        self.transaction.hmd['icp'][target].calibrate(X.values, y)
-                    # TODO: cover categorical case here and guard min val size
-                    elif split == 'test':
-                        conf = get_significance_level(X, y, icp, target, typing_info, self.transaction.lmd)
-                    else:
-                        ranges = self.transaction.hmd['icp'][target].predict(X.values)[:, :, int(100*(0.99-conf))]
-                        normal_predictions[f'{target}_confidence_range'] = ranges
+                # calibrate conformal estimator with validation dataset
+                self.transaction.hmd['icp'][target].calibrate(icp_df.values, y)
+                conf, ranges = get_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
+                if not is_classification:
+                    normal_predictions[f'{target}_confidence_range'] = ranges
+
+                # send data to GUI
+                # @TODO Limiting to 4 as to not kill the GUI, sample later (or maybe only select latest?)
+                if self.transaction.lmd['tss']['is_timeseries'] and len(normal_predictions[output_columns[0]]) < pow(10, 4):
+                    self.transaction.lmd['test_data_plot'][target] = {
+                        'real': deepcopy(list(validation_df[target]))
+                        ,'predicted': deepcopy(list(normal_predictions[target])[0:200])
+                        ,'confidence': deepcopy(None if ranges is None else ranges[0:200])
+                        ,'order_by': deepcopy(list(validation_df[self.transaction.lmd['tss']['order_by'][0]])[0:200])
+                    }
 
         # get accuracy metric
         normal_accuracy = evaluate_accuracy(
@@ -164,7 +170,6 @@ class ModelAnalyzer(BaseModule):
             output_columns,
             backend=self.transaction.model_backend
         )
-        print(normal_accuracy)
 
         # check if predictor was trained successfully
         for col in output_columns:
@@ -201,6 +206,7 @@ class ModelAnalyzer(BaseModule):
                     self.session.predict = predict_wrapper
                 log.error('Failed to train model to predict {}'.format(col))
 
+        # column importance analysis
         empty_input_predictions = {}
         empty_input_accuracy = {}
         empty_input_predictions_test = {}
@@ -306,42 +312,3 @@ class ModelAnalyzer(BaseModule):
         self.transaction.lmd['validation_set_accuracy'] = normal_accuracy
         if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.NUMERIC:
             self.transaction.lmd['validation_set_accuracy_r2'] = normal_accuracy
-
-        # @TODO Limiting to 4 as to not kill the GUI, sample later (or maybe only select latest?)
-        if self.transaction.lmd['tss']['is_timeseries'] and len(normal_predictions[output_columns[0]]) < pow(10,4):
-            self.transaction.lmd['test_data_plot'] = {}
-            for output_column in output_columns:
-
-                if self.transaction.lmd['stats_v2'][output_column]['typing']['data_type'] in DATA_TYPES.NUMERIC:
-
-                    all_conformal_ranges = self.transaction.hmd['icp'][output_column].predict(X.values)
-
-                    tol_const = 1  # std devs
-                    tolerance = self.transaction.lmd['stats_v2']['train_std_dev'][output_column] * tol_const
-                    confidence_ranges = []
-
-                    for sample_idx in range(all_conformal_ranges.shape[0]):
-                        sample = all_conformal_ranges[sample_idx, :, :]
-                        for idx in range(sample.shape[1]):
-                            diff = sample[1, idx] - sample[0, idx]
-                            if diff <= tolerance:
-                                conf_range = list(sample[:, idx])
-                                # for positive numerical domains
-                                if self.transaction.lmd['stats_v2'][output_column].get('positive_domain', False):
-                                    conf_range[0] = max(0, conf_range[0])
-                                confidence_ranges.append(conf_range)
-                                break
-                        else:
-                            confidence_ranges.append(0.9901)  # default
-                            bounds = sample[:, 0]
-                            sigma = (bounds[1] - bounds[0]) / 2
-                            confidence_ranges.append([bounds[0] - sigma, bounds[1] + sigma])
-                else:
-                    confidence_ranges = None
-
-                self.transaction.lmd['test_data_plot'][col] = {
-                    'real': deepcopy(list(validation_df[output_column]))
-                    ,'predicted': deepcopy(list(normal_predictions[output_column])[0:200])
-                    ,'confidence': deepcopy(None if confidence_ranges is None else confidence_ranges[0:200])
-                    ,'order_by': deepcopy(list(validation_df[self.transaction.lmd['tss']['order_by'][0]])[0:200])
-                }
