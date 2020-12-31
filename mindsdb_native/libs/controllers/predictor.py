@@ -359,7 +359,7 @@ class Predictor:
         advanced_args['quick_predict'] = True
         advanced_args['return_raw_predictions'] = True
 
-        return self.predict(when_data, use_gpu, advanced_args, backend)
+        return self.predict(when_data, use_gpu=use_gpu, advanced_args=advanced_args, backend=backend)
 
     def predict(self,
                 when_data,

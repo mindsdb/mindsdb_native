@@ -325,7 +325,11 @@ class PredictTransaction(Transaction):
         self._call_phase_module(module_name='ModelInterface', mode='predict')
 
         if self.lmd['return_raw_predictions']:
-            return self.hmd['predictions']
+            self.output_data = PredictTransactionOutputData(
+                transaction=self,
+                data=self.hmd['predictions']
+            )
+            return self.output_data
 
         output_data = {col: [] for col in self.lmd['columns']}
 
