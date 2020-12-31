@@ -27,8 +27,8 @@ class TestQuickInterface(unittest.TestCase):
         assert test_predictor.report_uuid == 'no_report'
 
         # Make some predictions with quick_predict and make sure they look alright
-        predictions = test_predictor.predict(df_test)
-        assert len(predictions['hours-per-week']) == len(df_test)
+        predictions = test_predictor.quick_predict(df_test)
+        assert len(predictions._data['hours-per-week']) == len(df_test)
         for pred in predictions['hours-per-week']:
             assert isinstance(pred,int)
             assert pred > 0
