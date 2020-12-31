@@ -29,8 +29,8 @@ class TestQuickInterface(unittest.TestCase):
         # Make some predictions with quick_predict and make sure they look alright
         predictions = test_predictor.quick_predict(df_test)
         assert len(predictions._data['hours-per-week']) == len(df_test)
-        for pred in predictions['hours-per-week']:
-            assert isinstance(pred,int)
+        for pred in predictions._data['hours-per-week']:
+            assert isinstance(pred, int)
             assert pred > 0
 
     def test_quick_predict_output(self):
