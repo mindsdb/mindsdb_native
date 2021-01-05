@@ -427,8 +427,8 @@ class PredictTransaction(Transaction):
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
         else:
             for predicted_col in self.lmd['predict_columns']:
-                output_data[f'{predicted_col}_confidence'] = None
-                output_data[f'{predicted_col}_confidence_range'] = None
+                output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
+                output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
 
         self.output_data = PredictTransactionOutputData(
             transaction=self,
