@@ -341,7 +341,7 @@ class LightwoodBackend:
             train_df_gb_map = {'': train_df}
 
         for gb_val in train_df_gb_map:
-            train_df = trains_df_gb_map[gb_val]
+            train_df = train_df_gb_map[gb_val]
             test_df = test_df_gb_map[gb_val]
 
             lightwood_config = self._create_lightwood_config(secondary_type_dict)
