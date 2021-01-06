@@ -306,6 +306,9 @@ class LightwoodBackend:
             test_df, _, _, test_df_gb_map, gb_arr = self._ts_reshape(self.transaction.input_data.test_df)
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
+            # @TODO: Make sampling work for timeseries
+            # @TODO: Alternative, doing train sampling here is really dumb, move to the data extractor
+            train_df_gb_map = None
             if self.transaction.lmd['sample_settings']['sample_for_training']:
                 sample_margin_of_error = self.transaction.lmd['sample_settings']['sample_margin_of_error']
                 sample_confidence_level = self.transaction.lmd['sample_settings']['sample_confidence_level']
