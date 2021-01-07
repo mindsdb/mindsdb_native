@@ -226,7 +226,7 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
-            # quick_learn can be set to False explicitly
+            # quick_learn can still be set to False explicitly to disable this behavior
             if self.lmd['quick_learn'] is None:
                 n_cols = len(self.input_data.columns)
                 n_cells = n_cols * self.lmd['data_preparation']['used_row_count']
