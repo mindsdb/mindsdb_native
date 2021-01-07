@@ -339,6 +339,7 @@ class LightwoodBackend:
 
         if train_df_gb_map is None:
             train_df_gb_map = {'': train_df}
+            test_df_gb_map = {'': test_df}
 
         for gb_val in train_df_gb_map:
             train_df = train_df_gb_map[gb_val]
