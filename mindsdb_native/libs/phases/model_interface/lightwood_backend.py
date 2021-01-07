@@ -505,6 +505,7 @@ class LightwoodBackend:
         else:
             raise Exception(f'Unknown mode specified: "{mode}"')
 
+        df_gb_map = None
         if self.transaction.lmd['tss']['is_timeseries']:
             df, _, timeseries_row_mapping, df_gb_map, _ = self._ts_reshape(df)
 
