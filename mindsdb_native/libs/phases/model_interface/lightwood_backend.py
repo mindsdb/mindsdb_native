@@ -166,7 +166,7 @@ class LightwoodBackend:
             df_gb_list = list(combined_df.groupby(gb_arr))
             df_gb_map = {}
             for gb, df in df_gb_list:
-                df_gb_map[gb] = df
+                df_gb_map['_' + '_'.join(gb)] = df
 
         return combined_df, secondary_type_dict, timeseries_row_mapping, df_gb_map
 
@@ -490,7 +490,7 @@ class LightwoodBackend:
                 if (best_accuracy - nn_mixer_predictor_accuracy) < SMALL_ACCURACY_DIFFERENCE:
                     self.predictor = nn_mixer_predictor
 
-            save_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_'  + gb_val, 'lightwood_data')
+            save_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data' + gb_val)
             self.predictor.save(path_to=save_path)
 
     def predict(self, mode='predict', ignore_columns=None, all_mixers=False):
@@ -513,7 +513,7 @@ class LightwoodBackend:
 
         df_gb_map = None
         if self.transaction.lmd['tss']['is_timeseries']:
-            df, _, timeseries_row_mapping, df_gb_map, _ = self._ts_reshape(df)
+            df, _, timeseries_row_mapping, df_gb_map = self._ts_reshape(df)
 
         if df_gb_map is None:
             df_gb_map = {'': df}
@@ -523,8 +523,8 @@ class LightwoodBackend:
             df = df_gb_map[gb_val]
 
             if self.predictor is None:
-                predictor_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
-                self.predictor = lightwood.Predictor(load_from_path=predictor_path + '_'  + gb_val)
+                predictor_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data' + gb_val)
+                self.predictor = lightwood.Predictor(load_from_path=predictor_path)
 
             # not the most efficient but least prone to bug and should be fast enough
             if len(ignore_columns) > 0:
