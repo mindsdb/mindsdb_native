@@ -356,7 +356,7 @@ class PredictTransaction(Transaction):
             icp_X = deepcopy(predictions_df)
 
             if self.lmd['tss']['is_timeseries']:
-                icp_X, _, _ = self.model_backend._ts_reshape(icp_X)
+                icp_X, _, _, _ = self.model_backend._ts_reshape(icp_X)
 
             for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                 if col in icp_X.columns:

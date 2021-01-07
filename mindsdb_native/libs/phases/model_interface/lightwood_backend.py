@@ -162,7 +162,7 @@ class LightwoodBackend:
             raise Exception(f'Not enough historical context to make a timeseries prediction. Please provide a number of rows greater or equal to the window size. If you can\'t get enough rows, consider lowering your window size. If you want to force timeseries predictions lacking historical context please set the `allow_incomplete_history` advanced argument to `True`, but this might lead to subpar predictions.')
 
         df_gb_map = None
-        if len(df_arr) > 5:
+        if len(df_arr) > 1:
             df_gb_list = list(combined_df.groupby(gb_arr))
             df_gb_map = {}
             for gb, df in df_gb_list:

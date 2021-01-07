@@ -154,9 +154,9 @@ def rename_model(old_model_name, new_model_name):
             return True
 
         try:
-            shutil.move(
-                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, 'lightwood_data'),
-                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, new_model_name, 'lightwood_data')
+            shutil.copy(
+                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name),
+                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, new_model_name)
             )
         except Exception:
             return False
@@ -166,7 +166,6 @@ def rename_model(old_model_name, new_model_name):
 
         lmd['name'] = new_model_name
         hmd['name'] = new_model_name
-
 
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
                             new_model_name, 'light_model_metadata.pickle'),
@@ -178,10 +177,8 @@ def rename_model(old_model_name, new_model_name):
                 'wb') as fp:
             pickle.dump(hmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
-        os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            old_model_name, 'light_model_metadata.pickle'))
-        os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            old_model_name, 'heavy_model_metadata.pickle'))
+        shutil.rmtree(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            old_model_name))
         return True
 
 
