@@ -129,9 +129,7 @@ def export_predictor(model_name):
     with MDBLock('shared', 'predict_' + model_name):
         storage_file = model_name + '.zip'
         with zipfile.ZipFile(storage_file, 'w') as zip_fp:
-            for file_name in ['heavy_model_metadata.pickle',
-                              'light_model_metadata.pickle',
-                              'lightwood_data']:
+            for file_name in os.listdir(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name)):
                 full_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, file_name)
                 zip_fp.write(full_path, os.path.basename(full_path))
 
