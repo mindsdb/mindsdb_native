@@ -126,15 +126,16 @@ class LightwoodBackend:
         else:
             df_arr = [original_df]
 
-        pool = mp.Pool(processes = (mp.cpu_count() - 1))
-
         if len(original_df) > 500:
+            pool = mp.Pool(processes = (mp.cpu_count() - 1))
             # Make type `object` so that dataframe cells can be python lists
             df_arr = pool.map(partial(_ts_to_obj, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
             df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
             df_arr = pool.map(partial(_ts_add_previous_rows, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'], window=window), df_arr)
             if self.transaction.lmd['tss']['use_previous_target']:
                 df_arr = pool.map(partial(_ts_add_previous_target, predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window), df_arr)
+            pool.close()
+            pool.join()
         else:
             for i in range(len(df_arr)):
                 df_arr[i] = _ts_to_obj(df_arr[i], historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'])
@@ -160,9 +161,14 @@ class LightwoodBackend:
         if len(combined_df) == 0:
             raise Exception(f'Not enough historical context to make a timeseries prediction. Please provide a number of rows greater or equal to the window size. If you can\'t get enough rows, consider lowering your window size. If you want to force timeseries predictions lacking historical context please set the `allow_incomplete_history` advanced argument to `True`, but this might lead to subpar predictions.')
 
-        pool.close()
-        pool.join()
-        return combined_df, secondary_type_dict, timeseries_row_mapping
+        df_gb_map = None
+        if len(df_arr) > 5:
+            df_gb_list = list(combined_df.groupby(gb_arr))
+            df_gb_map = {}
+            for gb, df in df_gb_list:
+                df_gb_map[gb] = df
+
+        return combined_df, secondary_type_dict, timeseries_row_mapping, df_gb_map
 
     def _create_lightwood_config(self, secondary_type_dict):
         config = {}
@@ -302,8 +308,8 @@ class LightwoodBackend:
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
-            train_df, secondary_type_dict, _, train_df_gb_map, gb_arr = self._ts_reshape(self.transaction.input_data.train_df)
-            test_df, _, _, test_df_gb_map, gb_arr = self._ts_reshape(self.transaction.input_data.test_df)
+            train_df, secondary_type_dict, _, train_df_gb_map = self._ts_reshape(self.transaction.input_data.train_df)
+            test_df, _, _, test_df_gb_map = self._ts_reshape(self.transaction.input_data.test_df)
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
             # @TODO: Make sampling work for timeseries
@@ -484,7 +490,7 @@ class LightwoodBackend:
                 if (best_accuracy - nn_mixer_predictor_accuracy) < SMALL_ACCURACY_DIFFERENCE:
                     self.predictor = nn_mixer_predictor
 
-            save_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_'.join(gb_val), 'lightwood_data')
+            save_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'] + '_'  + gb_val, 'lightwood_data')
             self.predictor.save(path_to=save_path)
 
     def predict(self, mode='predict', ignore_columns=None, all_mixers=False):
@@ -518,7 +524,7 @@ class LightwoodBackend:
 
             if self.predictor is None:
                 predictor_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data')
-                self.predictor = lightwood.Predictor(load_from_path=predictor_path+'_'.join(gb_val))
+                self.predictor = lightwood.Predictor(load_from_path=predictor_path + '_'  + gb_val)
 
             # not the most efficient but least prone to bug and should be fast enough
             if len(ignore_columns) > 0:
