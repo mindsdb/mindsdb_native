@@ -264,7 +264,8 @@ class Predictor:
                 quick_learn = advanced_args.get('quick_learn', None),
                 quick_predict = advanced_args.get('quick_predict', False),
                 apply_to_columns = advanced_args.get('apply_to_columns', {}),
-                disable_column_importance = advanced_args.get('disable_column_importance', False)
+                disable_column_importance = advanced_args.get('disable_column_importance', False),
+                split_models_on = advanced_args.get('disable_column_importance', [])
             )
 
             if rebuild_model is False:

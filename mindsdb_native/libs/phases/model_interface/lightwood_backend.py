@@ -163,7 +163,7 @@ class LightwoodBackend:
 
         df_gb_map = None
         if len(df_arr) > 1 and self.transaction.lmd['quick_learn']:
-            df_gb_list = list(combined_df.groupby(gb_arr))
+            df_gb_list = list(combined_df.groupby(self.transaction.lmd['split_models_on']))
             df_gb_map = {}
             for gb, df in df_gb_list:
                 df_gb_map['_' + '_'.join(gb)] = df
