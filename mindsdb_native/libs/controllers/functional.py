@@ -398,8 +398,7 @@ def get_models():
                     model[k] = None
 
             models.append(model)
-        except Exception:
-            print(f"Can't adapt metadata for model: '{model_name}' when calling `get_models()`")
-            raise
+        except Exception as e:
+            print(f"Can't adapt metadata for model: '{model_name}' when calling `get_models(), error: {e}`")
 
     return models
