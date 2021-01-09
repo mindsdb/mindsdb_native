@@ -525,9 +525,6 @@ class LightwoodBackend:
         if self.transaction.lmd['tss']['is_timeseries']:
             df, _, timeseries_row_mapping, df_gb_map = self._ts_reshape(df)
 
-        print('\n\n\n\n')
-        print(df_gb_map)
-        print('\n\n\n\n')
         if df_gb_map is None:
             df_gb_map = {'': df}
 
@@ -601,13 +598,6 @@ class LightwoodBackend:
             formated_predictions[k] = []
             for ele in formated_predictions_arr:
                 formated_predictions[k].extend(ele[k])
-
-        print('\n\n\n\n')
-        print(len(formated_predictions[k]), formated_predictions)
-        print('\n\n\n\n')
-        print(timeseries_row_mapping)
-        print('\n\n\n\n')
-        print('\n\n\n\n')
 
         if self.transaction.lmd['tss']['is_timeseries']:
             for k in list(formated_predictions.keys()):
