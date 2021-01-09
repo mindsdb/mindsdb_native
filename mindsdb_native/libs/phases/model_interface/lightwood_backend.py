@@ -151,22 +151,31 @@ class LightwoodBackend:
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
             del combined_df['make_predictions']
 
-        timeseries_row_mapping = {}
-        idx = 0
-        for _, row in combined_df.iterrows():
-            timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
-            idx += 1
-        del combined_df['original_index']
-
         if len(combined_df) == 0:
             raise Exception(f'Not enough historical context to make a timeseries prediction. Please provide a number of rows greater or equal to the window size. If you can\'t get enough rows, consider lowering your window size. If you want to force timeseries predictions lacking historical context please set the `allow_incomplete_history` advanced argument to `True`, but this might lead to subpar predictions.')
 
         df_gb_map = None
-        if len(df_arr) > 1 and self.transaction.lmd['quick_learn']:
+        if len(df_arr) > 1 and (self.transaction.lmd['quick_learn'] or self.transaction.lmd['quick_predict']):
             df_gb_list = list(combined_df.groupby(self.transaction.lmd['split_models_on']))
             df_gb_map = {}
             for gb, df in df_gb_list:
                 df_gb_map['_' + '_'.join(gb)] = df
+
+        timeseries_row_mapping = {}
+        idx = 0
+
+        if df_gb_map is None:
+            for _, row in combined_df.iterrows():
+                timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+                idx += 1
+        else:
+            for gb in df_gb_map:
+                for _, row in df_gb_map[gb].iterrows():
+                    timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+                    idx += 1
+
+        del combined_df['original_index']
+
 
         return combined_df, secondary_type_dict, timeseries_row_mapping, df_gb_map
 
@@ -452,6 +461,7 @@ class LightwoodBackend:
                 validation_predictions = self.predict('validate')
 
                 validation_df = self.transaction.input_data.validation_df
+
                 if self.transaction.lmd['tss']['is_timeseries']:
                     validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
 
@@ -515,11 +525,15 @@ class LightwoodBackend:
         if self.transaction.lmd['tss']['is_timeseries']:
             df, _, timeseries_row_mapping, df_gb_map = self._ts_reshape(df)
 
+        print('\n\n\n\n')
+        print(df_gb_map)
+        print('\n\n\n\n')
         if df_gb_map is None:
             df_gb_map = {'': df}
 
-        formated_predictions = {}
+        formated_predictions_arr = []
         for gb_val in df_gb_map:
+            formated_predictions = {}
             df = df_gb_map[gb_val]
 
             if self.predictor is None:
@@ -540,7 +554,8 @@ class LightwoodBackend:
             if self.transaction.lmd['quick_predict']:
                 for k in predictions:
                     formated_predictions[k] = predictions[k]['predictions']
-                break
+                    formated_predictions_arr.append(formated_predictions)
+                continue
 
             for k in predictions:
                 if '_timestep_' in k:
@@ -579,6 +594,20 @@ class LightwoodBackend:
 
                 for k in model_confidence_dict:
                     formated_predictions[f'{k}_model_confidence'] = model_confidence_dict[k]
+            formated_predictions_arr.append(formated_predictions)
+
+        formated_predictions = {}
+        for k in formated_predictions_arr[0]:
+            formated_predictions[k] = []
+            for ele in formated_predictions_arr:
+                formated_predictions[k].extend(ele[k])
+
+        print('\n\n\n\n')
+        print(len(formated_predictions[k]), formated_predictions)
+        print('\n\n\n\n')
+        print(timeseries_row_mapping)
+        print('\n\n\n\n')
+        print('\n\n\n\n')
 
         if self.transaction.lmd['tss']['is_timeseries']:
             for k in list(formated_predictions.keys()):
