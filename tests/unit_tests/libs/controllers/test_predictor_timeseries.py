@@ -259,7 +259,7 @@ class TestPredictorTimeseries(unittest.TestCase):
                 )
 
                 for x in new_df['__mdb_ts_previous_a']:
-                    assert len(x) == window
+                    assert len(x) == (window + 1)
 
                 for i in range(1, nr_predictions):
                     # make sure column exists
