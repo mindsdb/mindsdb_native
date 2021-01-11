@@ -1,12 +1,12 @@
 from pyathena import connect
-from pyathena.util import as_pandas
+from pyathena.pandas.util import as_pandas
 
 from mindsdb_native.libs.data_types.data_source import SQLDataSource
 
 
 class AthenaDS(SQLDataSource):
     def __init__(self, query, staging_dir, database=None,
-                 access_key=None, secret_key=None, region_name=None):
+                 access_key=None, secret_key=None, region_name=None, table=None):
         """
         :param query: Query to be executed. Ex. SELECT * FROM db.table;
         :param staging_dir: Full S3 path where Athena temp data will stored. Ex. s3://bucket_name/athena/staging
@@ -16,7 +16,7 @@ class AthenaDS(SQLDataSource):
         :param secret_key: Secret Key used if supplied else used default credentials.
         :param region_name: Region used if supplied else used default region.
         """
-        super().__init__()
+        super().__init__(query)
 
         if (not database or not table) and not query:
             raise ValueError('Either database and table or query should be passed.')

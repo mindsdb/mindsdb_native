@@ -133,12 +133,21 @@ class LightwoodBackend:
 
         pool = mp.Pool(processes = (mp.cpu_count() - 1))
 
-        # Make type `object` so that dataframe cells can be python lists
-        df_arr = pool.map(partial(_ts_to_obj, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
-        df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
-        df_arr = pool.map(partial(_ts_add_previous_rows, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'], window=window), df_arr)
-        if self.transaction.lmd['tss']['use_previous_target']:
-            df_arr = pool.map(partial(_ts_add_previous_target, predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window), df_arr)
+        if len(original_df) > 500:
+            # Make type `object` so that dataframe cells can be python lists
+            df_arr = pool.map(partial(_ts_to_obj, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
+            df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
+            df_arr = pool.map(partial(_ts_add_previous_rows, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'], window=window), df_arr)
+            if self.transaction.lmd['tss']['use_previous_target']:
+                df_arr = pool.map(partial(_ts_add_previous_target, predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window), df_arr)
+        else:
+            for i in range(len(df_arr)):
+                df_arr[i] = _ts_to_obj(df_arr[i], historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'])
+                df_arr[i] = _ts_order_col_to_cell_lists(df_arr[i], historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'])
+                df_arr[i] = _ts_add_previous_rows(df_arr[i], historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'], window=window)
+                if self.transaction.lmd['tss']['use_previous_target']:
+                    df_arr[i] = _ts_add_previous_target(df_arr[i], predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window)
+
 
         combined_df = pd.concat(df_arr)
 
