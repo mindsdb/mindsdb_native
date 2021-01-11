@@ -129,9 +129,7 @@ def export_predictor(model_name):
     with MDBLock('shared', 'predict_' + model_name):
         storage_file = model_name + '.zip'
         with zipfile.ZipFile(storage_file, 'w') as zip_fp:
-            for file_name in ['heavy_model_metadata.pickle',
-                              'light_model_metadata.pickle',
-                              'lightwood_data']:
+            for file_name in os.listdir(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name)):
                 full_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, file_name)
                 zip_fp.write(full_path, os.path.basename(full_path))
 
@@ -154,9 +152,9 @@ def rename_model(old_model_name, new_model_name):
             return True
 
         try:
-            shutil.move(
-                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, 'lightwood_data'),
-                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, new_model_name, 'lightwood_data')
+            shutil.copy(
+                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name),
+                os.path.join(CONFIG.MINDSDB_STORAGE_PATH, new_model_name)
             )
         except Exception:
             return False
@@ -166,7 +164,6 @@ def rename_model(old_model_name, new_model_name):
 
         lmd['name'] = new_model_name
         hmd['name'] = new_model_name
-
 
         with open(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
                             new_model_name, 'light_model_metadata.pickle'),
@@ -178,10 +175,8 @@ def rename_model(old_model_name, new_model_name):
                 'wb') as fp:
             pickle.dump(hmd, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
-        os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            old_model_name, 'light_model_metadata.pickle'))
-        os.remove(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
-                            old_model_name, 'heavy_model_metadata.pickle'))
+        shutil.rmtree(os.path.join(CONFIG.MINDSDB_STORAGE_PATH,
+                            old_model_name))
         return True
 
 
@@ -403,8 +398,7 @@ def get_models():
                     model[k] = None
 
             models.append(model)
-        except Exception:
-            print(f"Can't adapt metadata for model: '{model_name}' when calling `get_models()`")
-            raise
+        except Exception as e:
+            print(f"Can't adapt metadata for model: '{model_name}' when calling `get_models(), error: {e}`")
 
     return models
