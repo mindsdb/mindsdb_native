@@ -226,7 +226,7 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
-            # quick_learn can be set to False explicitly
+            # quick_learn can still be set to False explicitly to disable this behavior
             if self.lmd['quick_learn'] is None:
                 n_cols = len(self.input_data.columns)
                 n_cells = n_cols * self.lmd['data_preparation']['used_row_count']
@@ -356,7 +356,7 @@ class PredictTransaction(Transaction):
             icp_X = deepcopy(predictions_df)
 
             if self.lmd['tss']['is_timeseries']:
-                icp_X, _, _ = self.model_backend._ts_reshape(icp_X)
+                icp_X, _, _, _ = self.model_backend._ts_reshape(icp_X)
 
             for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                 if col in icp_X.columns:

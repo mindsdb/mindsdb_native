@@ -264,8 +264,12 @@ class Predictor:
                 quick_learn = advanced_args.get('quick_learn', None),
                 quick_predict = advanced_args.get('quick_predict', False),
                 apply_to_columns = advanced_args.get('apply_to_columns', {}),
-                disable_column_importance = advanced_args.get('disable_column_importance', False)
+                disable_column_importance = advanced_args.get('disable_column_importance', False),
+                split_models_on = advanced_args.get('split_models_on', [])
             )
+            
+            if len(light_transaction_metadata['split_models_on']) > 0 and not light_transaction_metadata['quick_learn']:
+                raise Exception('The `split_models_on` parameter only works in quick learn mode')
 
             if rebuild_model is False:
                 old_lmd = {}
