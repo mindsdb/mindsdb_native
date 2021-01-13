@@ -45,7 +45,7 @@ class TransactionOutputRow:
             else:
                 answers[pred_col]['predicted_value'] = prediction_row[pred_col]
 
-            if prediction_row[f'{pred_col}_confidence'] is not None:
+            if prediction_row.get(f'{pred_col}_confidence') is not None:
                 answers[pred_col]['confidence'] = round(prediction_row[f'{pred_col}_confidence'], 4)
                 quality = 'very confident'
                 if answers[pred_col]['confidence'] < 0.8:
