@@ -519,6 +519,10 @@ class LightwoodBackend:
 
             formated_predictions[k] = predictions[k]['predictions']
 
+            if 'class_distribution' in predictions[k]:
+                formated_predictions[f'{k}_class_distribution'] = predictions[k]['class_distribution']
+                formated_predictions[f'{k}_class_map'] = predictions[k]['class_labels']
+
             if self.nr_predictions > 1:
                 formated_predictions[k] = [[x] for x in formated_predictions[k]]
                 for timestep_index in range(1,self.nr_predictions):

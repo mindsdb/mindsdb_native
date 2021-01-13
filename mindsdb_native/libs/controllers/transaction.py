@@ -343,6 +343,10 @@ class PredictTransaction(Transaction):
             if column in self.lmd['predict_columns']:
                 output_data[f'__observed_{column}'] = list(predictions_df[column])
                 output_data[column] = self.hmd['predictions'][column]
+                if self.lmd['output_class_distribution']:
+                    for k in ['class_distribution', 'class_map']:
+                        field = f'{column}_{k}'
+                        output_data[field] = self.hmd['predictions'][field]
             else:
                 output_data[column] = list(predictions_df[column])
 
