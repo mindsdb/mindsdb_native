@@ -319,7 +319,7 @@ class TestPredictor(unittest.TestCase):
         predictor.learn(
             from_data=df_train,
             to_predict='y',
-            advanced_args=dict(deduplicate_data=False, output_class_distribution=True),
+            advanced_args=dict(deduplicate_data=False),
             stop_training_in_x_seconds=40,
             use_gpu=False
         )
