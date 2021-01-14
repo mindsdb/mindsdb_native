@@ -205,14 +205,18 @@ class LightwoodBackend:
                     other_keys['encoder_attrs']['positive_domain'] = True
 
             elif data_type == DATA_TYPES.CATEGORICAL:
-                if data_subtype == DATA_SUBTYPES.TAGS:
-                    lightwood_data_type = ColumnDataTypes.MULTIPLE_CATEGORICAL
-                else:
-                    lightwood_data_type = ColumnDataTypes.CATEGORICAL
-
                 predict_proba = self.transaction.lmd['output_class_distribution']
                 if col_name in self.transaction.lmd['predict_columns'] and predict_proba:
                     other_keys['encoder_attrs']['predict_proba'] = predict_proba
+
+                if data_subtype == DATA_SUBTYPES.TAGS:
+                    lightwood_data_type = ColumnDataTypes.MULTIPLE_CATEGORICAL
+                    if predict_proba:
+                        self.transaction.log.warning(f'Class distribution not supported for tags prediction\n')
+                else:
+                    lightwood_data_type = ColumnDataTypes.CATEGORICAL
+
+
 
             elif data_subtype in (DATA_SUBTYPES.TIMESTAMP, DATA_SUBTYPES.DATE):
                 lightwood_data_type = ColumnDataTypes.DATETIME
@@ -569,7 +573,7 @@ class LightwoodBackend:
                 formated_predictions[k] = predictions[k]['predictions']
                 if 'class_distribution' in predictions[k]:
                     formated_predictions[f'{k}_class_distribution'] = predictions[k]['class_distribution']
-                    formated_predictions[f'{k}_class_map'] = predictions[k]['class_labels']
+                    self.transaction.lmd['stats_v2'][k]['lightwood_class_map'] = predictions[k]['class_labels']
 
                 if self.nr_predictions > 1:
                     formated_predictions[k] = [[x] for x in formated_predictions[k]]
@@ -606,10 +610,9 @@ class LightwoodBackend:
 
         formated_predictions = {}
         for k in formated_predictions_arr[0]:
-            if 'class_map' not in k:
-                formated_predictions[k] = []
-                for ele in formated_predictions_arr:
-                    formated_predictions[k].extend(ele[k])
+            formated_predictions[k] = []
+            for ele in formated_predictions_arr:
+                formated_predictions[k].extend(ele[k])
 
         if self.transaction.lmd['tss']['is_timeseries']:
             for k in list(formated_predictions.keys()):

@@ -12,6 +12,7 @@ import torch
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, f1_score, accuracy_score
+from sklearn.datasets import load_iris
 
 from mindsdb_native import F
 from mindsdb_native.libs.data_sources.file_ds import FileDS
@@ -82,7 +83,7 @@ class TestPredictor(unittest.TestCase):
             to_predict='numeric_y',
             stop_training_in_x_seconds=1,
             use_gpu=False,
-            advanced_args={'debug': True, 'output_class_distribution': True}
+            advanced_args={'debug': True}
         )
 
         # Test predicting using a data frame
@@ -175,7 +176,7 @@ class TestPredictor(unittest.TestCase):
             to_predict=label_headers,
             stop_training_in_x_seconds=1,
             use_gpu=False,
-            advanced_args={'debug': True, 'output_class_distribution': True}
+            advanced_args={'debug': True}
         )
 
         results = mdb.predict(when_data=test_file_name)
@@ -363,7 +364,7 @@ class TestPredictor(unittest.TestCase):
         predictor.learn(
             from_data=df_train,
             to_predict='tags',
-            advanced_args=dict(deduplicate_data=False, output_class_distribution=True),
+            advanced_args=dict(deduplicate_data=False),
             stop_training_in_x_seconds=60,
             use_gpu=False
         )
@@ -484,3 +485,21 @@ class TestPredictor(unittest.TestCase):
         )
 
         mdb.predict(when_data={'categorical_x': 0})
+
+    def test_output_class_distribution(self):
+        mdb = Predictor(name='test_output_class_distribution')
+        data = load_iris(as_frame=True)
+        df = data.data
+        df['target'] = data.target
+
+        mdb.learn(
+            from_data=df,
+            to_predict='target',
+            stop_training_in_x_seconds=1,
+            use_gpu=False,
+            advanced_args={'debug': True, 'output_class_distribution': True}
+        )
+
+        results = mdb.predict(when_data=data.data.iloc[[0]])
+        assert 'target_class_distribution' in results._data
+        assert np.isclose(np.sum(results._data['target_class_distribution']), 1)
