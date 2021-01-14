@@ -181,7 +181,6 @@ class LightwoodBackend:
                 else:
                     lightwood_data_type = ColumnDataTypes.CATEGORICAL
 
-                # TODO: Check that tags usecase works
                 predict_proba = self.transaction.lmd['output_class_distribution']
                 if col_name in self.transaction.lmd['predict_columns'] and predict_proba:
                     other_keys['encoder_attrs']['predict_proba'] = predict_proba
