@@ -36,7 +36,8 @@ class TransactionOutputRow:
         answers = {}
         for pred_col in self._predict_columns:
             answers[pred_col] = {}
-            prediction_row = {col: self._data[col][self._row_index] for col in self._data.keys()}
+            cols = [col for col in self._data.keys() if isinstance(self._data[col], list)]  # filter out class maps
+            prediction_row = {col: self._data[col][self._row_index] for col in cols}
 
             if self._transaction_output._transaction.lmd['tss']['is_timeseries'] and \
                     self._transaction_output._transaction.lmd['tss']['nr_predictions'] > 1:
