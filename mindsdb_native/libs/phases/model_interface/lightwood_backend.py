@@ -216,8 +216,6 @@ class LightwoodBackend:
                 else:
                     lightwood_data_type = ColumnDataTypes.CATEGORICAL
 
-
-
             elif data_subtype in (DATA_SUBTYPES.TIMESTAMP, DATA_SUBTYPES.DATE):
                 lightwood_data_type = ColumnDataTypes.DATETIME
 
