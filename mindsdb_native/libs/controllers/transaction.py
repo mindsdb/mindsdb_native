@@ -226,7 +226,7 @@ class LearnTransaction(Transaction):
                                     input_data=self.input_data)
             self.save_metadata()
 
-            # quick_learn can be set to False explicitly
+            # quick_learn can still be set to False explicitly to disable this behavior
             if self.lmd['quick_learn'] is None:
                 n_cols = len(self.input_data.columns)
                 n_cells = n_cols * self.lmd['data_preparation']['used_row_count']
@@ -325,7 +325,11 @@ class PredictTransaction(Transaction):
         self._call_phase_module(module_name='ModelInterface', mode='predict')
 
         if self.lmd['return_raw_predictions']:
-            return self.hmd['predictions']
+            self.output_data = PredictTransactionOutputData(
+                transaction=self,
+                data=self.hmd['predictions']
+            )
+            return self.output_data
 
         output_data = {col: [] for col in self.lmd['columns']}
 
@@ -356,7 +360,7 @@ class PredictTransaction(Transaction):
             icp_X = deepcopy(predictions_df)
 
             if self.lmd['tss']['is_timeseries']:
-                icp_X, _, _ = self.model_backend._ts_reshape(icp_X)
+                icp_X, _, _, _ = self.model_backend._ts_reshape(icp_X)
 
             for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                 if col in icp_X.columns:
@@ -431,8 +435,8 @@ class PredictTransaction(Transaction):
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
         else:
             for predicted_col in self.lmd['predict_columns']:
-                output_data[f'{predicted_col}_confidence'] = None
-                output_data[f'{predicted_col}_confidence_range'] = None
+                output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
+                output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
 
         self.output_data = PredictTransactionOutputData(
             transaction=self,

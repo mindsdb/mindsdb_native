@@ -26,6 +26,14 @@ def clean_row(row):
 
 class FileDS(DataSource):
     def __init__(self, file, clean_rows=True, custom_parser=None):
+        """
+        Setup from file
+        :param file: fielpath or url
+        :param clean_rows: if you want to clean rows for strange null values
+        :param custom_parser: if you want to parse the file with some custom parser
+        """
+        if not isinstance(file, str):
+            raise ValueError("'file' must be string")
         super().__init__()
         self.file = file
         self.clean_rows = clean_rows
@@ -38,7 +46,7 @@ class FileDS(DataSource):
 
         # get file data io, format and dialect
         data, fmt, self.dialect = self._getDataIo(self.file)
-        data.seek(0) # make sure we are at 0 in file pointer
+        data.seek(0)  # make sure we are at 0 in file pointer
 
         if self.custom_parser:
             header, file_data = self.custom_parser(data, fmt)
@@ -73,13 +81,6 @@ class FileDS(DataSource):
         return pd.DataFrame(file_list_data, columns=header), self.col_map
 
     def query(self, q=None):
-        """
-        Setup from file
-        :param file: fielpath or url
-        :param clean_rows: if you want to clean rows for strange null values
-        :param custom_parser: if you want to parse the file with some custom parser
-        """
-
         try:
             return self._handle_source()
         except Exception as e:
