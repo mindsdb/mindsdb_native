@@ -226,6 +226,7 @@ def import_model(model_archive_path, new_name=None):
             pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
 
     print('Model files loaded')
+    return lmd['name']
 
 
 def get_model_data(model_name=None, lmd=None):
