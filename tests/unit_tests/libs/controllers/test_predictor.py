@@ -32,40 +32,6 @@ class TestPredictor(unittest.TestCase):
     def setUp(self):
         self.tmp_dir = tempfile.mkdtemp()
 
-    def test_sample_for_training(self):
-        predictor = Predictor(name='test_sample_for_training')
-        assert predictor.report_uuid == 'no_report'
-
-        n_points = 100
-        input_dataframe = pd.DataFrame({
-            'numeric_int': [x % 10 for x in list(range(n_points))],
-            'categorical_binary': [0, 1] * (n_points // 2),
-        })
-        input_dataframe['y'] = input_dataframe.numeric_int + input_dataframe.numeric_int * input_dataframe.categorical_binary
-
-        sample_settings = {
-            'sample_for_training': True,
-            'sample_for_analysis': True,
-            'sample_function': mock.MagicMock(wraps=sample_data),
-        }
-        setattr(sample_settings['sample_function'], '__name__', 'sample_data')
-
-        predictor.learn(
-            from_data=input_dataframe,
-            to_predict='y',
-            backend='lightwood',
-            sample_settings=sample_settings,
-            stop_training_in_x_seconds=1,
-            use_gpu=False
-        )
-
-        assert sample_settings['sample_function'].called
-
-        # 1 call when sampling for analysis
-        # 1 call when sampling training data for lightwood
-        # 1 call when sampling testing data for lightwood
-        assert sample_settings['sample_function'].call_count == 3
-
     def test_explain_prediction(self):
         mdb = Predictor(name='test_explain_prediction')
 
