@@ -284,8 +284,7 @@ class LightwoodBackend:
                 if col_name in self.transaction.lmd['tss']['historical_columns']:
                     if 'secondary_type' in col_config:
                         col_config['secondary_type'] = col_config['secondary_type']
-                    else:
-                        col_config['original_type'] = col_config['type']
+                    col_config['original_type'] = col_config['type']
                     col_config['type'] = ColumnDataTypes.TIME_SERIES
 
                 config['input_features'].append(col_config)
