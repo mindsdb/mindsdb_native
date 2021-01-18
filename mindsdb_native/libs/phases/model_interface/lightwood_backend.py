@@ -21,7 +21,7 @@ def _make_pred(row):
 def _ts_to_obj(df, historical_columns):
     for hist_col in historical_columns:
         df.loc[:, hist_col] = df[hist_col].astype(object)
-        return df
+    return df
 
 
 def _ts_order_col_to_cell_lists(df, historical_columns):
@@ -281,9 +281,10 @@ class LightwoodBackend:
                         additional_target_config['name'] = f'{col_name}_timestep_{timestep_index}'
                         config['output_features'].append(additional_target_config)
             else:
-                if self.transaction.lmd['tss']['historical_columns']:
+                if col_name in self.transaction.lmd['tss']['historical_columns']:
                     if 'secondary_type' in col_config:
                         col_config['secondary_type'] = col_config['secondary_type']
+                    col_config['original_type'] = col_config['type']
                     col_config['type'] = ColumnDataTypes.TIME_SERIES
 
                 config['input_features'].append(col_config)
