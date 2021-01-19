@@ -267,6 +267,7 @@ class LearnTransaction(Transaction):
             self.lmd['current_phase'] = MODEL_STATUS_ERROR
             self.lmd['error_msg'] = traceback.format_exc()
             self.log.error(str(e))
+            self.save_metadata()
             raise e
 
     def run(self):
