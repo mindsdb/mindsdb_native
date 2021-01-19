@@ -340,7 +340,13 @@ class TypeDeductor(BaseModule):
                         else:
                             self.transaction.lmd['columns_to_ignore'].append(col_name)
 
+            stats_v2[col_name]['broken'] = None
             if data_type is None or data_subtype is None:
+                if col_name in self.transaction.lmd['force_column_usage'] or col_name in self.transaction.lmd['predict_columns']:
+                    err_msg = f'Failed to deduce type for critical column: {col_name}'
+                    log.error(err_msg)
+                    raise Exception(err_msg)
+
                 self.transaction.lmd['columns_to_ignore'].append(col_name)
                 stats_v2[col_name]['broken'] = {
                     'failed_at': 'Type detection'
