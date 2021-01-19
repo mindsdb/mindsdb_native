@@ -330,33 +330,8 @@ class LightwoodBackend:
             # @TODO: Make sampling work for timeseries
             # @TODO: Alternative, doing train sampling here is really dumb, move to the data extractor
             train_df_gb_map = None
-            if self.transaction.lmd['sample_settings']['sample_for_training']:
-                sample_margin_of_error = self.transaction.lmd['sample_settings']['sample_margin_of_error']
-                sample_confidence_level = self.transaction.lmd['sample_settings']['sample_confidence_level']
-                sample_percentage = self.transaction.lmd['sample_settings']['sample_percentage']
-                sample_function = self.transaction.hmd['sample_function']
-
-                train_df = sample_function(
-                    self.transaction.input_data.train_df,
-                    sample_margin_of_error,
-                    sample_confidence_level,
-                    sample_percentage
-                )
-
-                test_df = sample_function(
-                    self.transaction.input_data.test_df,
-                    sample_margin_of_error,
-                    sample_confidence_level,
-                    sample_percentage
-                )
-
-                sample_size = len(train_df)
-                population_size = len(self.transaction.input_data.train_df)
-
-                self.transaction.log.warning(f'Training on a sample of {round(sample_size * 100 / population_size, 1)}% your data, results can be unexpected.')
-            else:
-                train_df = self.transaction.input_data.train_df
-                test_df = self.transaction.input_data.test_df
+            train_df = self.transaction.input_data.train_df
+            test_df = self.transaction.input_data.test_df
 
         if train_df_gb_map is None:
             train_df_gb_map = {'': train_df}
