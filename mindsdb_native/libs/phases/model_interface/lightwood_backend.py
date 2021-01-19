@@ -561,7 +561,7 @@ class LightwoodBackend:
             if self.transaction.lmd['quick_predict']:
                 for k in predictions:
                     formated_predictions[k] = predictions[k]['predictions']
-                    if 'class_distribution' in predictions[k]:
+                    if self.transaction.lmd['output_class_distribution']:
                         formated_predictions[f'{k}_class_distribution'] = predictions[k]['class_distribution']
                         self.transaction.lmd['stats_v2'][k]['lightwood_class_map'] = predictions[k]['class_labels']
                     formated_predictions_arr.append(formated_predictions)
@@ -572,7 +572,7 @@ class LightwoodBackend:
                     continue
 
                 formated_predictions[k] = predictions[k]['predictions']
-                if 'class_distribution' in predictions[k]:
+                if self.transaction.lmd['output_class_distribution']:
                     formated_predictions[f'{k}_class_distribution'] = predictions[k]['class_distribution']
                     self.transaction.lmd['stats_v2'][k]['lightwood_class_map'] = predictions[k]['class_labels']
 

@@ -36,7 +36,7 @@ class TransactionOutputRow:
         answers = {}
         for pred_col in self._predict_columns:
             answers[pred_col] = {}
-            cols = [col for col in self._data.keys() if 'class_map' not in col]  # filter out class maps
+            cols = [col for col in self._data.keys() if '_class_distribution' not in col]
             prediction_row = {col: self._data[col][self._row_index] for col in cols}
 
             if self._transaction_output._transaction.lmd['tss']['is_timeseries'] and \

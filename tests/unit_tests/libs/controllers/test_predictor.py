@@ -502,4 +502,7 @@ class TestPredictor(unittest.TestCase):
 
         results = mdb.predict(when_data=data.data.iloc[[0]])
         assert 'target_class_distribution' in results._data
-        assert np.isclose(np.sum(results._data['target_class_distribution']), 1)
+        probs = results._data['target_class_distribution']
+        assert np.isclose(np.sum(probs), 1)
+        for dist in probs:
+            assert len(dist) == data.target_names.size
