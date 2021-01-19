@@ -179,8 +179,7 @@ class TestPredictor(unittest.TestCase):
         )
 
         results = mdb.predict(when_data=test_file_name)
-        models = F.get_models()
-        model_data = F.get_model_data(models[0]['name'])
+        model_data = F.get_model_data('test_multilabel_prediction')
         assert model_data
 
         for i in range(len(results)):
