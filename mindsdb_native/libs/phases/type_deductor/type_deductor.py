@@ -280,7 +280,7 @@ class TypeDeductor(BaseModule):
         stats_v2['columns'] = set(input_data.data_frame.columns.values)
         stats_v2['columns'].update(self.transaction.lmd['columns_to_ignore'])
         stats_v2['columns'] = list(stats_v2['columns'])
-        
+
         sample_settings = self.transaction.lmd['sample_settings']
         if sample_settings['sample_for_analysis']:
             sample_margin_of_error = sample_settings['sample_margin_of_error']
@@ -339,6 +339,23 @@ class TypeDeductor(BaseModule):
                             pass
                         else:
                             self.transaction.lmd['columns_to_ignore'].append(col_name)
+
+            stats_v2[col_name]['broken'] = None
+            if data_type is None or data_subtype is None:
+                if col_name in self.transaction.lmd['force_column_usage'] or col_name in self.transaction.lmd['predict_columns']:
+                    err_msg = f'Failed to deduce type for critical column: {col_name}'
+                    log.error(err_msg)
+                    raise Exception(err_msg)
+
+                self.transaction.lmd['columns_to_ignore'].append(col_name)
+                stats_v2[col_name]['broken'] = {
+                    'failed_at': 'Type detection'
+                    ,'reason': 'Unable to detect type for unknown reasons.'
+                }
+
+                if len(col_data) < 1:
+                    stats_v2[col_name]['broken']['reason'] = 'Unable to detect type due to too many empty, null, None or nan values.'
+
 
             if data_subtype_dist:
                 self.log.info(f'Data distribution for column "{col_name}" '
