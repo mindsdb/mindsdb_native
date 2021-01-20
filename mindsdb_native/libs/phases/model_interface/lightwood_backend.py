@@ -205,8 +205,14 @@ class LightwoodBackend:
                     other_keys['encoder_attrs']['positive_domain'] = True
 
             elif data_type == DATA_TYPES.CATEGORICAL:
+                predict_proba = self.transaction.lmd['output_class_distribution']
+                if col_name in self.transaction.lmd['predict_columns'] and predict_proba:
+                    other_keys['encoder_attrs']['predict_proba'] = predict_proba
+
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     lightwood_data_type = ColumnDataTypes.MULTIPLE_CATEGORICAL
+                    if predict_proba:
+                        self.transaction.log.warning(f'Class distribution not supported for tags prediction\n')
                 else:
                     lightwood_data_type = ColumnDataTypes.CATEGORICAL
 
@@ -528,10 +534,12 @@ class LightwoodBackend:
 
             predictions = self.predictor.predict(when_data=run_df)
 
-
             if self.transaction.lmd['quick_predict']:
                 for k in predictions:
                     formated_predictions[k] = predictions[k]['predictions']
+                    if self.transaction.lmd['output_class_distribution']:
+                        formated_predictions[f'{k}_class_distribution'] = predictions[k]['class_distribution']
+                        self.transaction.lmd['stats_v2'][k]['lightwood_class_map'] = predictions[k]['class_labels']
                     formated_predictions_arr.append(formated_predictions)
                 continue
 
@@ -540,6 +548,9 @@ class LightwoodBackend:
                     continue
 
                 formated_predictions[k] = predictions[k]['predictions']
+                if self.transaction.lmd['output_class_distribution']:
+                    formated_predictions[f'{k}_class_distribution'] = predictions[k]['class_distribution']
+                    self.transaction.lmd['stats_v2'][k]['lightwood_class_map'] = predictions[k]['class_labels']
 
                 if self.nr_predictions > 1:
                     formated_predictions[k] = [[x] for x in formated_predictions[k]]

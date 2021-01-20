@@ -344,12 +344,16 @@ class PredictTransaction(Transaction):
         else:
             predictions_df = self.input_data.data_frame
 
-        for column in self.input_data.columns:
-            if column in self.lmd['predict_columns']:
-                output_data[f'__observed_{column}'] = list(predictions_df[column])
-                output_data[column] = self.hmd['predictions'][column]
+        for col in self.input_data.columns:
+            if col in self.lmd['predict_columns']:
+                output_data[f'__observed_{col}'] = list(predictions_df[col])
+                output_data[col] = self.hmd['predictions'][col]
+
+                if f'{col}_class_distribution' in self.hmd['predictions']:
+                    output_data[f'{col}_class_distribution'] = self.hmd['predictions'][f'{col}_class_distribution']
+                    self.lmd['lightwood_data'][f'{col}_class_map'] = self.lmd['stats_v2'][col]['lightwood_class_map']
             else:
-                output_data[column] = list(predictions_df[column])
+                output_data[col] = list(predictions_df[col])
 
         # confidence estimation
         if self.hmd['icp']['active'] and not self.lmd['quick_predict']:
