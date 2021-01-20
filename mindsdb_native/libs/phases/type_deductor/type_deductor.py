@@ -369,4 +369,9 @@ class TypeDeductor(BaseModule):
                     # Functionality is specific to mindsdb logger
                     pass
 
+        stats_v2['useable_input_columns'] = []
+        for col_name in stats_v2['columns']:
+            if col_name not in self.transaction.lmd['columns_to_ignore'] and col_name not in self.transaction.lmd['predict_columns'] and stats_v2[col_name]['borken'] is None and stats_v2[col_name]['identifier'] is None:
+                    stats_v2['useable_input_columns'].append(col_name)
+
         self.transaction.lmd['stats_v2'] = stats_v2
