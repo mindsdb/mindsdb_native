@@ -1,6 +1,4 @@
 boto3 >= 1.9.0
-pymssql >= 2.1.4
-pymongo >= 3.10.1
 PyAthena >= 2.0.0
 google-cloud-storage
 google-auth
