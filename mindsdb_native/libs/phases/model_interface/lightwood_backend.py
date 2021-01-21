@@ -246,12 +246,12 @@ class LightwoodBackend:
 
             col_config = {
                 'name': col_name,
-                'type': lightwood_data_type
+                'type': lightwood_data_type,
+                'grouped_by': col_name in self.transaction.lmd['tss']['group_by']
             }
 
             if data_subtype == DATA_SUBTYPES.SHORT:
                 col_config['encoder_class'] = lightwood.encoders.text.short.ShortTextEncoder
-
 
             if col_name in self.transaction.lmd['weight_map']:
                 col_config['weights'] = self.transaction.lmd['weight_map'][col_name]
