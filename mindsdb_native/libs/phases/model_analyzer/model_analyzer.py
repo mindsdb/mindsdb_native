@@ -42,7 +42,6 @@ class ModelAnalyzer(BaseModule):
         self.transaction.lmd['test_data_plot'] = {}
 
         # conformal prediction confidence estimation
-        # TODO: implement prediction cache for speedup
         self.transaction.lmd['stats_v2']['train_std_dev'] = {}
         self.transaction.hmd['label_encoders'] = {}
         self.transaction.hmd['icp'] = {'active': False}
