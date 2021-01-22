@@ -12,13 +12,8 @@ from torch.nn.functional import softmax
 
 
 def t_softmax(x, t=1.0, axis=1):
+    """Softmax with temperature scaling"""
     return softmax(torch.Tensor(x)/t, dim=axis).numpy()
-
-
-def _df_from_x(x, columns):
-    x = pd.DataFrame(x)
-    x.columns = columns
-    return x
 
 
 def clean_df(df, stats, output_columns, ignored_columns):
@@ -33,14 +28,6 @@ def clean_df(df, stats, output_columns, ignored_columns):
         if col in df.columns:
             df.pop(col)
     return df
-
-
-def filter_cols(columns, target, ignore):
-    cols = deepcopy(columns)
-    for col in [target] + ignore:
-        if col in cols:
-            cols.remove(col)
-    return cols
 
 
 def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
@@ -108,8 +95,6 @@ class ConformalRegressorAdapter(RegressorAdapter):
 
     def fit(self, x=None, y=None):
         """
-        :param x: numpy.array, shape (n_train, n_features)
-        :param y: numpy.array, shape (n_train)
         We omit implementing this method as the Conformal Estimator is called once
         the MindsDB mixer has already been trained. However, it has to be called to
         setup some things in the nonconformist backend.
@@ -118,11 +103,8 @@ class ConformalRegressorAdapter(RegressorAdapter):
 
     def predict(self, x=None):
         """
-        :param x: numpy.array, shape (n_train, n_features). Raw data for predicting outputs.
-        n_features = (|all_cols| - |ignored| - |target|)
-
-        :return: output compatible with nonconformity function. For default
-        ones, this should a numpy.array of shape (n_test) with predicted values
+        Same as in .fit()
+        :return: np.array (n_test, n_classes) as input to the nonconformity function, has class probability estimates
         """
         return self.prediction_cache
 
@@ -142,12 +124,8 @@ class ConformalClassifierAdapter(ClassifierAdapter):
 
     def predict(self, x=None):
         """
-        :param x: numpy.array, shape (n_train, n_features). Raw data for predicting outputs.
-        n_features = (|all_cols| - |ignored| - |target|)
-
-        :return: output compatible with nonconformity function. For default
-        ones, this should a numpy.array of shape (n_test, n_classes) with
-        class probability estimates
+        Same as in .fit()
+        :return: np.array (n_test, n_classes) as input to the nonconformity function, has class probability estimates
         """
         return t_softmax(self.prediction_cache, t=0.5)
 

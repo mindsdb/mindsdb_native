@@ -57,10 +57,9 @@ class ModelAnalyzer(BaseModule):
                                  DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())
 
             fit_params = {
-                'columns_to_ignore': [],
+                'columns_to_ignore': self.transaction.lmd['columns_to_ignore'],
                 'nr_preds': self.transaction.lmd['tss'].get('nr_predictions', 0)
             }
-            fit_params['columns_to_ignore'].extend(self.transaction.lmd['columns_to_ignore'])
             fit_params['columns_to_ignore'].extend([col for col in output_columns if col != target])
             fit_params['columns_to_ignore'].extend([f'{target}_timestep_{i}' for i in range(1, fit_params['nr_preds'])])
 
@@ -95,12 +94,11 @@ class ModelAnalyzer(BaseModule):
                     normalizer = None
 
                 nc = nc_class(model, nc_function, normalizer=normalizer)
-
                 icp = icp_class(nc)
+
                 if is_classification:
                     icp.nc_function.model.prediction_cache = np.array(normal_predictions[f'{target}_class_distribution'])
-                    # TODO: expose from lightwood and use here
-                    # {i:cls for i, cls in enumerate(self.transaction.lmd['weight_map'].keys())}
+                    # TODO: expose directly from lightwood and use here, instead of the inferred order
                     icp.nc_function.model.class_map = [i for i in self.transaction.lmd['weight_map'].keys()]
                 else:
                     icp.nc_function.model.prediction_cache = np.array(normal_predictions[target])
