@@ -102,12 +102,19 @@ class ModelAnalyzer(BaseModule):
 
                 nc = nc_class(model, nc_function, normalizer=normalizer)
 
-                X = deepcopy(self.transaction.input_data.train_df)
-                if self.transaction.lmd['tss']['is_timeseries']:
-                    X, _, _ = self.transaction.model_backend._ts_reshape(X)
-                y = X.pop(target)
+                # X = deepcopy(self.transaction.input_data.validation_df)
+                # if self.transaction.lmd['tss']['is_timeseries']:
+                #     X, _, _ = self.transaction.model_backend._ts_reshape(X)
+                # y = X.pop(target)
 
                 icp = icp_class(nc)
+                if is_classification:
+                    icp.nc_function.model.prediction_cache = np.array(normal_predictions[f'{target}_class_distribution'])
+                    # TODO: expose from lightwood and use here
+                    # {i:cls for i, cls in enumerate(self.transaction.lmd['weight_map'].keys())}
+                    icp.nc_function.model.class_map = [i for i in self.transaction.lmd['weight_map'].keys()]
+                else:
+                    icp.nc_function.model.prediction_cache = np.array(normal_predictions[target])
                 self.transaction.hmd['icp'][target] = icp
 
                 if normalizer is not None:
@@ -116,37 +123,38 @@ class ModelAnalyzer(BaseModule):
                 if not is_classification:
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 
-                X = clean_df(
-                    X,
-                    self.transaction.lmd['stats_v2'],
-                    output_columns,
-                    fit_params['columns_to_ignore']
-                )
+                # X = clean_df(
+                #    X,
+                #    self.transaction.lmd['stats_v2'],
+                #    output_columns,
+                #    fit_params['columns_to_ignore']
+                # )
 
-                self.transaction.hmd['icp'][target].index = X.columns
-                self.transaction.hmd['icp'][target].fit(X.values, y.values)
+
+                self.transaction.hmd['icp'][target].fit(None, None) # X.values, y.values)
                 self.transaction.hmd['icp']['active'] = True
 
                 icp_df = deepcopy(validation_df)
                 if self.transaction.lmd['tss']['is_timeseries']:
-                    # TODO: erase all ts_reshaping from ICP code, inefficient
-                    icp_df, _, _ = self.transaction.model_backend._ts_reshape(icp_df)
+                   # TODO: erase all ts_reshaping from ICP code, inefficient
+                   icp_df, _, _ = self.transaction.model_backend._ts_reshape(icp_df)
                 y = icp_df.pop(target).values
 
                 if is_classification:
-                    if isinstance(enc.categories_[0][0], str):
-                        cats = enc.categories_[0].tolist()
-                        y = np.array([cats.index(i) for i in y])
-                    y = y.astype(int)
+                   if isinstance(enc.categories_[0][0], str):
+                       cats = enc.categories_[0].tolist()
+                       y = np.array([cats.index(i) for i in y])
+                   y = y.astype(int)
 
                 icp_df = clean_df(
-                    icp_df,
-                    self.transaction.lmd['stats_v2'],
-                    output_columns,
-                    fit_params['columns_to_ignore']
+                   icp_df,
+                   self.transaction.lmd['stats_v2'],
+                   output_columns,
+                   fit_params['columns_to_ignore']
                 )
 
                 # calibrate conformal estimator with validation dataset
+                self.transaction.hmd['icp'][target].index = icp_df.columns
                 self.transaction.hmd['icp'][target].calibrate(icp_df.values, y)
                 conf, ranges = get_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
                 if not is_classification:

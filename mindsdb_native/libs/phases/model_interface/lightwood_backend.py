@@ -549,8 +549,11 @@ class LightwoodBackend:
 
                 formated_predictions[k] = predictions[k]['predictions']
                 if self.transaction.lmd['output_class_distribution']:
-                    formated_predictions[f'{k}_class_distribution'] = predictions[k]['class_distribution']
-                    self.transaction.lmd['stats_v2'][k]['lightwood_class_map'] = predictions[k]['class_labels']
+                    try:
+                        formated_predictions[f'{k}_class_distribution'] = predictions[k]['class_distribution']
+                        self.transaction.lmd['stats_v2'][k]['lightwood_class_map'] = predictions[k]['class_labels']
+                    except KeyError:
+                        pass
 
                 if self.nr_predictions > 1:
                     formated_predictions[k] = [[x] for x in formated_predictions[k]]

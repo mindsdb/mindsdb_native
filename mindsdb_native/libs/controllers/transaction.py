@@ -392,6 +392,7 @@ class PredictTransaction(Transaction):
                                 DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
                         std_tol = 0.5
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * std_tol
+                        self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = output_data[predicted_col]
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
 
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
@@ -419,6 +420,7 @@ class PredictTransaction(Transaction):
                                 DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
                             significances = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
+                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = output_data[f'{predicted_col}_class_distribution']
                             all_ranges = np.array(
                                 [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
                                     for s in significances])

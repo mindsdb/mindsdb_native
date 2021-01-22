@@ -107,6 +107,7 @@ class ConformalRegressorAdapter(RegressorAdapter):
         self.target = fit_params['target']
         self.columns = fit_params['all_columns']
         self.ignore_columns = fit_params['columns_to_ignore']
+        self.prediction_cache = None
         self.ar = fit_params['use_previous_target']
         if self.ar:
             self.columns.append(f'__mdb_ts_previous_{self.target}')
@@ -133,7 +134,10 @@ class ConformalRegressorAdapter(RegressorAdapter):
         x = _df_from_x(x, cols)
         predictions = self.model.predict(when_data=x)
         ys = np.array(predictions[self.target]['predictions'])
-        return ys
+        print('good', ys)
+        print('new', self.prediction_cache)
+        # return ys
+        return self.prediction_cache
 
 
 class ConformalClassifierAdapter(ClassifierAdapter):
@@ -142,6 +146,7 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         self.target = fit_params['target']
         self.columns = fit_params['all_columns']
         self.ignore_columns = fit_params['columns_to_ignore']
+        self.prediction_cache = None
         self.ar = fit_params['use_previous_target']
         if self.ar:
             self.columns.append(f'__mdb_ts_previous_{self.target}')
@@ -173,13 +178,21 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         ys = np.array(predictions[self.target]['predictions'])
         ys = self.fit_params['one_hot_enc'].transform(ys.reshape(-1, 1))
 
+        print('new', self.prediction_cache)
+        print('new', t_softmax(self.prediction_cache, t=0.5))
+
         try:
             raw = np.array(predictions[self.target]['encoded_predictions'])
             raw_s = np.max(t_softmax(raw, t=0.5), axis=1)
-            return ys * raw_s.reshape(-1, 1)
+            ys = ys * raw_s.reshape(-1, 1)
+            print('good: ', ys)
+            #return ys
         except KeyError:
             # Not all mixers return class probabilities yet
-            return ys
+            print('good: ', ys)
+            #return ys
+
+        return t_softmax(self.prediction_cache, t=0.5)
 
 
 class SelfawareNormalizer(BaseScorer):
