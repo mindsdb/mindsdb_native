@@ -376,9 +376,6 @@ class PredictTransaction(Transaction):
                     typing_info = self.lmd['stats_v2'][predicted_col]['typing']
                     X = deepcopy(icp_X)
 
-                    for i in range(1, self.lmd['tss'].get('nr_predictions', 0)):
-                        X.pop(f'{predicted_col}_timestep_{i}')
-
                     # preserve order that the ICP expects, else bounds are useless
                     X = X.reindex(columns=self.hmd['icp'][predicted_col].index.values)
 
@@ -392,7 +389,12 @@ class PredictTransaction(Transaction):
                                 DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
                         std_tol = 0.5
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * std_tol
-                        self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = output_data[predicted_col]
+                        if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
+                            # bounds in time series are only given for the first forecast
+                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
+                                [p[0] for p in output_data[predicted_col]]
+                        else:
+                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = output_data[predicted_col]
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
 
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):

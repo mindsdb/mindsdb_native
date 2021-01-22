@@ -100,7 +100,11 @@ class ModelAnalyzer(BaseModule):
                     # TODO: expose directly from lightwood and use here, instead of the inferred order
                     icp.nc_function.model.class_map = [i for i in self.transaction.lmd['weight_map'].keys()]
                 else:
-                    icp.nc_function.model.prediction_cache = np.array(normal_predictions[target])
+                    if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['nr_predictions'] > 1:
+                        # time series confidence bounds only at t+1 forecast
+                        icp.nc_function.model.prediction_cache = np.array([p[0] for p in normal_predictions[target]])
+                    else:
+                        icp.nc_function.model.prediction_cache = np.array(normal_predictions[target])
                 self.transaction.hmd['icp'][target] = icp
 
                 if normalizer is not None:
@@ -115,7 +119,7 @@ class ModelAnalyzer(BaseModule):
                 icp_df = deepcopy(validation_df)
                 if self.transaction.lmd['tss']['is_timeseries']:
                    # TODO: erase all ts_reshaping from ICP code, inefficient
-                   icp_df, _, _ = self.transaction.model_backend._ts_reshape(icp_df)
+                   icp_df, _, _, _ = self.transaction.model_backend._ts_reshape(icp_df)
                 y = icp_df.pop(target).values
 
                 if is_classification:
