@@ -28,7 +28,7 @@ from unit_tests.utils import (
 )
 
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
-
+from mindsdb_native.libs.phases.model_interface.lightwood_backend import _ts_add_previous_target
 
 class TestPredictorTimeseries(unittest.TestCase):
     def setUp(self):
@@ -40,7 +40,7 @@ class TestPredictorTimeseries(unittest.TestCase):
         train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
         test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
 
-        features = generate_value_cols(['date', 'int'], data_len, ts_hours * 3600)
+        features = generate_value_cols(['date', 'int', 'int'], data_len, ts_hours * 3600)
         labels = [generate_timeseries_labels(features)]
 
         feature_headers = list(map(lambda col: col[0], features))
@@ -69,6 +69,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             to_predict=label_headers,
             timeseries_settings={
                 'order_by': [feature_headers[0]],
+                'historical_columns': [feature_headers[-1]],
                 'window': 3
             },
             stop_training_in_x_seconds=10,
@@ -88,8 +89,7 @@ class TestPredictorTimeseries(unittest.TestCase):
         for row in [x.explanation[label_headers[0]] for x in results]:
             assert row['confidence_interval'][0] <= row['predicted_value'] <= row['confidence_interval'][1]
 
-        models = F.get_models()
-        model_data = F.get_model_data(models[0]['name'])
+        model_data = F.get_model_data('test_timeseries')
         assert model_data
 
     def test_timeseries_stepahead(self):
@@ -120,7 +120,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             headers=feature_headers
         )
 
-        mdb = Predictor(name='test_timeseries')
+        mdb = Predictor(name='test_timeseries_stepahead')
 
         mdb.learn(
             from_data=train_file_name,
@@ -176,7 +176,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             headers=feature_headers
         )
 
-        mdb = Predictor(name='test_timeseries')
+        mdb = Predictor(name='test_keep_id_orderby')
 
         mdb.learn(
             from_data=train_file_name,
@@ -223,7 +223,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             map(lambda col: col[int(len(col) * 3 / 4):], features))
         columns_to_file(columns_test, test_file_name, headers=feature_headers)
 
-        mdb = Predictor(name='test_timeseries')
+        mdb = Predictor(name='test_keep_order')
 
         mdb.learn(
             from_data=train_file_name,
@@ -245,3 +245,76 @@ class TestPredictorTimeseries(unittest.TestCase):
             # Need to somehow test the internal ordering here (??)
             assert str(row['order_ai_id']) == str(columns_test[2][i])
             assert str(row['3_valued_group_by']) == str(columns_test[3][i])
+
+    def test_ts_add_previous_target(self):
+        df = pd.DataFrame({'a': [*range(1, 10)]})
+
+        for nr_predictions in [1, 2, 3, 4]:
+            for window in [2, 3, 4, 5]:
+                new_df = _ts_add_previous_target(
+                    df,
+                    ['a'],
+                    nr_predictions=nr_predictions,
+                    window=window
+                )
+
+                for x in new_df['__mdb_ts_previous_a']:
+                    assert len(x) == (window + 1)
+
+                for i in range(1, nr_predictions):
+                    # make sure column exists
+                    new_df['a_timestep_{}'.format(i)]
+
+    def test_split_models(self):
+        ts_hours = 18
+        data_len = 600
+        train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
+        test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
+
+        features = generate_value_cols(['date', 'int'], data_len, ts_hours * 3600)
+        labels = [generate_timeseries_labels(features)]
+
+        feature_headers = list(map(lambda col: col[0], features))
+        label_headers = list(map(lambda col: col[0], labels))
+
+        features.append([x for x in range(data_len)])
+        features.append([x % 4 for x in range(data_len)])
+        features.append([x % 5 for x in range(data_len)])
+        feature_headers.append('order_ai_id')
+        feature_headers.append('4_valued_group_by')
+        feature_headers.append('5_valued_group_by')
+        # Create the training dataset and save it to a file
+        columns_train = list(
+            map(lambda col: col[1:int(len(col) * 3 / 4)], features))
+        columns_train.extend(
+            list(map(lambda col: col[1:int(len(col) * 3 / 4)], labels)))
+        columns_to_file(columns_train, train_file_name, headers=[*feature_headers,
+                                                                 *label_headers])
+        # Create the testing dataset and save it to a file
+        columns_test = list(
+            map(lambda col: col[int(len(col) * 3 / 4):], features))
+        columns_to_file(columns_test, test_file_name, headers=feature_headers)
+
+        mdb = Predictor(name='test_split_models')
+
+        mdb.learn(
+            from_data=train_file_name,
+            to_predict=label_headers,
+            timeseries_settings={
+                'order_by': ['order_ai_id']
+                ,'window': 3
+                ,'nr_predictions': 1
+                ,'group_by': ['4_valued_group_by']
+            },
+            stop_training_in_x_seconds=10,
+            use_gpu=False,
+            advanced_args={'debug': True, 'split_models_on': ['5_valued_group_by'], 'quick_learn': True}
+        )
+
+        results = mdb.predict(when_data=test_file_name, use_gpu=False)
+
+        for i, row in enumerate(results):
+            # Need to somehow test the internal ordering here (??)
+            assert str(row['order_ai_id']) == str(columns_test[2][i])
+            assert str(row['4_valued_group_by']) == str(columns_test[3][i])
+            assert str(row['5_valued_group_by']) == str(columns_test[4][i])
