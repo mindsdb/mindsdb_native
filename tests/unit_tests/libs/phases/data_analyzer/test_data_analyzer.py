@@ -35,7 +35,7 @@ class TestDataAnalyzer(unittest.TestCase):
 
         model_data = analyse_dataset(from_data=df)
         for col, col_data in model_data['data_analysis_v2'].items():
-            if col == 'columns':
+            if col in ['columns','useable_input_columns']:
                 continue
             expected_type = test_column_types[col][0]
             expected_subtype = test_column_types[col][1]
@@ -93,7 +93,7 @@ class TestDataAnalyzer(unittest.TestCase):
         df['numeric_int'].iloc[::2] = None
 
         stats = analyse_dataset(df)['data_analysis_v2']
-    
+
         assert stats['numeric_int']['empty']['empty_percentage'] == 50
 
     def test_sample_true_1(self):
@@ -152,7 +152,7 @@ class TestDataAnalyzer(unittest.TestCase):
             assert mock_function.called
 
         for col, col_data in model_data['data_analysis_v2'].items():
-            if col == 'columns':
+            if col in ['columns','useable_input_columns']:
                 continue
             expected_type = test_column_types[col][0]
             expected_subtype = test_column_types[col][1]
@@ -198,7 +198,7 @@ class TestDataAnalyzer(unittest.TestCase):
         model_data = analyse_dataset(from_data=df)
 
         assert model_data['data_analysis_v2']['numeric_int']['empty']['empty_percentage'] == 50
-    
+
     def test_numbers_treatet_as_categories(self):
         n_points = 100
         df = pd.DataFrame({
