@@ -104,15 +104,9 @@ class BoostedSignErrorErrFunc(RegressionErrFunc):
 class ConformalRegressorAdapter(RegressorAdapter):
     def __init__(self, model, fit_params=None):
         super(ConformalRegressorAdapter, self).__init__(model, fit_params)
-        self.target = fit_params['target']
-        self.columns = fit_params['all_columns']
-        self.ignore_columns = fit_params['columns_to_ignore']
         self.prediction_cache = None
-        self.ar = fit_params['use_previous_target']
-        if self.ar:
-            self.columns.append(f'__mdb_ts_previous_{self.target}')
 
-    def fit(self, x, y):
+    def fit(self, x=None, y=None):
         """
         :param x: numpy.array, shape (n_train, n_features)
         :param y: numpy.array, shape (n_train)
@@ -122,7 +116,7 @@ class ConformalRegressorAdapter(RegressorAdapter):
         """
         pass
 
-    def predict(self, x):
+    def predict(self, x=None):
         """
         :param x: numpy.array, shape (n_train, n_features). Raw data for predicting outputs.
         n_features = (|all_cols| - |ignored| - |target|)
@@ -130,38 +124,23 @@ class ConformalRegressorAdapter(RegressorAdapter):
         :return: output compatible with nonconformity function. For default
         ones, this should a numpy.array of shape (n_test) with predicted values
         """
-        cols = filter_cols(self.columns, self.target, self.ignore_columns)
-        x = _df_from_x(x, cols)
-        predictions = self.model.predict(when_data=x)
-        ys = np.array(predictions[self.target]['predictions'])
-        print('good', ys)
-        print('new', self.prediction_cache)
-        # return ys
         return self.prediction_cache
 
 
 class ConformalClassifierAdapter(ClassifierAdapter):
     def __init__(self, model, fit_params=None):
         super(ConformalClassifierAdapter, self).__init__(model, fit_params)
-        self.target = fit_params['target']
-        self.columns = fit_params['all_columns']
-        self.ignore_columns = fit_params['columns_to_ignore']
         self.prediction_cache = None
-        self.ar = fit_params['use_previous_target']
-        if self.ar:
-            self.columns.append(f'__mdb_ts_previous_{self.target}')
 
-    def fit(self, x, y):
+    def fit(self, x=None, y=None):
         """
-        :param x: numpy.array, shape (n_train, n_features)
-        :param y: numpy.array, shape (n_train)
         We omit implementing this method as the Conformal Estimator is called once
         the MindsDB mixer has already been trained. However, it has to be called to
         setup some things in the nonconformist backend.
         """
         pass
 
-    def predict(self, x):
+    def predict(self, x=None):
         """
         :param x: numpy.array, shape (n_train, n_features). Raw data for predicting outputs.
         n_features = (|all_cols| - |ignored| - |target|)
@@ -170,28 +149,6 @@ class ConformalClassifierAdapter(ClassifierAdapter):
         ones, this should a numpy.array of shape (n_test, n_classes) with
         class probability estimates
         """
-        self.model.config['include_extra_data'] = True
-        cols = filter_cols(self.columns, self.target, self.ignore_columns)
-        x = _df_from_x(x, cols)
-        predictions = self.model.predict(when_data=x)  # ToDo: return complete class distribution and labels from lightwood
-
-        ys = np.array(predictions[self.target]['predictions'])
-        ys = self.fit_params['one_hot_enc'].transform(ys.reshape(-1, 1))
-
-        print('new', self.prediction_cache)
-        print('new', t_softmax(self.prediction_cache, t=0.5))
-
-        try:
-            raw = np.array(predictions[self.target]['encoded_predictions'])
-            raw_s = np.max(t_softmax(raw, t=0.5), axis=1)
-            ys = ys * raw_s.reshape(-1, 1)
-            print('good: ', ys)
-            #return ys
-        except KeyError:
-            # Not all mixers return class probabilities yet
-            print('good: ', ys)
-            #return ys
-
         return t_softmax(self.prediction_cache, t=0.5)
 
 

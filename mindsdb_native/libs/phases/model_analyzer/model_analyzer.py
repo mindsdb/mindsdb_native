@@ -57,26 +57,20 @@ class ModelAnalyzer(BaseModule):
                                  DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())
 
             fit_params = {
-                'target': deepcopy(target),
-                'all_columns': deepcopy(self.transaction.lmd['columns']),
                 'columns_to_ignore': [],
-                'use_previous_target': (self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['use_previous_target']),
-                'nr_preds': self.transaction.lmd['tss'].get('nr_predictions', 0),
+                'nr_preds': self.transaction.lmd['tss'].get('nr_predictions', 0)
             }
             fit_params['columns_to_ignore'].extend(self.transaction.lmd['columns_to_ignore'])
             fit_params['columns_to_ignore'].extend([col for col in output_columns if col != target])
             fit_params['columns_to_ignore'].extend([f'{target}_timestep_{i}' for i in range(1, fit_params['nr_preds'])])
 
             if is_classification:
-                fit_params['smoothing'] = False
                 if data_subtype != DATA_SUBTYPES.TAGS:
                     all_classes = np.array(self.transaction.lmd['stats_v2'][target]['histogram']['x'])
                     enc = OneHotEncoder(sparse=False, handle_unknown='ignore')
                     enc.fit(all_classes.reshape(-1, 1))
-                    fit_params['one_hot_enc'] = enc
                     self.transaction.hmd['label_encoders'][target] = enc
                 else:
-                    fit_params['one_hot_enc'] = None
                     self.transaction.hmd['label_encoders'][target] = None
 
                 adapter = ConformalClassifierAdapter
@@ -91,7 +85,7 @@ class ModelAnalyzer(BaseModule):
                 icp_class = IcpRegressor
 
             if data_type in (DATA_TYPES.NUMERIC, DATA_TYPES.SEQUENTIAL) or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
-                model = adapter(self.transaction.model_backend.predictor, fit_params=fit_params)
+                model = adapter(self.transaction.model_backend.predictor)
 
                 if isinstance(self.transaction.model_backend.predictor._mixer, NnMixer) and \
                         self.transaction.model_backend.predictor._mixer.is_selfaware:
@@ -101,11 +95,6 @@ class ModelAnalyzer(BaseModule):
                     normalizer = None
 
                 nc = nc_class(model, nc_function, normalizer=normalizer)
-
-                # X = deepcopy(self.transaction.input_data.validation_df)
-                # if self.transaction.lmd['tss']['is_timeseries']:
-                #     X, _, _ = self.transaction.model_backend._ts_reshape(X)
-                # y = X.pop(target)
 
                 icp = icp_class(nc)
                 if is_classification:
@@ -123,15 +112,7 @@ class ModelAnalyzer(BaseModule):
                 if not is_classification:
                     self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
 
-                # X = clean_df(
-                #    X,
-                #    self.transaction.lmd['stats_v2'],
-                #    output_columns,
-                #    fit_params['columns_to_ignore']
-                # )
-
-
-                self.transaction.hmd['icp'][target].fit(None, None) # X.values, y.values)
+                self.transaction.hmd['icp'][target].fit(None, None)
                 self.transaction.hmd['icp']['active'] = True
 
                 icp_df = deepcopy(validation_df)
