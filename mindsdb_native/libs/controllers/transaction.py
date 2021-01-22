@@ -231,8 +231,8 @@ class LearnTransaction(Transaction):
                 n_cols = len(self.input_data.columns)
                 n_cells = n_cols * self.lmd['data_preparation']['used_row_count']
                 if n_cols >= 80 and n_cells > int(1e5):
-                    self.log.warning('Data has too many columns, setting quick_learn to True')
-                    self.lmd['quick_learn'] = True
+                    self.log.warning('Data has too many columns, disabling column importance feature')
+                    self.lmd['disable_column_importance'] = True
 
             self._call_phase_module(module_name='DataCleaner')
             self.save_metadata()
@@ -267,6 +267,7 @@ class LearnTransaction(Transaction):
             self.lmd['current_phase'] = MODEL_STATUS_ERROR
             self.lmd['error_msg'] = traceback.format_exc()
             self.log.error(str(e))
+            self.save_metadata()
             raise e
 
     def run(self):
@@ -343,12 +344,16 @@ class PredictTransaction(Transaction):
         else:
             predictions_df = self.input_data.data_frame
 
-        for column in self.input_data.columns:
-            if column in self.lmd['predict_columns']:
-                output_data[f'__observed_{column}'] = list(predictions_df[column])
-                output_data[column] = self.hmd['predictions'][column]
+        for col in self.input_data.columns:
+            if col in self.lmd['predict_columns']:
+                output_data[f'__observed_{col}'] = list(predictions_df[col])
+                output_data[col] = self.hmd['predictions'][col]
+
+                if f'{col}_class_distribution' in self.hmd['predictions']:
+                    output_data[f'{col}_class_distribution'] = self.hmd['predictions'][f'{col}_class_distribution']
+                    self.lmd['lightwood_data'][f'{col}_class_map'] = self.lmd['stats_v2'][col]['lightwood_class_map']
             else:
-                output_data[column] = list(predictions_df[column])
+                output_data[col] = list(predictions_df[col])
 
         # confidence estimation
         if self.hmd['icp']['active'] and not self.lmd['quick_predict']:

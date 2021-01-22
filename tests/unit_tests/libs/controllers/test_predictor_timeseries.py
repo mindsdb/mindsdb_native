@@ -40,7 +40,7 @@ class TestPredictorTimeseries(unittest.TestCase):
         train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
         test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
 
-        features = generate_value_cols(['date', 'int'], data_len, ts_hours * 3600)
+        features = generate_value_cols(['date', 'int', 'int'], data_len, ts_hours * 3600)
         labels = [generate_timeseries_labels(features)]
 
         feature_headers = list(map(lambda col: col[0], features))
@@ -69,6 +69,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             to_predict=label_headers,
             timeseries_settings={
                 'order_by': [feature_headers[0]],
+                'historical_columns': [feature_headers[-1]],
                 'window': 3
             },
             stop_training_in_x_seconds=10,
@@ -88,8 +89,7 @@ class TestPredictorTimeseries(unittest.TestCase):
         for row in [x.explanation[label_headers[0]] for x in results]:
             assert row['confidence_interval'][0] <= row['predicted_value'] <= row['confidence_interval'][1]
 
-        models = F.get_models()
-        model_data = F.get_model_data(models[0]['name'])
+        model_data = F.get_model_data('test_timeseries')
         assert model_data
 
     def test_timeseries_stepahead(self):

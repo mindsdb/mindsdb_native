@@ -21,7 +21,7 @@ def _make_pred(row):
 def _ts_to_obj(df, historical_columns):
     for hist_col in historical_columns:
         df.loc[:, hist_col] = df[hist_col].astype(object)
-        return df
+    return df
 
 
 def _ts_order_col_to_cell_lists(df, historical_columns):
@@ -205,8 +205,14 @@ class LightwoodBackend:
                     other_keys['encoder_attrs']['positive_domain'] = True
 
             elif data_type == DATA_TYPES.CATEGORICAL:
+                predict_proba = self.transaction.lmd['output_class_distribution']
+                if col_name in self.transaction.lmd['predict_columns'] and predict_proba:
+                    other_keys['encoder_attrs']['predict_proba'] = predict_proba
+
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     lightwood_data_type = ColumnDataTypes.MULTIPLE_CATEGORICAL
+                    if predict_proba:
+                        self.transaction.log.warning(f'Class distribution not supported for tags prediction\n')
                 else:
                     lightwood_data_type = ColumnDataTypes.CATEGORICAL
 
@@ -281,9 +287,10 @@ class LightwoodBackend:
                         additional_target_config['name'] = f'{col_name}_timestep_{timestep_index}'
                         config['output_features'].append(additional_target_config)
             else:
-                if self.transaction.lmd['tss']['historical_columns']:
+                if col_name in self.transaction.lmd['tss']['historical_columns']:
                     if 'secondary_type' in col_config:
                         col_config['secondary_type'] = col_config['secondary_type']
+                    col_config['original_type'] = col_config['type']
                     col_config['type'] = ColumnDataTypes.TIME_SERIES
 
                 config['input_features'].append(col_config)
@@ -329,33 +336,8 @@ class LightwoodBackend:
             # @TODO: Make sampling work for timeseries
             # @TODO: Alternative, doing train sampling here is really dumb, move to the data extractor
             train_df_gb_map = None
-            if self.transaction.lmd['sample_settings']['sample_for_training']:
-                sample_margin_of_error = self.transaction.lmd['sample_settings']['sample_margin_of_error']
-                sample_confidence_level = self.transaction.lmd['sample_settings']['sample_confidence_level']
-                sample_percentage = self.transaction.lmd['sample_settings']['sample_percentage']
-                sample_function = self.transaction.hmd['sample_function']
-
-                train_df = sample_function(
-                    self.transaction.input_data.train_df,
-                    sample_margin_of_error,
-                    sample_confidence_level,
-                    sample_percentage
-                )
-
-                test_df = sample_function(
-                    self.transaction.input_data.test_df,
-                    sample_margin_of_error,
-                    sample_confidence_level,
-                    sample_percentage
-                )
-
-                sample_size = len(train_df)
-                population_size = len(self.transaction.input_data.train_df)
-
-                self.transaction.log.warning(f'Training on a sample of {round(sample_size * 100 / population_size, 1)}% your data, results can be unexpected.')
-            else:
-                train_df = self.transaction.input_data.train_df
-                test_df = self.transaction.input_data.test_df
+            train_df = self.transaction.input_data.train_df
+            test_df = self.transaction.input_data.test_df
 
         if train_df_gb_map is None:
             train_df_gb_map = {'': train_df}
@@ -552,10 +534,12 @@ class LightwoodBackend:
 
             predictions = self.predictor.predict(when_data=run_df)
 
-
             if self.transaction.lmd['quick_predict']:
                 for k in predictions:
                     formated_predictions[k] = predictions[k]['predictions']
+                    if self.transaction.lmd['output_class_distribution']:
+                        formated_predictions[f'{k}_class_distribution'] = predictions[k]['class_distribution']
+                        self.transaction.lmd['stats_v2'][k]['lightwood_class_map'] = predictions[k]['class_labels']
                     formated_predictions_arr.append(formated_predictions)
                 continue
 
@@ -564,6 +548,9 @@ class LightwoodBackend:
                     continue
 
                 formated_predictions[k] = predictions[k]['predictions']
+                if self.transaction.lmd['output_class_distribution']:
+                    formated_predictions[f'{k}_class_distribution'] = predictions[k]['class_distribution']
+                    self.transaction.lmd['stats_v2'][k]['lightwood_class_map'] = predictions[k]['class_labels']
 
                 if self.nr_predictions > 1:
                     formated_predictions[k] = [[x] for x in formated_predictions[k]]

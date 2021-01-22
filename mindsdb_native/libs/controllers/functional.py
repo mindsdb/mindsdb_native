@@ -60,12 +60,11 @@ def analyse_dataset(from_data, sample_settings=None):
     from_ds = getDS(from_data)
     transaction_type = TRANSACTION_ANALYSE
 
-    sample_for_analysis, sample_for_training, _ = _get_memory_optimizations(from_ds.df)
+    sample_for_analysis, _ = _get_memory_optimizations(from_ds.df)
 
     sample_settings, sample_function = _prepare_sample_settings(
         sample_settings,
-        sample_for_analysis,
-        sample_for_training
+        sample_for_analysis
     )
 
     heavy_transaction_metadata = dict(
@@ -226,6 +225,7 @@ def import_model(model_archive_path, new_name=None):
             pickle.dump(lmd, fp,protocol=pickle.HIGHEST_PROTOCOL)
 
     print('Model files loaded')
+    return lmd['name']
 
 
 def get_model_data(model_name=None, lmd=None):
@@ -372,33 +372,3 @@ def get_model_data(model_name=None, lmd=None):
             amd['model_analysis'].append(mao)
 
     return amd
-
-
-def get_models():
-    models = []
-    predictors = [
-        x for x in Path(CONFIG.MINDSDB_STORAGE_PATH).iterdir() if
-            x.is_dir()
-            and x.joinpath('light_model_metadata.pickle').is_file()
-            and x.joinpath('heavy_model_metadata.pickle').is_file()
-    ]
-    for p in predictors:
-        model_name = p.name
-        try:
-            amd = get_model_data(model_name)
-            model = {}
-
-            KEYS = ['name', 'version', 'is_active', 'predict', 'status', 'train_end_at',
-                    'updated_at', 'created_at','current_phase', 'accuracy', 'data_source']
-
-            for k in KEYS:
-                if k in amd:
-                    model[k] = amd[k]
-                else:
-                    model[k] = None
-
-            models.append(model)
-        except Exception as e:
-            print(f"Can't adapt metadata for model: '{model_name}' when calling `get_models(), error: {e}`")
-
-    return models
