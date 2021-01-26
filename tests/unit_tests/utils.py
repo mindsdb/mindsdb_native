@@ -28,7 +28,7 @@ LARGE_VOCAB = random.sample(VOCAB, 800)
 
 
 def generate_short_sentences(n):
-    return [' '.join(random.sample(VOCAB, random.randint(4, 6))) for _ in range(n)]
+    return [' '.join(random.sample(VOCAB, random.randint(2, 6))) for _ in range(n)]
 
 
 def generate_rich_sentences(n):
