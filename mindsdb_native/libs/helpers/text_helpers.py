@@ -196,6 +196,9 @@ def get_identifier_description(data, column_name, data_type, data_subtype, other
     data = list(data)
     unquie_pct = len(set(data))/len(data)
 
+    lenghts = [len(str(x)) for x in data]
+    mean_len = np.mean(lenghts)
+
     # Detect auto incrementing index
     if data_subtype == DATA_SUBTYPES.INT:
         if get_pct_auto_increment(data) > 0.98 and unquie_pct > 0.99:
@@ -264,5 +267,9 @@ def get_identifier_description(data, column_name, data_type, data_subtype, other
                 return 'UUID'
             else:
                 return 'Unknown identifier'
+
+    # Everything is unique and it's too short to be rich text
+    if data_type not in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE) and unquie_pct > 0.999 and mean_len < 30:
+        return 'Unknown identifier'
 
     return None
