@@ -417,8 +417,6 @@ class LightwoodBackend:
                 if stop_training_after is not None:
                     lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = stop_training_after
 
-                print('\n\n\n',lightwood_config,'\n\n\n')
-
                 self.predictor = lightwood.Predictor(lightwood_config.copy())
 
                 try:
