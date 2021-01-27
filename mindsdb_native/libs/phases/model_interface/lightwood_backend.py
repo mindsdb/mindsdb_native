@@ -390,8 +390,8 @@ class LightwoodBackend:
                     stop_training_after = stop_training_after/len(mixer_classes)
 
                 # If dataset is too large only use NnMixer
-                if train_df.shape[0] * train_df.shape[1] > 3 * pow(10, 5):
-                    mixer_classes = [lightwood.mixers.NnMixer]
+                #if train_df.shape[0] * train_df.shape[1] > 3 * pow(10, 5):
+                #    mixer_classes = [lightwood.mixers.NnMixer]
 
             if self.nn_mixer_only:
                 mixer_classes = [lightwood.mixers.nn.NnMixer]
@@ -417,6 +417,8 @@ class LightwoodBackend:
 
                     if stop_training_after is not None:
                         kwargs['stop_training_after_seconds'] = stop_training_after
+
+                print('\n\n\n',lightwood_config,'\n\n\n')
 
                 self.predictor = lightwood.Predictor(lightwood_config.copy())
 
