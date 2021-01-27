@@ -385,16 +385,9 @@ class LightwoodBackend:
                         raise ValueError(f'Invalid value "{mixer_classes[i]}" in use_mixers')
 
             else:
-                mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
+                mixer_classes = [lightwood.mixers.LightGBMMixer] #, lightwood.mixers.NnMixer
                 if stop_training_after is not None:
-                    if stop_training_after > reasonable_training_time:
-                        mixer_classes = [lightwood.mixers.BoostMixer, lightwood.mixers.NnMixer]
-                        stop_training_after = stop_training_after/len(mixer_classes)
-                    elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
-                        mixer_classes = [lightwood.mixers.NnMixer]
-                    else:
-                        # Should probably be `lightwood.mixers.BoostMixer` but using NnMixer as it's the best tested at the moment
-                        mixer_classes = [lightwood.mixers.NnMixer]
+                    stop_training_after = stop_training_after/len(mixer_classes)
 
                 # If dataset is too large only use NnMixer
                 if train_df.shape[0] * train_df.shape[1] > 3 * pow(10, 5):
