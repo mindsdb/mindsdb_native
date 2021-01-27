@@ -268,7 +268,7 @@ class LightwoodBackend:
                     }
                 config['output_features'].append(col_config)
 
-                if self.transaction.lmd['tss']['use_previous_target']:
+                if  self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['use_previous_target']:
                     p_col_config = copy.deepcopy(col_config)
                     p_col_config['name'] = f"__mdb_ts_previous_{p_col_config['name']}"
                     p_col_config['original_type'] = col_config['type']
