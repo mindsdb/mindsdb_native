@@ -365,6 +365,7 @@ class LightwoodBackend:
 
             use_mixers = self.transaction.lmd.get('use_mixers', None)
             stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
+
             if use_mixers is not None:
                 if isinstance(use_mixers, list):
                     mixer_classes = use_mixers
@@ -410,13 +411,11 @@ class LightwoodBackend:
                     if eval_every_x_epochs < 3:
                         eval_every_x_epochs = 3
 
-                    kwargs = lightwood_config['mixer']['kwargs']
-
-                    kwargs['callback_on_iter'] = self.callback_on_iter
-                    kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
+                    lightwood_config['mixer']['kwargs']['callback_on_iter'] = self.callback_on_iter
+                    lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
 
                 if stop_training_after is not None:
-                    kwargs['stop_training_after_seconds'] = stop_training_after
+                    lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = stop_training_after
 
                 print('\n\n\n',lightwood_config,'\n\n\n')
 
