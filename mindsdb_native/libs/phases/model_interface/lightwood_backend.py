@@ -415,8 +415,8 @@ class LightwoodBackend:
                     kwargs['callback_on_iter'] = self.callback_on_iter
                     kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
 
-                    if stop_training_after is not None:
-                        kwargs['stop_training_after_seconds'] = stop_training_after
+                if stop_training_after is not None:
+                    kwargs['stop_training_after_seconds'] = stop_training_after
 
                 print('\n\n\n',lightwood_config,'\n\n\n')
 
