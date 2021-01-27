@@ -268,6 +268,7 @@ class LightwoodBackend:
                     }
                 config['output_features'].append(col_config)
 
+                print(self.transaction.lmd['tss'])
                 if self.transaction.lmd['tss']['use_previous_target']:
                     p_col_config = copy.deepcopy(col_config)
                     p_col_config['name'] = f"__mdb_ts_previous_{p_col_config['name']}"
