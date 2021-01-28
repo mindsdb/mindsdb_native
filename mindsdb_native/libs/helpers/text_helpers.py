@@ -201,7 +201,7 @@ def get_identifier_description(data, column_name, data_type, data_subtype, other
     max_len = np.max(lenghts)
 
     spaces = [len(str(x).split(' ')) - 1 for x in data]
-    mean_sapces = np.mean(spaces)
+    mean_spaces = np.mean(spaces)
 
     # Detect auto incrementing index
     if data_subtype == DATA_SUBTYPES.INT:

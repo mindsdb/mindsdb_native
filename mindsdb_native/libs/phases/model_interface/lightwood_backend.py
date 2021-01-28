@@ -82,7 +82,9 @@ class LightwoodBackend:
         self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
         # Ideally this will go away soon but still a necessity for now
         self.nn_mixer_only = False
-
+        if self.transaction.lmd['output_class_distribution']:
+            self.nn_mixer_only = True
+            
     def _ts_reshape(self, original_df):
         original_df = copy.deepcopy(original_df)
         gb_arr = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
@@ -401,7 +403,6 @@ class LightwoodBackend:
                 if lightwood_config['mixer']['class'] == lightwood.mixers.NnMixer:
                     # Evaluate less often for larger datasets and vice-versa
                     eval_every_x_epochs = int(round(1 * pow(10, 6) * (1 / len(train_df))))
-
                     # Within some limits
                     if eval_every_x_epochs > 200:
                         eval_every_x_epochs = 200
