@@ -74,7 +74,6 @@ class DataCleaner(BaseModule):
         if len_after_dedupe < len_before_dedupe / 2:
             self.log.warning(f'Less than half of initial rows remain after deduplication. Consider passing `deduplicate_data=False` if training results are sub-par.')
 
-
         if self.transaction.lmd['type'] == TRANSACTION_LEARN:
             # Remove rows that only contain nulls
             df.dropna(axis=0, how='all', inplace=True)
@@ -85,5 +84,15 @@ class DataCleaner(BaseModule):
                     len(df),
                     MINIMUM_ROWS
                 ))
+
+            # remove target outlier rows based on z-score
+            if self.transaction.lmd['remove_target_outliers'] != 0:
+                for target in self.transaction.lmd['predict_columns']:
+                    z_threshold = self.transaction.lmd['remove_target_outliers']
+                    mean = df[target].mean()
+                    sd = df[target].std()
+                    df['scores'] = (df[target] - mean) / sd
+                    df = df[df['scores'] < z_threshold]
+                    df.pop('scores')
 
         self.transaction.input_data.data_frame = df
