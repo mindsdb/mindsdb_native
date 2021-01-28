@@ -371,14 +371,19 @@ class LightwoodBackend:
             else:
                 mixer_classes = [lightwood.mixers.LightGBMMixer, lightwood.mixers.NnMixer]
 
-            for i in range(len(mixer_classes)):
-                if isinstance(mixer_classes[i], str):
+            final_mixer_classes = []
+            for mixer_class in mixer_classes:
+                if isinstance(mixer_class, str):
                     for mx_cls in lightwood.mixers.BaseMixer.__subclasses__():
-                        if mx_cls.__name__ == mixer_classes[i]:
-                            mixer_classes[i] = mx_cls
-                            break
+                        if mx_cls.__name__ == mixer_class:
+                            mixer_class = mx_cls
                     else:
                         raise ValueError(f'Mixer "{mixer_classes[i]}" doesn\'t exist')
+                if mixer_class is not None:
+                    final_mixer_classes.append(mixer_class)
+
+            if len(final_mixer_classes) == 0:
+                raise Exception(f'No valid mixers')
 
             stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
             if stop_training_after is None:
@@ -386,7 +391,7 @@ class LightwoodBackend:
                 stop_training_after = 3600 * 12
             stop_training_after_per_mixer = stop_training_after/len(mixer_classes)
 
-            for mixer_class in mixer_classes:
+            for mixer_class in final_mixer_classes:
                 lightwood_config['mixer']['kwargs'] = {}
                 lightwood_config['mixer']['class'] = mixer_class
 
@@ -401,7 +406,7 @@ class LightwoodBackend:
                         eval_every_x_epochs = 3
 
                     lightwood_config['mixer']['kwargs']['callback_on_iter'] = self.callback_on_iter
-                    lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
+                    lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs / len(final_mixer_classes)
 
                 lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = stop_training_after_per_mixer
 
