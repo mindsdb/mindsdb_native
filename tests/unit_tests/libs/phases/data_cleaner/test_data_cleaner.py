@@ -133,25 +133,24 @@ class TestDataCleaner(unittest.TestCase):
     def test_remove_target_outliers(self):
         data = pd.DataFrame({'x': np.arange(1210),
                              'y': np.hstack([np.random.uniform(0, 1, 400),
-                                             np.random.uniform(1000, 1000, 400),
-                                             np.random.uniform(100, 1000, 400),
+                                             np.random.uniform(100, 1000, 800),
                                              np.random.uniform(1e4, 2e4, 10)])
                              })
 
-        for flag in (True, False):
-            predictor = Predictor(name=f'test_remove_target_outlier_{flag}')
+        for z_score in (3, 0):
+            predictor = Predictor(name=f'test_remove_target_outlier_{z_score}')
             predictor.breakpoint = 'DataCleaner'
             try:
                 predictor.learn(from_data=data,
                                 to_predict='y',
                                 stop_training_in_x_seconds=1,
-                                advanced_args={'remove_target_outliers': flag},
+                                advanced_args={'remove_target_outliers': z_score},  # 0 -> disabled
                                 use_gpu=False)
             except BreakpointException:
                 pass
             else:
                 raise AssertionError
-            if flag:
+            if z_score:
                 assert predictor.transaction.input_data.data_frame['y'].max() <= 1000
             else:
                 assert predictor.transaction.input_data.data_frame['y'].max() > 1000

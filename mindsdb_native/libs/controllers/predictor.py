@@ -262,7 +262,7 @@ class Predictor:
                 apply_to_columns = advanced_args.get('apply_to_columns', {}),
                 disable_column_importance = advanced_args.get('disable_column_importance', False),
                 split_models_on = advanced_args.get('split_models_on', []),
-                remove_target_outliers = advanced_args.get('remove_target_outliers', False)
+                remove_target_outliers = advanced_args.get('remove_target_outliers', 0)
             )
             
             if len(light_transaction_metadata['split_models_on']) > 0 and not light_transaction_metadata['quick_learn']:

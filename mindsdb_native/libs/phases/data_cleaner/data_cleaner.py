@@ -86,9 +86,9 @@ class DataCleaner(BaseModule):
                 ))
 
             # remove target outlier rows based on z-score
-            if self.transaction.lmd['remove_target_outliers']:
+            if self.transaction.lmd['remove_target_outliers'] != 0:
                 for target in self.transaction.lmd['predict_columns']:
-                    z_threshold = 3
+                    z_threshold = self.transaction.lmd['remove_target_outliers']
                     mean = df[target].mean()
                     sd = df[target].std()
                     df['scores'] = (df[target] - mean) / sd
