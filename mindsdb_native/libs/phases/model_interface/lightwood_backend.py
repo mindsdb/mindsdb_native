@@ -366,7 +366,7 @@ class LightwoodBackend:
 
             if self.transaction.lmd.get('use_mixers', None) is not None:
                 mixer_classes = self.transaction.lmd['use_mixers']
-            elif self.nn_mixer_only
+            elif self.nn_mixer_only:
                 mixer_classes = [lightwood.mixers.nn.NnMixer]
             else:
                 mixer_classes = [lightwood.mixers.LightGBMMixer, lightwood.mixers.nn.NnMixer]
