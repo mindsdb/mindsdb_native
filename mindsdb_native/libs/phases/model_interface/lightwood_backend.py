@@ -371,14 +371,6 @@ class LightwoodBackend:
             else:
                 mixer_classes = [lightwood.mixers.LightGBMMixer, lightwood.mixers.nn.NnMixer]
 
-            stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
-            if stop_training_after is None:
-                # Stop training after 12 hours unless the user doesn't want us to
-                stop_training_after = 3600 * 12
-            stop_training_after_per_mixer = stop_training_after/len(mixer_classes)
-
-                mixer_classes = use_mixers if isinstance(use_mixers, list) else [use_mixers]
-
             for i in range(len(mixer_classes)):
                 if isinstance(mixer_classes[i], str):
                     for mx_cls in lightwood.mixers.BaseMixer.__subclasses__():
@@ -387,6 +379,12 @@ class LightwoodBackend:
                             break
                     else:
                         raise ValueError(f'Mixer "{mixer_classes[i]}" doesn\'t exist')
+
+            stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
+            if stop_training_after is None:
+                # Stop training after 12 hours unless the user doesn't want us to
+                stop_training_after = 3600 * 12
+            stop_training_after_per_mixer = stop_training_after/len(mixer_classes)
 
             for mixer_class in mixer_classes:
                 lightwood_config['mixer']['kwargs'] = {}
