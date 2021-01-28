@@ -47,40 +47,6 @@ class ModelAnalyzer(BaseModule):
             backend=self.transaction.model_backend
         )
 
-        for col in output_columns:
-            reals = validation_df[col]
-            preds = normal_predictions[col]
-
-            fails = False
-
-            data_type = self.transaction.lmd['stats_v2'][col]['typing']['data_type']
-            data_subtype = self.transaction.lmd['stats_v2'][col]['typing']['data_subtype']
-
-            if data_type == DATA_TYPES.CATEGORICAL:
-                if data_subtype == DATA_SUBTYPES.TAGS:
-                    encoder = self.transaction.model_backend.predictor._mixer.encoders[col]
-                    if balanced_accuracy_score(encoder.encode(reals).argmax(axis=1), encoder.encode(preds).argmax(axis=1)) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
-                        fails = True
-                else:
-                    if balanced_accuracy_score(reals, preds) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
-                        fails = True
-            elif data_type == DATA_TYPES.NUMERIC:
-                if r2_score(reals, preds) < 0:
-                    fails = True
-            else:
-                pass
-
-            if fails:
-                if self.transaction.lmd['debug']:
-                    pass
-                elif self.transaction.lmd['force_predict']:
-                    pass
-                else:
-                    def predict_wrapper(*args, **kwargs):
-                        raise Exception('Failed to train model')
-                    self.session.predict = predict_wrapper
-                log.error('Failed to train model to predict {}'.format(col))
-
         empty_input_predictions = {}
         empty_input_accuracy = {}
         empty_input_predictions_test = {}
