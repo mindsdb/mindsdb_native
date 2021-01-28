@@ -207,6 +207,12 @@ class Predictor:
                 if not isinstance(advanced_args['user_mixers'],list) and advanced_args['user_mixers'] is not None:
                     advanced_args['user_mixers'] = [advanced_args['user_mixers']]
 
+            if 'remove_target_outliers' in advanced_args:
+                if advanced_args['remove_target_outliers'] == True:
+                    advanced_args['remove_target_outliers'] = 3
+                elif advanced_args['remove_target_outliers'] == False:
+                    advanced_args['remove_target_outliers'] = 0
+                    
             self.log.warning(f'Sample for analysis: {sample_for_analysis}')
 
             heavy_transaction_metadata = dict(
