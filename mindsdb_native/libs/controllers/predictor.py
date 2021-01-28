@@ -203,6 +203,10 @@ class Predictor:
 
             timeseries_settings = _prepare_timeseries_settings(timeseries_settings)
 
+            if 'user_mixers' in advanced_args:
+                if not isinstance(advanced_args['user_mixers'],list) and advanced_args['user_mixers'] is not None:
+                    advanced_args['user_mixers'] = [advanced_args['user_mixers']]
+
             self.log.warning(f'Sample for analysis: {sample_for_analysis}')
 
             heavy_transaction_metadata = dict(
@@ -263,7 +267,7 @@ class Predictor:
                 disable_column_importance = advanced_args.get('disable_column_importance', False),
                 split_models_on = advanced_args.get('split_models_on', [])
             )
-            
+
             if len(light_transaction_metadata['split_models_on']) > 0 and not light_transaction_metadata['quick_learn']:
                 raise Exception('The `split_models_on` parameter only works in quick learn mode')
 
