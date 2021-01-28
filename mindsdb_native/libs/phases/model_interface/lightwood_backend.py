@@ -263,6 +263,9 @@ class LightwoodBackend:
             col_config.update(other_keys)
 
             if col_name in self.transaction.lmd['predict_columns']:
+                if not ((data_type == DATA_TYPES.CATEGORICAL and data_subtype != DATA_SUBTYPES.TAGS) or data_type == DATA_TYPES.NUMERIC):
+                    self.nn_mixer_only = True
+
                 if self.transaction.lmd['tss']['is_timeseries']:
                     col_config['additional_info'] = {
                         'nr_predictions': self.transaction.lmd['tss']['nr_predictions']
