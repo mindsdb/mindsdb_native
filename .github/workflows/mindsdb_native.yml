@@ -29,7 +29,8 @@ jobs:
     - name: Install dependencies Linux
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
-          pip install -r optional_requirements_snowflake.txt;
+          echo 'Installing nothing'
+          #pip install -r optional_requirements_snowflake.txt;
         fi
       shell: bash
       env:
@@ -37,7 +38,7 @@ jobs:
     - name: Install dependencies OSX
       run: |
         if [ "$RUNNER_OS" == "macOS" ]; then
-          pip install -r optional_requirements_snowflake.txt;
+          #pip install -r optional_requirements_snowflake.txt;
           brew install libomp;
         fi
       shell: bash
