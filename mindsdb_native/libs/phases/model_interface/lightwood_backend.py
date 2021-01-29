@@ -80,8 +80,11 @@ class LightwoodBackend:
         self.transaction = transaction
         self.predictor = None
         self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
+        # Ideally this will go away soon but still a necessity for now
         self.nn_mixer_only = False
-
+        if self.transaction.lmd['output_class_distribution']:
+            self.nn_mixer_only = True
+            
     def _ts_reshape(self, original_df):
         original_df = copy.deepcopy(original_df)
         gb_arr = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
@@ -262,13 +265,16 @@ class LightwoodBackend:
             col_config.update(other_keys)
 
             if col_name in self.transaction.lmd['predict_columns']:
+                if not ((data_type == DATA_TYPES.CATEGORICAL and data_subtype != DATA_SUBTYPES.TAGS) or data_type == DATA_TYPES.NUMERIC):
+                    self.nn_mixer_only = True
+
                 if self.transaction.lmd['tss']['is_timeseries']:
                     col_config['additional_info'] = {
                         'nr_predictions': self.transaction.lmd['tss']['nr_predictions']
                     }
                 config['output_features'].append(col_config)
 
-                if self.transaction.lmd['tss']['use_previous_target']:
+                if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['use_previous_target']:
                     p_col_config = copy.deepcopy(col_config)
                     p_col_config['name'] = f"__mdb_ts_previous_{p_col_config['name']}"
                     p_col_config['original_type'] = col_config['type']
@@ -363,67 +369,50 @@ class LightwoodBackend:
 
             predictors_and_accuracies = []
 
-            use_mixers = self.transaction.lmd.get('use_mixers', None)
-            stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
-            if use_mixers is not None:
-                if isinstance(use_mixers, list):
-                    mixer_classes = use_mixers
-                else:
-                    mixer_classes = [use_mixers]
-
-                for i in range(len(mixer_classes)):
-                    if isinstance(mixer_classes[i], str):
-                        for mx_cls in lightwood.mixers.BaseMixer.__subclasses__():
-                            if mx_cls.__name__ == mixer_classes[i]:
-                                mixer_classes[i] = mx_cls
-                                break
-                        else:
-                            raise ValueError(f'Mixer "{mixer_classes[i]}" doesn\'t exist')
-                    elif isinstance(mixer_classes[i], lightwood.mixers.BaseMixer):
-                        pass
-                    else:
-                        raise ValueError(f'Invalid value "{mixer_classes[i]}" in use_mixers')
-
+            if self.transaction.lmd.get('use_mixers', None) is not None:
+                mixer_classes = self.transaction.lmd['use_mixers']
+            elif self.nn_mixer_only:
+                mixer_classes = [lightwood.mixers.NnMixer]
             else:
-                mixer_classes = lightwood.mixers.BaseMixer.__subclasses__()
-                if stop_training_after is not None:
-                    if stop_training_after > reasonable_training_time:
-                        mixer_classes = [lightwood.mixers.BoostMixer, lightwood.mixers.NnMixer]
-                        stop_training_after = stop_training_after/len(mixer_classes)
-                    elif reasonable_training_time / 10 < self.transaction.lmd['stop_training_in_x_seconds'] < reasonable_training_time:
-                        mixer_classes = [lightwood.mixers.NnMixer]
-                    else:
-                        # Should probably be `lightwood.mixers.BoostMixer` but using NnMixer as it's the best tested at the moment
-                        mixer_classes = [lightwood.mixers.NnMixer]
+                mixer_classes = [lightwood.mixers.LightGBMMixer, lightwood.mixers.NnMixer]
 
-                # If dataset is too large only use NnMixer
-                if train_df.shape[0] * train_df.shape[1] > 3 * pow(10, 5):
-                    mixer_classes = [lightwood.mixers.NnMixer]
-
-            if self.nn_mixer_only:
-                mixer_classes = [lightwood.mixers.nn.NnMixer]
-
+            final_mixer_classes = []
             for mixer_class in mixer_classes:
+                if isinstance(mixer_class, str):
+                    for mx_cls in lightwood.mixers.BaseMixer.__subclasses__():
+                        if mx_cls.__name__ == mixer_class:
+                            mixer_class = mx_cls
+                    else:
+                        raise ValueError(f'Mixer "{mixer_classes[i]}" doesn\'t exist')
+                if mixer_class is not None:
+                    final_mixer_classes.append(mixer_class)
+
+            if len(final_mixer_classes) == 0:
+                raise Exception(f'No valid mixers')
+
+            stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
+            if stop_training_after is None:
+                # Stop training after 12 hours unless the user doesn't want us to
+                stop_training_after = 3600 * 12
+            stop_training_after_per_mixer = stop_training_after/len(mixer_classes)
+
+            for mixer_class in final_mixer_classes:
                 lightwood_config['mixer']['kwargs'] = {}
                 lightwood_config['mixer']['class'] = mixer_class
 
                 if lightwood_config['mixer']['class'] == lightwood.mixers.NnMixer:
                     # Evaluate less often for larger datasets and vice-versa
                     eval_every_x_epochs = int(round(1 * pow(10, 6) * (1 / len(train_df))))
-
                     # Within some limits
                     if eval_every_x_epochs > 200:
                         eval_every_x_epochs = 200
                     if eval_every_x_epochs < 3:
                         eval_every_x_epochs = 3
 
-                    kwargs = lightwood_config['mixer']['kwargs']
+                    lightwood_config['mixer']['kwargs']['callback_on_iter'] = self.callback_on_iter
+                    lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs / len(final_mixer_classes)
 
-                    kwargs['callback_on_iter'] = self.callback_on_iter
-                    kwargs['eval_every_x_epochs'] = eval_every_x_epochs / len(mixer_classes)
-
-                    if stop_training_after is not None:
-                        kwargs['stop_training_after_seconds'] = stop_training_after
+                lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = stop_training_after_per_mixer
 
                 self.predictor = lightwood.Predictor(lightwood_config.copy())
 
