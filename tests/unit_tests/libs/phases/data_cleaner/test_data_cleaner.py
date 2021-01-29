@@ -65,7 +65,7 @@ class TestDataCleaner(unittest.TestCase):
             pass
         else:
             raise AssertionError
-        
+
         # Dont compare sets containing np.nan, because for some reason there can be two np.nan in a set
         # and tests fails even though everything works as expected
         notna_values = [x for x in predictor.transaction.input_data.data_frame['my_column'] if not pd.isna(x)]
@@ -112,7 +112,7 @@ class TestDataCleaner(unittest.TestCase):
 
         predictor = Predictor(name='test_force_identifier_usage')
         predictor.breakpoint = 'DataSplitter'
-    
+
         try:
             predictor.learn(
                 from_data=df,
@@ -129,3 +129,28 @@ class TestDataCleaner(unittest.TestCase):
         assert 'do_use' in predictor.transaction.input_data.train_df.columns
         assert 'numeric_id' in predictor.transaction.input_data.train_df.columns
         assert 'numeric_id' not in predictor.transaction.lmd['columns_to_ignore']
+
+    def test_remove_target_outliers(self):
+        data = pd.DataFrame({'x': np.arange(1210),
+                             'y': np.hstack([np.random.uniform(0, 1, 400),
+                                             np.random.uniform(100, 1000, 800),
+                                             np.random.uniform(1e4, 2e4, 10)])
+                             })
+
+        for z_score in (3, 0):
+            predictor = Predictor(name=f'test_remove_target_outlier_{z_score}')
+            predictor.breakpoint = 'DataCleaner'
+            try:
+                predictor.learn(from_data=data,
+                                to_predict='y',
+                                stop_training_in_x_seconds=1,
+                                advanced_args={'remove_target_outliers': z_score},  # 0 -> disabled
+                                use_gpu=False)
+            except BreakpointException:
+                pass
+            else:
+                raise AssertionError
+            if z_score:
+                assert predictor.transaction.input_data.data_frame['y'].max() <= 1000
+            else:
+                assert predictor.transaction.input_data.data_frame['y'].max() > 1000

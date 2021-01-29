@@ -36,7 +36,8 @@ class TransactionOutputRow:
         answers = {}
         for pred_col in self._predict_columns:
             answers[pred_col] = {}
-            prediction_row = {col: self._data[col][self._row_index] for col in self._data.keys()}
+            cols = [col for col in self._data.keys() if '_class_distribution' not in col]
+            prediction_row = {col: self._data[col][self._row_index] for col in cols}
 
             if self._transaction_output._transaction.lmd['tss']['is_timeseries'] and \
                     self._transaction_output._transaction.lmd['tss']['nr_predictions'] > 1:
@@ -45,7 +46,7 @@ class TransactionOutputRow:
             else:
                 answers[pred_col]['predicted_value'] = prediction_row[pred_col]
 
-            if prediction_row[f'{pred_col}_confidence'] is not None:
+            if prediction_row.get(f'{pred_col}_confidence') is not None:
                 answers[pred_col]['confidence'] = round(prediction_row[f'{pred_col}_confidence'], 4)
                 quality = 'very confident'
                 if answers[pred_col]['confidence'] < 0.8:

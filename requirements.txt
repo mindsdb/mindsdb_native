@@ -1,6 +1,6 @@
 colorama >= 0.4.3
 psutil >= 5.7.0
-lightwood == 0.53.0
+lightwood == 0.56.0
 cython >= 0.29.2
 setuptools >= 21.2.1
 wheel >= 0.32.2
@@ -10,7 +10,7 @@ pandas >= 0.23.4
 pytz >= 2018.5
 requests >= 2.23.0
 scipy >= 1.1.0, <= 1.4.1
-scikit-learn >=  0.22.1
+scikit-learn >=  0.22.1, <= 0.23.2
 colorlog >= 4.0.2
 xlrd >= 1.0.0
 ImageHash == 4.0
@@ -22,5 +22,7 @@ portalocker >= 1.7.0
 flair >= 0.5,<=0.6.1
 nonconformist >= 2.1.0
 dill >= 0.3.1.1
-moz_sql_parser >= 3.0.0
+moz_sql_parser >= 3.0.0, < 4.1.20329
 pg8000 >= 1.15.3
+pymssql >= 2.1.4
+pymongo >= 3.10.1

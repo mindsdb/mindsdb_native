@@ -47,49 +47,15 @@ class ModelAnalyzer(BaseModule):
             backend=self.transaction.model_backend
         )
 
-        for col in output_columns:
-            reals = validation_df[col]
-            preds = normal_predictions[col]
-
-            fails = False
-
-            data_type = self.transaction.lmd['stats_v2'][col]['typing']['data_type']
-            data_subtype = self.transaction.lmd['stats_v2'][col]['typing']['data_subtype']
-
-            if data_type == DATA_TYPES.CATEGORICAL:
-                if data_subtype == DATA_SUBTYPES.TAGS:
-                    encoder = self.transaction.model_backend.predictor._mixer.encoders[col]
-                    if balanced_accuracy_score(encoder.encode(reals).argmax(axis=1), encoder.encode(preds).argmax(axis=1)) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
-                        fails = True
-                else:
-                    if balanced_accuracy_score(reals, preds) <= self.transaction.lmd['stats_v2'][col]['balanced_guess_probability']:
-                        fails = True
-            elif data_type == DATA_TYPES.NUMERIC:
-                if r2_score(reals, preds) < 0:
-                    fails = True
-            else:
-                pass
-
-            if fails:
-                if self.transaction.lmd['debug']:
-                    pass
-                elif self.transaction.lmd['force_predict']:
-                    pass
-                else:
-                    def predict_wrapper(*args, **kwargs):
-                        raise Exception('Failed to train model')
-                    self.session.predict = predict_wrapper
-                log.error('Failed to train model to predict {}'.format(col))
-
         empty_input_predictions = {}
         empty_input_accuracy = {}
         empty_input_predictions_test = {}
 
         if not self.transaction.lmd['disable_column_importance']:
             ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH
-                                       and (not self.transaction.lmd['tss']['is_timeseries'] or
-                                            (x not in self.transaction.lmd['tss']['order_by'] and
-                                             x not in self.transaction.lmd['tss']['historical_columns']))]
+                            and (not self.transaction.lmd['tss']['is_timeseries'] or
+                                 (x not in self.transaction.lmd['tss']['order_by'] and
+                                 x not in self.transaction.lmd['tss']['historical_columns']))]
 
             for col in ignorable_input_columns:
                 empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
@@ -250,7 +216,7 @@ class ModelAnalyzer(BaseModule):
 
                 X = deepcopy(self.transaction.input_data.train_df)
                 if self.transaction.lmd['tss']['is_timeseries']:
-                    X, _, _ = self.transaction.model_backend._ts_reshape(X)
+                    X, _, _, _ = self.transaction.model_backend._ts_reshape(X)
                 y = X.pop(target)
 
                 self.transaction.hmd['icp'][target] = icp_class(nc)
@@ -275,7 +241,7 @@ class ModelAnalyzer(BaseModule):
                 # calibrate conformal estimator on test set
                 X = deepcopy(validation_df)
                 if self.transaction.lmd['tss']['is_timeseries']:
-                    X, _, _ = self.transaction.model_backend._ts_reshape(X)
+                    X, _, _, _ = self.transaction.model_backend._ts_reshape(X)
                 y = X.pop(target).values
 
                 if is_classification:

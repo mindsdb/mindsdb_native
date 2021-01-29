@@ -25,18 +25,15 @@ def _get_memory_optimizations(df):
     mem_usage_ratio = df_memory / total_memory
 
     sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > (3 * pow(10, 4))
-    sample_for_training = mem_usage_ratio >= 0.5
     disable_lightwood_transform_cache = mem_usage_ratio >= 0.2
 
-    return sample_for_analysis, sample_for_training, disable_lightwood_transform_cache
+    return sample_for_analysis, disable_lightwood_transform_cache
 
 
 def _prepare_sample_settings(user_provided_settings,
-                             sample_for_analysis,
-                             sample_for_training):
+                             sample_for_analysis):
     default_sample_settings = dict(
         sample_for_analysis=sample_for_analysis,
-        sample_for_training=sample_for_training,
         sample_margin_of_error=0.005,
         sample_confidence_level=1 - 0.005,
         sample_percentage=None,
@@ -168,7 +165,7 @@ class Predictor:
 
         Optional sampling parameters:
         :param sample_settings: dictionary of options for sampling from dataset.
-            Includes `sample_for_analysis`. `sample_for_training`, `sample_margin_of_error`, `sample_confidence_level`, `sample_percentage`, `sample_function`.
+            Includes `sample_for_analysis`. `sample_margin_of_error`, `sample_confidence_level`, `sample_percentage`, `sample_function`.
             Default values depend on the size of input dataset and available memory.
             Generally, the bigger the dataset, the more sampling is used.
 
@@ -198,17 +195,25 @@ class Predictor:
 
             transaction_type = TRANSACTION_LEARN
 
-            sample_for_analysis, sample_for_training, disable_lightwood_transform_cache = _get_memory_optimizations(from_ds.df)
+            sample_for_analysis, disable_lightwood_transform_cache = _get_memory_optimizations(from_ds.df)
             sample_settings, sample_function = _prepare_sample_settings(
                 sample_settings,
-                sample_for_analysis,
-                sample_for_training
+                sample_for_analysis
             )
 
             timeseries_settings = _prepare_timeseries_settings(timeseries_settings)
 
+            if 'user_mixers' in advanced_args:
+                if not isinstance(advanced_args['user_mixers'],list) and advanced_args['user_mixers'] is not None:
+                    advanced_args['user_mixers'] = [advanced_args['user_mixers']]
+
+            if 'remove_target_outliers' in advanced_args:
+                if advanced_args['remove_target_outliers'] == True:
+                    advanced_args['remove_target_outliers'] = 3
+                elif advanced_args['remove_target_outliers'] == False:
+                    advanced_args['remove_target_outliers'] = 0
+                    
             self.log.warning(f'Sample for analysis: {sample_for_analysis}')
-            self.log.warning(f'Sample for training: {sample_for_training}')
 
             heavy_transaction_metadata = dict(
                 name = self.name,
@@ -251,6 +256,7 @@ class Predictor:
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
                 force_column_usage = advanced_args.get('force_column_usage', []),
+                output_class_distribution = advanced_args.get('output_class_distribution', False),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
                 null_values = advanced_args.get('null_values', {}),
@@ -264,8 +270,13 @@ class Predictor:
                 quick_learn = advanced_args.get('quick_learn', None),
                 quick_predict = advanced_args.get('quick_predict', False),
                 apply_to_columns = advanced_args.get('apply_to_columns', {}),
-                disable_column_importance = advanced_args.get('disable_column_importance', False)
+                disable_column_importance = advanced_args.get('disable_column_importance', False),
+                split_models_on = advanced_args.get('split_models_on', []),
+                remove_target_outliers = advanced_args.get('remove_target_outliers', 0)
             )
+
+            if len(light_transaction_metadata['split_models_on']) > 0 and not light_transaction_metadata['quick_learn']:
+                raise Exception('The `split_models_on` parameter only works in quick learn mode')
 
             if rebuild_model is False:
                 old_lmd = {}
@@ -359,7 +370,7 @@ class Predictor:
         advanced_args['quick_predict'] = True
         advanced_args['return_raw_predictions'] = True
 
-        return self.predict(when_data, use_gpu, advanced_args, backend)
+        return self.predict(when_data, use_gpu=use_gpu, advanced_args=advanced_args, backend=backend)
 
     def predict(self,
                 when_data,
@@ -394,7 +405,7 @@ class Predictor:
                 heavy_transaction_metadata['when_data'] = None
             else:
                 heavy_transaction_metadata['when_data'] = when_ds
-                _, _, disable_lightwood_transform_cache = _get_memory_optimizations(when_ds.df)
+                _, disable_lightwood_transform_cache = _get_memory_optimizations(when_ds.df)
             heavy_transaction_metadata['when'] = when
             heavy_transaction_metadata['name'] = self.name
 
