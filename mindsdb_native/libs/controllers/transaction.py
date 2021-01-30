@@ -387,7 +387,7 @@ class PredictTransaction(Transaction):
                     if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
                             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                                 DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
-                        std_tol = 0.5
+                        std_tol = 1
                         tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * std_tol
                         if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
                             # bounds in time series are only given for the first forecast
