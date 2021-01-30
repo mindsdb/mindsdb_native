@@ -361,7 +361,7 @@ class PredictTransaction(Transaction):
             icp_X = deepcopy(predictions_df)
 
             if self.lmd['tss']['is_timeseries']:
-                icp_X, _, _, _ = self.model_backend._ts_reshape(icp_X)
+                icp_X, _, _, _ = self.model_backend._ts_reshape(icp_X)  # TODO: avoid inefficient reshaping
 
             for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
                 if col in icp_X.columns:
@@ -376,9 +376,6 @@ class PredictTransaction(Transaction):
                     typing_info = self.lmd['stats_v2'][predicted_col]['typing']
                     X = deepcopy(icp_X)
 
-                    for i in range(1, self.lmd['tss'].get('nr_predictions', 0)):
-                        X.pop(f'{predicted_col}_timestep_{i}')
-
                     # preserve order that the ICP expects, else bounds are useless
                     X = X.reindex(columns=self.hmd['icp'][predicted_col].index.values)
 
@@ -390,9 +387,14 @@ class PredictTransaction(Transaction):
                     if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
                             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                                 DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
-                        tol_const = 1  # std devs
-                        tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * tol_const
-
+                        std_tol = 1
+                        tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * std_tol
+                        if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
+                            # bounds in time series are only given for the first forecast
+                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
+                                [p[0] for p in output_data[predicted_col]]
+                        else:
+                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = output_data[predicted_col]
                         self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
 
                         for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
@@ -420,6 +422,7 @@ class PredictTransaction(Transaction):
                                 DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
                         if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
                             significances = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
+                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = output_data[f'{predicted_col}_class_distribution']
                             all_ranges = np.array(
                                 [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
                                     for s in significances])

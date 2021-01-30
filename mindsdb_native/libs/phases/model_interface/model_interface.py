@@ -10,7 +10,6 @@ class ModelInterface(BaseModule):
         super().__init__(*args, **kwargs)
         self.predictor = None
         self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
-        self.nn_mixer_only = False
 
     def run(self, mode='train'):
         self.transaction.model_backend = LightwoodBackend(self.transaction)

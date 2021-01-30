@@ -203,6 +203,16 @@ class Predictor:
 
             timeseries_settings = _prepare_timeseries_settings(timeseries_settings)
 
+            if 'user_mixers' in advanced_args:
+                if not isinstance(advanced_args['user_mixers'],list) and advanced_args['user_mixers'] is not None:
+                    advanced_args['user_mixers'] = [advanced_args['user_mixers']]
+
+            if 'remove_target_outliers' in advanced_args:
+                if advanced_args['remove_target_outliers'] == True:
+                    advanced_args['remove_target_outliers'] = 3
+                elif advanced_args['remove_target_outliers'] == False:
+                    advanced_args['remove_target_outliers'] = 0
+                    
             self.log.warning(f'Sample for analysis: {sample_for_analysis}')
 
             heavy_transaction_metadata = dict(
@@ -246,7 +256,7 @@ class Predictor:
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
                 force_column_usage = advanced_args.get('force_column_usage', []),
-                output_class_distribution = advanced_args.get('output_class_distribution', False),
+                output_class_distribution = advanced_args.get('output_class_distribution', True),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
                 null_values = advanced_args.get('null_values', {}),
@@ -261,9 +271,10 @@ class Predictor:
                 quick_predict = advanced_args.get('quick_predict', False),
                 apply_to_columns = advanced_args.get('apply_to_columns', {}),
                 disable_column_importance = advanced_args.get('disable_column_importance', False),
-                split_models_on = advanced_args.get('split_models_on', [])
+                split_models_on = advanced_args.get('split_models_on', []),
+                remove_target_outliers = advanced_args.get('remove_target_outliers', 0)
             )
-            
+
             if len(light_transaction_metadata['split_models_on']) > 0 and not light_transaction_metadata['quick_learn']:
                 raise Exception('The `split_models_on` parameter only works in quick learn mode')
 

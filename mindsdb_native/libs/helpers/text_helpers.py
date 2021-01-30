@@ -200,6 +200,9 @@ def get_identifier_description(data, column_name, data_type, data_subtype, other
     mean_len = np.mean(lenghts)
     max_len = np.max(lenghts)
 
+    spaces = [len(str(x).split(' ')) - 1 for x in data]
+    mean_spaces = np.mean(spaces)
+
     # Detect auto incrementing index
     if data_subtype == DATA_SUBTYPES.INT:
         if get_pct_auto_increment(data) > 0.98 and unquie_pct > 0.99:
@@ -270,7 +273,7 @@ def get_identifier_description(data, column_name, data_type, data_subtype, other
                 return 'Unknown identifier'
 
     # Everything is unique and it's too short to be rich text
-    #if data_type not in (DATA_TYPES.NUMERIC, DATA_TYPES.DATE) and unquie_pct > 0.999 and mean_len < 12 and max_len < 14:
-    #    return 'Unknown identifier'
+    if data_type in (DATA_TYPES.CATEGORICAL, DATA_TYPES.TEXT) and unquie_pct > 0.999 and mean_spaces < 1:
+        return 'Unknown identifier'
 
     return None

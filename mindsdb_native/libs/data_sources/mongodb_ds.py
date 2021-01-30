@@ -28,12 +28,18 @@ class MongoDS(DataSource):
     def query(self, q):
         assert isinstance(q, dict)
 
-        conn = MongoClient(
-            host=self.host,
-            port=self.port,
-            username=self.user,
-            password=self.password
-        )
+        if self.user == '':
+            conn = MongoClient(
+                host=self.host,
+                port=self.port
+            )
+        else:
+            conn = MongoClient(
+                host=self.host,
+                port=self.port,
+                username=self.user,
+                password=self.password
+            )
 
         db = conn[self.database]
         coll = db[self.collection]

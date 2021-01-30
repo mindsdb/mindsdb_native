@@ -196,8 +196,14 @@ def evaluate_regression_accuracy(
         backend,
         **kwargs
     ):
-    r2 = r2_score(true_values, predictions[column])
-    return max(r2, 0)
+    if f'{column}_confidence_range' in predictions:
+        Y = np.array(true_values)
+        ranges = predictions[f'{column}_confidence_range']
+        within = ((Y >= ranges[:, 0]) & (Y <= ranges[:, 1]))
+        return sum(within)/len(within)
+    else:
+        r2 = r2_score(true_values, predictions[column])
+        return max(r2, 0)
 
 
 def evaluate_classification_accuracy(column, predictions, true_values, **kwargs):
