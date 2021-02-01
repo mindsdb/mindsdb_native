@@ -97,8 +97,7 @@ class ModelAnalyzer(BaseModule):
 
                 if is_classification:
                     icp.nc_function.model.prediction_cache = np.array(normal_predictions[f'{target}_class_distribution'])
-                    # TODO: expose directly from lightwood and use here, instead of the inferred order
-                    icp.nc_function.model.class_map = [i for i in self.transaction.lmd['weight_map'].keys()]
+                    icp.nc_function.model.class_map = self.transaction.lmd['stats_v2'][target]['lightwood_class_map']
                 else:
                     if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['nr_predictions'] > 1:
                         # time series confidence bounds only at t+1 forecast
