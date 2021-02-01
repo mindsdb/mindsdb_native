@@ -84,7 +84,7 @@ class LightwoodBackend:
         self.nn_mixer_only = False
         if self.transaction.lmd['output_class_distribution']:
             self.nn_mixer_only = True
-            
+
     def _ts_reshape(self, original_df):
         original_df = copy.deepcopy(original_df)
         gb_arr = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []

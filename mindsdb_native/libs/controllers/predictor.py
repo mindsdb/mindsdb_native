@@ -212,7 +212,7 @@ class Predictor:
                     advanced_args['remove_target_outliers'] = 3
                 elif advanced_args['remove_target_outliers'] == False:
                     advanced_args['remove_target_outliers'] = 0
-                    
+
             self.log.warning(f'Sample for analysis: {sample_for_analysis}')
 
             heavy_transaction_metadata = dict(
@@ -256,7 +256,7 @@ class Predictor:
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
                 force_column_usage = advanced_args.get('force_column_usage', []),
-                output_class_distribution = advanced_args.get('output_class_distribution', True),
+                output_class_distribution = advanced_args.get('output_class_distribution', False),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
                 null_values = advanced_args.get('null_values', {}),
