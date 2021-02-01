@@ -82,8 +82,6 @@ class LightwoodBackend:
         self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
         # Ideally this will go away soon but still a necessity for now
         self.nn_mixer_only = False
-        if self.transaction.lmd['output_class_distribution']:
-            self.nn_mixer_only = True
 
     def _ts_reshape(self, original_df):
         original_df = copy.deepcopy(original_df)
