@@ -301,7 +301,7 @@ class DataAnalyzer(BaseModule):
                     if stats_v2[col_name]['histogram']['x'][0] >= 0:
                         stats_v2[col_name]['positive_domain'] = True
 
-                if data_type == DATA_TYPES.NUMERIC and if len(col_data) >= 2:
+                if data_type == DATA_TYPES.NUMERIC and len(col_data) >= 2:
                     outliers = lof_outliers(data_subtype, col_data)
                     stats_v2[col_name]['outliers'] = {
                         'outlier_values': outliers,
