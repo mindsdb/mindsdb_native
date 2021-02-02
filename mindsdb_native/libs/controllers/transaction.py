@@ -265,7 +265,9 @@ class LearnTransaction(Transaction):
         except Exception as e:
             self.lmd['is_active'] = False
             self.lmd['current_phase'] = MODEL_STATUS_ERROR
-            self.lmd['error_msg'] = traceback.format_exc()
+            self.lmd['stack_trace_on_error'] = traceback.format_exc()
+            # Come  up with a function that tries to explain the error in a more human readable~ish way
+            self.lmd['error_explanation'] = str(e)
             self.log.error(str(e))
             self.save_metadata()
             raise e

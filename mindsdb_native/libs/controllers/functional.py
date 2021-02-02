@@ -260,6 +260,8 @@ def get_model_data(model_name=None, lmd=None):
         amd['status'] = 'complete'
     elif lmd['current_phase'] == MODEL_STATUS_ERROR:
         amd['status'] = 'error'
+        amd['stack_trace_on_error'] = lmd['stack_trace_on_error']
+        amd['error_explanation'] = lmd['error_explanation']
     else:
         amd['status'] = 'training'
 
