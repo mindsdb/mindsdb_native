@@ -3,6 +3,7 @@ import traceback
 from pathlib import Path
 import multiprocessing as mp
 from functools import partial
+import time
 
 import numpy as np
 import pandas as pd
@@ -388,11 +389,24 @@ class LightwoodBackend:
             if len(final_mixer_classes) == 0:
                 raise Exception(f'No valid mixers')
 
+            # @TODO Might be better to turn this into a function
             stop_training_after = self.transaction.lmd['stop_training_in_x_seconds']
             if stop_training_after is None:
                 # Stop training after 12 hours unless the user doesn't want us to
                 stop_training_after = 3600 * 12
-            stop_training_after_per_mixer = stop_training_after/len(mixer_classes)
+
+            took_thus_far = int(time.time() - self.transaction.lmd['learn_started_at'])
+            remaining_time = int(max(0, stop_training_after - took_thus_far))
+            if took_thus_far*2 > stop_training_after:
+                new_remaining_time = stop_training_after
+                self.transaction.log.warning(f'You asked your predictor to stop training too quickly, the data preparation phase alone took {took_thus_far}. We\'d be left with only {remaining_time} to train the underlying machine learning models and analyze them. Will instead try to spend {new_remaining_time} seconds doing so')
+                remaining_time = new_remaining_time
+
+            # We don't know how long the model analysis will last, so let's allocate 1/4th of the remaining time for training to it
+            data_analysis_takes = 1/4
+
+            training_time_per_mixer = (remaining_time*(1-data_analysis_takes))/len(mixer_classes)
+            # @TODO Might be better to turn this into a function
 
             for mixer_class in final_mixer_classes:
                 lightwood_config['mixer']['kwargs'] = {}
@@ -410,7 +424,7 @@ class LightwoodBackend:
                     lightwood_config['mixer']['kwargs']['callback_on_iter'] = self.callback_on_iter
                     lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs / len(final_mixer_classes)
 
-                lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = stop_training_after_per_mixer
+                lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = training_time_per_mixer
 
                 self.predictor = lightwood.Predictor(lightwood_config.copy())
 
@@ -454,7 +468,7 @@ class LightwoodBackend:
 
             if len(predictors_and_accuracies) == 0:
                 raise Exception('All models had an error while training')
-
+                
             best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
 
             # Find predictor with NnMixer
