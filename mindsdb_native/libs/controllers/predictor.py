@@ -4,6 +4,7 @@ import psutil
 import uuid
 import pickle
 import functools
+import time
 
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
@@ -272,7 +273,8 @@ class Predictor:
                 apply_to_columns = advanced_args.get('apply_to_columns', {}),
                 disable_column_importance = advanced_args.get('disable_column_importance', False),
                 split_models_on = advanced_args.get('split_models_on', []),
-                remove_target_outliers = advanced_args.get('remove_target_outliers', 0)
+                remove_target_outliers = advanced_args.get('remove_target_outliers', 0),
+                learn_started_at = time.time()
             )
 
             if len(light_transaction_metadata['split_models_on']) > 0 and not light_transaction_metadata['quick_learn']:
