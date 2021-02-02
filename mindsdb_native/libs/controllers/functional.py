@@ -256,6 +256,8 @@ def get_model_data(model_name=None, lmd=None):
     amd['setup_args'] = lmd.get('setup_args',None)
     amd['test_data_plot'] = lmd.get('test_data_plot',None)
 
+    amd['output_class_distribution'] = lmd.get('output_class_distribution', None)
+
     if lmd['current_phase'] == MODEL_STATUS_TRAINED:
         amd['status'] = 'complete'
     elif lmd['current_phase'] == MODEL_STATUS_ERROR:
