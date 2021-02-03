@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 
 from mindsdb_native.config import CONFIG
@@ -41,6 +42,10 @@ class DataExtractor(BaseModule):
         result = pd.DataFrame(when_conditions_list, columns=self.transaction.lmd['columns'])
 
         return result
+
+    def _unnest_json_fields(self, df):
+
+        return df
 
     def _data_from_when_data(self):
         df = self.transaction.hmd['when_data']
@@ -95,6 +100,7 @@ class DataExtractor(BaseModule):
                 # if no data frame yet, make one
                 df = self._data_from_when()
 
+            df = self._unnest_json_fields(df)
             if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['use_database_history']:
                 self.log.warning('Using automatic database history sourcing, will be selecting rows from the same table you used to train the original model.')
                 if 'make_predictions' not in df.columns:
