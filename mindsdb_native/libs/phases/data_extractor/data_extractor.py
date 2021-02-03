@@ -182,13 +182,22 @@ class DataExtractor(BaseModule):
             self.transaction.lmd['data_source_name'] = self.transaction.hmd['from_data'].name()
 
         # --- Dataset gets randomized or sorted (if timeseries) --- #
-        result = self._get_prepared_input_df()
+        df = self._get_prepared_input_df()
         # --- Dataset gets randomized or sorted (if timeseries) --- #
 
+        # --- Replace -inf/inf values with None --- #
+        null_count_1 = df.isna().sum()
+        df.replace([np.inf, -np.inf], np.nan)
+        null_count_2 = df.isna().sum()
+        inf_count = (null_count_2 - null_count_1)
+        if inf_count > 0:
+            self.log.warning('Your dataset contains {} -inf/inf values, replacing them with None'.format(inf_count))
+        # --- Replace -inf/inf values with None --- #
+
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
-        self.transaction.input_data.columns = [x for x in result.columns.values.tolist() if x != 'make_predictions']
+        self.transaction.input_data.columns = [x for x in df.columns.values.tolist() if x != 'make_predictions']
         self.transaction.lmd['columns'] = self.transaction.input_data.columns
-        self.transaction.input_data.data_frame = result
+        self.transaction.input_data.data_frame = df
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
 
         self._set_user_data_subtypes()
