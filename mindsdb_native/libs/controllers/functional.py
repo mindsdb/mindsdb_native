@@ -251,10 +251,23 @@ def get_model_data(model_name=None, lmd=None):
             amd['timeseries'] = {}
             amd['timeseries']['user_settings'] = lmd['tss']
 
+    if lmd.get('stats_v2') is not None:
+        amd['data_analysis_v2'] = {}
 
-    amd['data_analysis_v2'] = lmd.get('stats_v2',None)
-    amd['setup_args'] = lmd.get('setup_args',None)
-    amd['test_data_plot'] = lmd.get('test_data_plot',None)
+        for k, v in lmd['stats_v2'].items():
+            if k == 'columns_to_ignore':
+                pass # TODO find out why there is an empty 'columns_to_ignore' list in lmd['stats_v2']
+            elif k in ['columns', 'train_std_dev', 'useable_input_columns']:
+                amd[k] = v
+            else:
+                amd['data_analysis_v2'][k] = v
+    else:
+        amd['data_analysis_v2'] = None
+
+    amd['columns_to_ignore'] = lmd.get('columns_to_ignore')
+
+    amd['setup_args'] = lmd.get('setup_args', None)
+    amd['test_data_plot'] = lmd.get('test_data_plot', None)
 
     amd['output_class_distribution'] = lmd.get('output_class_distribution', None)
 
@@ -374,7 +387,5 @@ def get_model_data(model_name=None, lmd=None):
                     mao[key] = lmd[key]
 
             amd['model_analysis'].append(mao)
-
-    amd['data_analysis_v2']['columns_to_ignore'] = lmd['columns_to_ignore']
 
     return amd
