@@ -44,6 +44,32 @@ class DataExtractor(BaseModule):
         return result
 
     def _unnest_json_fields(self, df):
+        self.transaction.lmd['unnest_constant']
+
+        original_columns = df.columns
+        for col in original_columns:
+            try:
+                json_col = df[col].apply(json.loads)
+            except:
+                try:
+                    json_col = df[col].apply(dict)
+                except:
+                    continue
+
+            unnested_fields = pd.json_normalize([self.transaction.lmd['unnested_fields']])
+            unnested_fields = dict(unnested_fields.iloc[0])
+            unnested_df = pd.json_normalize(json_col)
+            for dot_col in unnested_df.columns:
+                if dot_col not in unnested_fields:
+                    unnested_fields[dot_col] = self.transaction.lmd['unnest_constant']
+
+            drop_cols = []
+            for dot_col in unnested_df.columns:
+                if unnested_df[dot_col].isnull().mean() < unnested_fields[dot_col]:
+                    drop_cols.append(dot_col)
+            unnested_df = unnested_df.drop(drop_cols)
+            df.drop([col])
+            df = pd.concat(df,unnested_df)
 
         return df
 
