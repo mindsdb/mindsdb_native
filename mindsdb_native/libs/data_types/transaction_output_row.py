@@ -43,7 +43,7 @@ class TransactionOutputRow:
                 if f'{column}_class_map' in lmd['lightwood_data']:
                     class_map = lmd['lightwood_data'][f'{column}_class_map']
                     class_map_items = list(class_map.items())
-                    class_map_items.sort(key=lambda x: x[0])
+                    class_map_items.sort(key=lambda x: int(x[0]))
                     class_distribution_map[column] = [x[1] for x in class_map_items]
 
         for pred_col in self._predict_columns:
