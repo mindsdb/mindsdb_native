@@ -24,8 +24,12 @@ from mindsdb_native.libs.constants.mindsdb import (
 def try_convert_to_json(val):
     if pd.notnull(val):
         try:
-            return json.loads(val)
-        except:
+            obj = json.loads(val)
+            if isinstance(obj, dict):
+                return obj
+            else:
+                raise Exception('Not a json dictionary (could be an int because json.loads is weird)!')
+        except Exception:
             return dict(val)
     else:
         return {}
@@ -37,6 +41,8 @@ class DataExtractor(BaseModule):
         for col in original_columns:
             try:
                 json_col = df[col].apply(try_convert_to_json)
+                if np.sum(len(x) for x in json_col) == 0:
+                    raise Exception('Empty column !')
             except:
                 continue
 
