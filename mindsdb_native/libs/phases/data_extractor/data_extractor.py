@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 
 from mindsdb_native.config import CONFIG
@@ -20,30 +21,63 @@ from mindsdb_native.libs.constants.mindsdb import (
 )
 
 
+def try_convert_to_json(val):
+    if pd.notnull(val):
+        try:
+            obj = json.loads(val)
+            if isinstance(obj, dict):
+                return obj
+            else:
+                raise Exception('Not a json dictionary (could be an int because json.loads is weird)!')
+        except Exception:
+            return dict(val)
+    else:
+        return {}
+
 class DataExtractor(BaseModule):
-    def _data_from_when(self):
-        """
-        :return:
-        """
-        when_conditions = self.transaction.hmd['when']
+    def _unnest_json_fields(self, df):
+        unnested_columns = []
+        original_columns = df.columns
+        for col in original_columns:
+            try:
+                json_col = df[col].apply(try_convert_to_json)
+                if np.sum(len(x) for x in json_col) == 0:
+                    raise Exception('Empty column !')
+            except:
+                continue
 
-        when_conditions_list = []
-        # here we want to make a list of the type  ( ValueForField1, ValueForField2,..., ValueForFieldN ), ...
-        for when_condition in when_conditions:
-            cond_list = [None] * len(self.transaction.lmd['columns'])  # empty list with blanks for values
+            unnested_df = pd.json_normalize(json_col)
+            unnested_df.columns = [col + '.' + str(subcol) for subcol in unnested_df.columns]
 
-            for condition_col in when_condition:
-                col_index = self.transaction.lmd['columns'].index(condition_col)
-                cond_list[col_index] = when_condition[condition_col]
+            if 'unnested_columns' in self.transaction.lmd:
+                drop_cols = []
+                for dot_col in unnested_df.columns:
+                    if dot_col not in self.transaction.lmd['unnested_columns']:
+                        drop_cols.append(dot_col)
+                unnested_df = unnested_df.drop(columns=drop_cols)
+            else:
+                unnested_fields = pd.json_normalize([self.transaction.lmd['unnested_fields']])
+                unnested_fields = dict(unnested_fields.iloc[0])
+                for dot_col in unnested_df.columns:
+                    if dot_col not in unnested_fields:
+                        unnested_fields[dot_col] = self.transaction.lmd['unnest_constant']
 
-            when_conditions_list.append(cond_list)
+                drop_cols = []
+                for dot_col in unnested_df.columns:
+                    if unnested_df[dot_col].isnull().mean() >= unnested_fields[dot_col]:
+                        drop_cols.append(dot_col)
 
-        result = pd.DataFrame(when_conditions_list, columns=self.transaction.lmd['columns'])
+                unnested_df = unnested_df.drop(columns=drop_cols)
+                df = df.drop(columns=[col])
+                unnested_columns.extend(list(unnested_df.columns))
+                df = pd.concat([df,unnested_df])
 
-        return result
+        if len(unnested_columns) > 0:
+            self.transaction.lmd['unnested_columns'] = unnested_columns
 
-    def _data_from_when_data(self):
-        df = self.transaction.hmd['when_data']
+        return df
+
+    def _data_from_when_data(self, df):
         df = df.where((pd.notnull(df)), None)
 
         for col in self.transaction.lmd['columns']:
@@ -87,13 +121,16 @@ class DataExtractor(BaseModule):
             # make sure we build a dataframe that has all the columns we need
             df = self.transaction.hmd['from_data']
             df = df.where((pd.notnull(df)), None)
+            df = self._unnest_json_fields(df)
 
         if self.transaction.lmd['type'] == TRANSACTION_PREDICT:
             if self.transaction.hmd['when_data'] is not None:
-                df = self._data_from_when_data()
+                df = self.transaction.hmd['when_data']
             else:
-                # if no data frame yet, make one
-                df = self._data_from_when()
+                df = pd.DataFrame(self.transaction.hmd['when'])
+
+            df = self._unnest_json_fields(df)
+            df = self._data_from_when_data(df)
 
             if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['use_database_history']:
                 self.log.warning('Using automatic database history sourcing, will be selecting rows from the same table you used to train the original model.')
