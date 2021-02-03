@@ -1,5 +1,6 @@
 import re
 
+import certifi
 import pandas as pd
 from pymongo import MongoClient
 from pandas.api.types import is_numeric_dtype
@@ -32,14 +33,16 @@ class MongoDS(DataSource):
         if self.user == '':
             conn = MongoClient(
                 host=self.host,
-                port=self.port
+                port=self.port,
+                tlsCAFile=certifi.where()
             )
         else:
             conn = MongoClient(
                 host=self.host,
                 port=self.port,
                 username=self.user,
-                password=self.password
+                password=self.password,
+                tlsCAFile=certifi.where()
             )
 
         db = conn[self.database]
