@@ -347,11 +347,11 @@ def get_model_data(model_name=None, lmd=None):
                 train_acc = lmd['model_accuracy']['train']['combined']
                 test_acc = lmd['model_accuracy']['test']['combined']
 
-                for i in range(0,len(train_acc)):
+                for i in range(0, len(train_acc)):
                     mao['train_accuracy_over_time']['x'].append(i)
                     mao['train_accuracy_over_time']['y'].append(train_acc[i])
 
-                for i in range(0,len(test_acc)):
+                for i in range(0, len(test_acc)):
                     mao['test_accuracy_over_time']['x'].append(i)
                     mao['test_accuracy_over_time']['y'].append([i])
 
@@ -365,7 +365,7 @@ def get_model_data(model_name=None, lmd=None):
                     if icol not in lmd['predict_columns']:
                         try:
                             mao['overall_input_importance']['x'].append(icol)
-                            mao['overall_input_importance']['y'].append(round(lmd['column_importances'][icol],1))
+                            mao['overall_input_importance']['y'].append(round(lmd['column_importances'][icol], 1))
                         except Exception:
                             print(f'No column importances found for {icol} !')
 
@@ -374,5 +374,7 @@ def get_model_data(model_name=None, lmd=None):
                     mao[key] = lmd[key]
 
             amd['model_analysis'].append(mao)
+
+    amd['data_analysis_v2']['columns_to_ignore'] = lmd['columns_to_ignore']
 
     return amd
