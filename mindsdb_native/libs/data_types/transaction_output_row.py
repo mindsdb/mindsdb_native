@@ -34,10 +34,30 @@ class TransactionOutputRow:
 
     def explain(self):
         answers = {}
+
+        lmd = self._transaction_output._transaction.lmd
+        is_output_class_distribution = lmd.get('output_class_distribution', False)
+        class_distribution_map = {}
+        if is_output_class_distribution:
+            for column in self._predict_columns:
+                if f'{column}_class_map' in lmd['lightwood_data']:
+                    class_map = lmd['lightwood_data'][f'{column}_class_map']
+                    class_map_items = list(class_map.items())
+                    class_map_items.sort(key=lambda x: x[0])
+                    class_distribution_map[column] = [x[1] for x in class_map_items]
+
         for pred_col in self._predict_columns:
             answers[pred_col] = {}
             cols = [col for col in self._data.keys() if '_class_distribution' not in col]
             prediction_row = {col: self._data[col][self._row_index] for col in cols}
+
+            if f'{pred_col}_class_distribution' in self._data and pred_col in class_distribution_map:
+                answers[pred_col]['class_distribution'] = dict(
+                    zip(
+                        class_distribution_map[pred_col],
+                        self._data[f'{pred_col}_class_distribution'][0]
+                    )
+                )
 
             if self._transaction_output._transaction.lmd['tss']['is_timeseries'] and \
                     self._transaction_output._transaction.lmd['tss']['nr_predictions'] > 1:
