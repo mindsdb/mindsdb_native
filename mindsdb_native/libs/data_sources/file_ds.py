@@ -65,7 +65,7 @@ class FileDS(DataSource):
         elif fmt == 'json':
             data.seek(0)
             json_doc = json.loads(data.read())
-            df = json_normalize(json_doc)
+            df = json_normalize(json_doc, max_level=1)
             header = df.columns.values.tolist()
             file_data = df.values.tolist()
 

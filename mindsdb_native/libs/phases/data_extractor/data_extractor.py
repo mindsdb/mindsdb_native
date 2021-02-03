@@ -44,8 +44,8 @@ class DataExtractor(BaseModule):
         return result
 
     def _unnest_json_fields(self, df):
-        self.transaction.lmd['unnest_constant']
 
+        unnested_columns = []
         original_columns = df.columns
         for col in original_columns:
             try:
@@ -56,21 +56,33 @@ class DataExtractor(BaseModule):
                 except:
                     continue
 
-            unnested_fields = pd.json_normalize([self.transaction.lmd['unnested_fields']])
-            unnested_fields = dict(unnested_fields.iloc[0])
             unnested_df = pd.json_normalize(json_col)
-            for dot_col in unnested_df.columns:
-                if dot_col not in unnested_fields:
-                    unnested_fields[dot_col] = self.transaction.lmd['unnest_constant']
+            if 'unnested_columns' in self.transaction.lmd:
+                print('\n\n\n\n', self.transaction.lmd['unnested_columns'], '\n\n\n\n')
+            if 'unnested_columns' in self.transaction.lmd:
+                drop_cols = []
+                for dot_col in unnested_df.columns:
+                    if dot_col not in self.transaction.lmd['unnested_columns']:
+                        drop_cols.append(dot_col)
+                unnested_df = unnested_df.drop([drop_cols])
+            else:
+                unnested_fields = pd.json_normalize([self.transaction.lmd['unnested_fields']])
+                unnested_fields = dict(unnested_fields.iloc[0])
+                for dot_col in unnested_df.columns:
+                    if dot_col not in unnested_fields:
+                        unnested_fields[dot_col] = self.transaction.lmd['unnest_constant']
 
-            drop_cols = []
-            for dot_col in unnested_df.columns:
-                if unnested_df[dot_col].isnull().mean() < unnested_fields[dot_col]:
-                    drop_cols.append(dot_col)
-            unnested_df = unnested_df.drop(drop_cols)
-            df.drop([col])
-            df = pd.concat(df,unnested_df)
+                drop_cols = []
+                for dot_col in unnested_df.columns:
+                    if unnested_df[dot_col].isnull().mean() < unnested_fields[dot_col]:
+                        drop_cols.append(dot_col)
+                unnested_df = unnested_df.drop(drop_cols)
+                df = df.drop([col])
+                unnested_columns.append(list(unnested_df.columns))
+                df = pd.concat(df,unnested_df)
 
+        self.transaction.lmd['unnested_columns'] = unnested_columns
+        print('\n\n\n\n', self.transaction.lmd['unnested_columns'], '\n\n\n\n')
         return df
 
     def _data_from_when_data(self):
@@ -118,13 +130,15 @@ class DataExtractor(BaseModule):
             # make sure we build a dataframe that has all the columns we need
             df = self.transaction.hmd['from_data']
             df = df.where((pd.notnull(df)), None)
-
+            df = self._unnest_json_fields(df)
+            
         if self.transaction.lmd['type'] == TRANSACTION_PREDICT:
             if self.transaction.hmd['when_data'] is not None:
                 df = self._data_from_when_data()
             else:
                 # if no data frame yet, make one
-                df = self._data_from_when()
+                #df = self._data_from_when()
+                df = pd.DataFrame(self.transaction.hmd['when'])
 
             df = self._unnest_json_fields(df)
             if self.transaction.lmd['setup_args'] is not None and self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['use_database_history']:
