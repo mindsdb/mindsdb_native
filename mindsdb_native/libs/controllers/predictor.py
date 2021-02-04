@@ -35,7 +35,7 @@ def _prepare_sample_settings(user_provided_settings,
                              sample_for_analysis):
     default_sample_settings = dict(
         sample_for_analysis=sample_for_analysis,
-        sample_margin_of_error=0.02,
+        sample_margin_of_error=0.01,
         sample_confidence_level=1 - 0.005,
         sample_percentage=None,
         sample_function=sample_data
