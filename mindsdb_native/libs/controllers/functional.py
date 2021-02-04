@@ -88,9 +88,7 @@ def analyse_dataset(from_data, sample_settings=None):
         force_column_usage = [],
         force_categorical_encoding = [],
         data_types = {},
-        data_subtypes = {},
-        unnest_constant = 0.99,
-        unnested_fields = {}
+        data_subtypes = {}
     )
 
     tx = AnalyseTransaction(
