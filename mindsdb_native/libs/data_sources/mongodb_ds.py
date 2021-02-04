@@ -30,20 +30,29 @@ class MongoDS(DataSource):
     def query(self, q):
         assert isinstance(q, dict)
 
-        if self.user == '':
-            conn = MongoClient(
-                host=self.host,
-                port=self.port,
-                tlsCAFile=certifi.where()
-            )
-        else:
-            conn = MongoClient(
-                host=self.host,
-                port=self.port,
-                username=self.user,
-                password=self.password,
-                tlsCAFile=certifi.where()
-            )
+        kwargs = {}
+
+        if isinstance(self.user, str) and len(self.user) > 0:
+            kwargs['username'] = self.user
+
+        if isinstance(self.password, str) and len(self.password) > 0:
+            kwargs['password'] = self.password
+
+        if re.match(r'\/\?.*tls=true', self.host.lower()):
+            kwargs['tls'] = True
+
+        if re.match(r'\/\?.*tls=false', self.host.lower()):
+            kwargs['tls'] = False
+
+        if re.match(r'.*\.mongodb.net', self.host.lower()) and kwargs.get('tls', None) is None:
+            kwargs['tls'] = True
+
+        conn = MongoClient(
+            host=self.host,
+            port=self.port,
+            tlsCAFile=certifi.where(),
+            **kwargs
+        )
 
         db = conn[self.database]
         coll = db[self.collection]
