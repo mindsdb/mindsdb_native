@@ -382,7 +382,7 @@ class LightwoodBackend:
                         if mx_cls.__name__ == mixer_class:
                             mixer_class = mx_cls
                     else:
-                        raise ValueError(f'Mixer "{mixer_classes[i]}" doesn\'t exist')
+                        raise ValueError(f'Mixer "{mixer_class}" doesn\'t exist')
                 if mixer_class is not None:
                     final_mixer_classes.append(mixer_class)
 
@@ -468,7 +468,7 @@ class LightwoodBackend:
 
             if len(predictors_and_accuracies) == 0:
                 raise Exception('All models had an error while training')
-                
+
             best_predictor, best_accuracy = max(predictors_and_accuracies, key=lambda x: x[1])
 
             # Find predictor with NnMixer
