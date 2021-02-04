@@ -61,13 +61,10 @@ class FileDS(DataSource):
             file_data = df.values.tolist()
 
         elif fmt == 'json':
-            print(1)
             data.seek(0)
             json_doc = json.loads(data.read())
-            print(2)
             df = pd.json_normalize(json_doc, max_level=0)
             header = df.columns.values.tolist()
-            print(3)
             file_data = df.values.tolist()
 
         else:

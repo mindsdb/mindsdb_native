@@ -1,5 +1,7 @@
 import json
 import pandas as pd
+import numpy as np
+
 
 def try_convert_to_dict(val):
     if pd.notnull(val):
@@ -20,7 +22,7 @@ def unnest_df(df):
     unnested = 0
     for col in original_columns:
         try:
-            json_col = df[col].apply(try_convert_to_json)
+            json_col = df[col].apply(try_convert_to_dict)
             if np.sum(len(x) for x in json_col) == 0:
                 raise Exception('Empty column !')
         except:
