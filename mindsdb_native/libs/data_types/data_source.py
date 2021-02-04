@@ -11,7 +11,14 @@ from mindsdb_native.libs.constants.mindsdb import (
     DATA_SUBTYPES
 )
 from mindsdb_native.libs.data_types.mindsdb_logger import log
+from mindsdb_native.libs.helpers.json_helpers import unnest_columns
 
+def unnest(df, col_map=None):
+    df, unnested = unnest_columns(df)
+    if unnested > 0 or col_map is None:
+        for col in df.columns:
+            col_map[col] = col
+    return df, col_map
 
 class DataSource:
     def __init__(self, df=None, query=None):
@@ -23,6 +30,7 @@ class DataSource:
         if df is not None:
             self._internal_df = df
             self._internal_col_map = self._make_colmap(df)
+            self.unnest()
         else:
             self._internal_df = None
             self._internal_col_map = None
@@ -56,10 +64,14 @@ class DataSource:
             else:
                 raise ValueError(f'Invalid data subtype: {subtype}')
 
-    @property
-    def df(self):
+    def extract(self):
         if self._internal_df is None:
             self._internal_df, self._internal_col_map = self.query(self._query)
+            self._internal_df, self._internal_col_map = unnest(self._internal_df, self._internal_col_map)
+
+    @property
+    def df(self):
+        self.extract()
         return self._internal_df
 
     @df.setter
@@ -68,8 +80,7 @@ class DataSource:
 
     @property
     def _col_map(self):
-        if self._internal_col_map is None:
-            self._internal_df, self._internal_col_map = self.query(self._query)
+        self.extract()
         return self._internal_col_map
 
     @_col_map.setter
@@ -235,7 +246,8 @@ class SQLDataSource(DataSource):
     @property
     def _col_map(self):
         if self._internal_col_map is None:
-            _, self._internal_col_map = self.filter(where=[], limit=1, get_col_map=True)
+            df, cols = self.filter(where=[], limit=200, get_col_map=True)
+            _, self._internal_col_map = unnest(df, cols)
         return self._internal_col_map
 
     def name(self):
