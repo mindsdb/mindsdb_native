@@ -44,13 +44,14 @@ class MongoDS(DataSource):
         if re.match(r'\/\?.*tls=false', self.host.lower()):
             kwargs['tls'] = False
 
-        if re.match(r'.*\.mongodb.net', self.host.lower()) and kwargs.get('tls', None) is None:
-            kwargs['tls'] = True
+        if re.match(r'.*\.mongodb.net', self.host.lower()):
+            kwargs['tlsCAFile'] = certifi.where()
+            if kwargs.get('tls', None) is None:
+                kwargs['tls'] = True
 
         conn = MongoClient(
             host=self.host,
             port=self.port,
-            tlsCAFile=certifi.where(),
             **kwargs
         )
 
