@@ -28,7 +28,7 @@ from mindsdb_native.libs.constants.mindsdb import (
 
 def lof_outliers(col_subtype, col_data):
     lof = LocalOutlierFactor(contamination='auto')
-    outlier_scores = lof.fit_predict(np.array(col_data).reshape(-1, 1)	)
+    outlier_scores = lof.fit_predict(np.array(col_data).reshape(-1, 1))
 
     outliers = [col_data[i] for i in range(len(col_data)) if outlier_scores[i] < -0.8]
 
@@ -36,6 +36,7 @@ def lof_outliers(col_subtype, col_data):
         outliers = [int(x) for x in outliers]
 
     return outliers
+
 
 def clean_int_and_date_data(col_data, log):
     cleaned_data = []
@@ -296,6 +297,11 @@ class DataAnalyzer(BaseModule):
                     stats_v2[col_name]['bias']['warning'] = warning_str + " This doesn't necessarily mean there's an issue with your data, it just indicates a higher than usual probability there might be some issue."
 
                 if data_type == DATA_TYPES.NUMERIC:
+                    # specify positive numerical domain
+                    if stats_v2[col_name]['histogram']['x'][0] >= 0:
+                        stats_v2[col_name]['positive_domain'] = True
+
+                if data_type == DATA_TYPES.NUMERIC and len(col_data) >= 2:
                     outliers = lof_outliers(data_subtype, col_data)
                     stats_v2[col_name]['outliers'] = {
                         'outlier_values': outliers,
@@ -308,9 +314,6 @@ class DataAnalyzer(BaseModule):
                         ),
                         'description': """Potential outliers can be thought as the "extremes", i.e., data points that are far from the center of mass (mean/median/interquartile range) of the data."""
                     }
-                    # specify positive numerical domain
-                    if stats_v2[col_name]['histogram']['x'][0] >= 0:
-                        stats_v2[col_name]['positive_domain'] = True
 
             stats_v2[col_name]['nr_warnings'] = 0
             for x in stats_v2[col_name].values():
