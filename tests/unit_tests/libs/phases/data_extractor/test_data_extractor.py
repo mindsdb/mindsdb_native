@@ -60,6 +60,8 @@ class TestDataExtractor(unittest.TestCase):
         else:
             raise AssertionError
         
-        null_count = predictor.transaction.input_data.data_frame.isna().sum()
+        null_count = 0
+        for col in predictor.transaction.input_data.data_frame.columns:
+            null_count += predictor.transaction.input_data.data_frame[col].isna().sum()
 
         assert null_count == 6
