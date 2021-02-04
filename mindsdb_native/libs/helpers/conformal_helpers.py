@@ -39,8 +39,7 @@ def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
         all_ranges = icp.predict(X.values)
 
         # iterate over confidence levels until spread >= a multiplier of the dataset stddev
-        significances = [*range(0, 10), *range(10, 30, 5), *range(40, 100, 10)]
-        for significance in significances:
+        for significance in range(100):
             ranges = all_ranges[:, :, significance]
             spread = np.mean(ranges[:, 1] - ranges[:, 0])
             tolerance = lmd['stats_v2']['train_std_dev'][target] * std_tol
@@ -64,28 +63,25 @@ def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
     return 0.005, np.zeros_like((X.size, 2)).reshape(1, -1)
 
 
-class BoostedSignErrorErrFunc(RegressionErrFunc):
-    """Calculates signed error nonconformity for regression problems. Applies linear interpolation
+class BoostedAbsErrorErrFunc(RegressionErrFunc):
+    """Calculates absolute error nonconformity for regression problems. Applies linear interpolation
     for nonconformity scores when we have less than 100 samples in the validation dataset.
     """
-
     def __init__(self):
-        super(BoostedSignErrorErrFunc, self).__init__()
+        super(BoostedAbsErrorErrFunc, self).__init__()
 
     def apply(self, prediction, y):
-        return prediction - y
+        return np.abs(prediction - y)
 
     def apply_inverse(self, nc, significance):
         nc = np.sort(nc)[::-1]
+        border = int(np.floor(significance * (nc.size + 1))) - 1
         if 1 < nc.size < 100:
             x = np.arange(nc.shape[0])
             interp = interp1d(x, nc)
             nc = interp(np.linspace(0, nc.size-1, 100))
-        upper = int(np.floor((significance / 2) * (nc.size + 1)))
-        lower = int(np.floor((1 - significance / 2) * (nc.size + 1)))
-        upper = min(max(upper, 0), nc.size - 1)
-        lower = max(min(lower, nc.size - 1), 0)
-        return np.vstack([-nc[lower], nc[upper]])
+        border = min(max(border, 0), nc.size - 1)
+        return np.vstack([nc[border], nc[border]])
 
 
 class ConformalRegressorAdapter(RegressorAdapter):
