@@ -39,7 +39,7 @@ def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
         all_ranges = icp.predict(X.values)
 
         # iterate over confidence levels until spread >= a multiplier of the dataset stddev
-        for significance in range(100):
+        for significance in range(99):
             ranges = all_ranges[:, :, significance]
             spread = np.mean(ranges[:, 1] - ranges[:, 0])
             tolerance = lmd['stats_v2']['train_std_dev'][target] * std_tol
