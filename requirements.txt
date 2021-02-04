@@ -26,3 +26,6 @@ moz_sql_parser >= 3.0.0, < 4.1.20329
 pg8000 >= 1.15.3
 pymssql >= 2.1.4
 pymongo >= 3.10.1
+dnspython
+pymongo[tls]
+certifi
