@@ -177,6 +177,12 @@ class DataExtractor(BaseModule):
                 self.transaction.lmd['data_types'][col] = self.transaction.hmd['from_data'].data_types[col]
                 self.transaction.lmd['data_subtypes'][col] = self.transaction.hmd['from_data'].data_subtypes[col]
 
+    def _count_isna(self, df):
+        count = 0
+        for col in df.columns:
+            count += df[col].isna().sum()
+        return count
+
     def run(self):
         if self.transaction.hmd.get('from_data') is not None:
             self.transaction.lmd['data_source_name'] = self.transaction.hmd['from_data'].name()
@@ -186,9 +192,9 @@ class DataExtractor(BaseModule):
         # --- Dataset gets randomized or sorted (if timeseries) --- #
 
         # --- Replace -inf/inf values with None --- #
-        null_count_1 = df.isna().sum()
-        df.replace([np.inf, -np.inf], np.nan)
-        null_count_2 = df.isna().sum()
+        null_count_1 = self._count_isna(df)
+        df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        null_count_2 = self._count_isna(df)
         inf_count = (null_count_2 - null_count_1)
         if inf_count > 0:
             self.log.warning('Your dataset contains {} -inf/inf values, replacing them with None'.format(inf_count))
