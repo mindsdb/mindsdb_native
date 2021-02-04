@@ -6,7 +6,6 @@ import json
 import traceback
 
 import pandas as pd
-from pandas.io.json import json_normalize
 import requests
 
 from mindsdb_native.libs.data_types.data_source import DataSource
@@ -65,7 +64,7 @@ class FileDS(DataSource):
         elif fmt == 'json':
             data.seek(0)
             json_doc = json.loads(data.read())
-            df = json_normalize(json_doc, max_level=0)
+            df = pd.json_normalize(json_doc, max_level=0)
             header = df.columns.values.tolist()
             file_data = df.values.tolist()
 
