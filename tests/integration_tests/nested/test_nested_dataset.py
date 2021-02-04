@@ -53,14 +53,7 @@ class TestNestedDataset(unittest.TestCase):
         self.expected_columns = ['Airport.Name', 'Time.Label', 'Time.Month', 'Time.Month Name', 'Time.Year', 'Statistics.# of Delays.Carrier', 'Statistics.# of Delays.Late Aircraft', 'Statistics.# of Delays.National Aviation System', 'Statistics.# of Delays.Security', 'Statistics.# of Delays.Weather', 'Statistics.Carriers.Names', 'Statistics.Carriers.Total', 'Statistics.Flights.Cancelled', 'Statistics.Flights.Delayed', 'Statistics.Flights.Diverted', 'Statistics.Flights.On Time', 'Statistics.Flights.Total', 'Statistics.Minutes Delayed.Carrier', 'Statistics.Minutes Delayed.Late Aircraft', 'Statistics.Minutes Delayed.National Aviation System', 'Statistics.Minutes Delayed.Security', 'Statistics.Minutes Delayed.Total', 'Statistics.Minutes Delayed.Weather']
 
     def test_1_airline_delays_train(self):
-        self.pred.learn(from_data='https://raw.githubusercontent.com/mindsdb/benchmarks/main/datasets/airline_delays/data.json', stop_training_in_x_seconds=100, to_predict='Statistics.Flights.Delayed', advanced_args={
-            'unnested_fields': {
-                'Airport': {
-                    'Name': 0.99
-                    ,'Code': 0
-                }
-            }
-        })
+        self.pred.learn(from_data='https://raw.githubusercontent.com/mindsdb/benchmarks/main/datasets/airline_delays/data.json', stop_training_in_x_seconds=100, to_predict='Statistics.Flights.Delayed')
 
     def test_2_airline_delays_data(self):
         model_data = F.get_model_data('airline_delays_train')

@@ -11,11 +11,12 @@ from mindsdb_native.libs.constants.mindsdb import (
     DATA_SUBTYPES
 )
 from mindsdb_native.libs.data_types.mindsdb_logger import log
-from mindsdb_native.libs.helpers.json_helpers import unnest_columns
+from mindsdb_native.libs.helpers.json_helpers import unnest_df
 
-def unnest(df, col_map=None):
-    df, unnested = unnest_columns(df)
-    if unnested > 0 or col_map is None:
+def unnest(df, col_map):
+    df, unnested = unnest_df(df)
+    if unnested > 0:
+        col_map = {}
         for col in df.columns:
             col_map[col] = col
     return df, col_map
@@ -30,7 +31,7 @@ class DataSource:
         if df is not None:
             self._internal_df = df
             self._internal_col_map = self._make_colmap(df)
-            self.unnest()
+            self._internal_df, self._internal_col_map = unnest(self._internal_df, self._internal_col_map)
         else:
             self._internal_df = None
             self._internal_col_map = None
@@ -64,14 +65,14 @@ class DataSource:
             else:
                 raise ValueError(f'Invalid data subtype: {subtype}')
 
-    def extract(self):
+    def _extract_and_map(self):
         if self._internal_df is None:
             self._internal_df, self._internal_col_map = self.query(self._query)
             self._internal_df, self._internal_col_map = unnest(self._internal_df, self._internal_col_map)
 
     @property
     def df(self):
-        self.extract()
+        self._extract_and_map()
         return self._internal_df
 
     @df.setter
@@ -80,7 +81,7 @@ class DataSource:
 
     @property
     def _col_map(self):
-        self.extract()
+        self._extract_and_map()
         return self._internal_col_map
 
     @_col_map.setter
@@ -233,10 +234,12 @@ class SQLDataSource(DataSource):
                 if f"'{col}'" in query:
                     query = query.replace(f"'{col}'", col)
 
+            df, col_map = self.query(query)
+            df, col_map = unnest(df, col_map)
             if get_col_map:
-                return self.query(query)
+                return df, col_map
             else:
-                return self.query(query)[0]
+                return df, col_map
 
         except Exception as e:
             print(traceback.format_exc())
@@ -246,8 +249,7 @@ class SQLDataSource(DataSource):
     @property
     def _col_map(self):
         if self._internal_col_map is None:
-            df, cols = self.filter(where=[], limit=200, get_col_map=True)
-            _, self._internal_col_map = unnest(df, cols)
+            _, self._internal_col_map = self.filter(where=[], limit=200, get_col_map=True)
         return self._internal_col_map
 
     def name(self):
