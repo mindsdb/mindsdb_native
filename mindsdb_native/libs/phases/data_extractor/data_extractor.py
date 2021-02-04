@@ -214,18 +214,33 @@ class DataExtractor(BaseModule):
                 self.transaction.lmd['data_types'][col] = self.transaction.hmd['from_data'].data_types[col]
                 self.transaction.lmd['data_subtypes'][col] = self.transaction.hmd['from_data'].data_subtypes[col]
 
+    def _count_isna(self, df):
+        count = 0
+        for col in df.columns:
+            count += df[col].isna().sum()
+        return count
+
     def run(self):
         if self.transaction.hmd.get('from_data') is not None:
             self.transaction.lmd['data_source_name'] = self.transaction.hmd['from_data'].name()
 
         # --- Dataset gets randomized or sorted (if timeseries) --- #
-        result = self._get_prepared_input_df()
+        df = self._get_prepared_input_df()
         # --- Dataset gets randomized or sorted (if timeseries) --- #
 
+        # --- Replace -inf/inf values with None --- #
+        null_count_1 = self._count_isna(df)
+        df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        null_count_2 = self._count_isna(df)
+        inf_count = (null_count_2 - null_count_1)
+        if inf_count > 0:
+            self.log.warning('Your dataset contains {} -inf/inf values, replacing them with None'.format(inf_count))
+        # --- Replace -inf/inf values with None --- #
+
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
-        self.transaction.input_data.columns = [x for x in result.columns.values.tolist() if x != 'make_predictions']
+        self.transaction.input_data.columns = [x for x in df.columns.values.tolist() if x != 'make_predictions']
         self.transaction.lmd['columns'] = self.transaction.input_data.columns
-        self.transaction.input_data.data_frame = result
+        self.transaction.input_data.data_frame = df
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
 
         self._set_user_data_subtypes()
