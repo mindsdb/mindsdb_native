@@ -381,6 +381,7 @@ class LightwoodBackend:
                     for mx_cls in lightwood.mixers.BaseMixer.__subclasses__():
                         if mx_cls.__name__ == mixer_class:
                             mixer_class = mx_cls
+                            break
                     else:
                         raise ValueError(f'Mixer "{mixer_class}" doesn\'t exist')
                 if mixer_class is not None:
