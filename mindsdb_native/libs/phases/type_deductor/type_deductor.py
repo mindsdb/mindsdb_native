@@ -22,7 +22,7 @@ from mindsdb_native.libs.constants.mindsdb import (
 from mindsdb_native.libs.helpers.text_helpers import (
     word_tokenize,
     cast_string_to_python_type,
-    get_identifier_description
+    get_identifier_description_mp
 )
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
@@ -324,9 +324,8 @@ class TypeDeductor(BaseModule):
             stats_v2[col_name]['typing'] = type_data
             stats_v2[col_name]['additional_info'] = additional_info
 
-        answer_arr = pool.map(get_identifier_description, [
-            (
-                input_data.data_frame[x],
+        answer_arr = pool.map(get_identifier_description_mp, [
+            (input_data.data_frame[x],
                 x,
                 stats_v2[x]['typing']['data_type'],
                 stats_v2[x]['typing']['data_subtype'],
