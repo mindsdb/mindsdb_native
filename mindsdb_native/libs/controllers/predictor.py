@@ -274,8 +274,6 @@ class Predictor:
                 disable_column_importance = advanced_args.get('disable_column_importance', False),
                 split_models_on = advanced_args.get('split_models_on', []),
                 remove_target_outliers = advanced_args.get('remove_target_outliers', 0),
-                unnest_constant = advanced_args.get('unnest_constant', 0.99),
-                unnested_fields = advanced_args.get('unnested_fields', {}),
                 learn_started_at = time.time(),
             )
 
