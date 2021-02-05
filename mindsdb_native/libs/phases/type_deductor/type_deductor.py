@@ -324,14 +324,20 @@ class TypeDeductor(BaseModule):
             stats_v2[col_name]['typing'] = type_data
             stats_v2[col_name]['additional_info'] = additional_info
 
+        answer_arr = pool.map(get_identifier_description, [
+            (
+                input_data.data_frame[x],
+                x,
+                stats_v2[x]['typing']['data_type'],
+                stats_v2[x]['typing']['data_subtype'],
+                stats_v2[x]['additional_info']) for x in sample_df.columns.values
+        ])
+
+        pool.close()
+        pool.join()
+        for i, col_name in enumerate(sample_df.columns.values):
             # work with the full data
-            stats_v2[col_name]['identifier'] = get_identifier_description(
-                input_data.data_frame[col_name],
-                col_name,
-                data_type,
-                data_subtype,
-                additional_info['other_potential_subtypes']
-            )
+            stats_v2[col_name]['identifier'] = answer_arr[i]
 
             if stats_v2[col_name]['identifier'] is not None:
                 if col_name not in self.transaction.lmd['force_column_usage']:
