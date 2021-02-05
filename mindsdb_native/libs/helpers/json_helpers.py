@@ -34,6 +34,6 @@ def unnest_df(df):
         unnested_df.columns = [col + '.' + str(subcol) for subcol in unnested_df.columns]
         df = df.drop(columns=[col])
         for unnested_col in unnested_df.columns:
-            .df[col] = unnested_df[unnested_col]
+            df[col] = unnested_df[unnested_col]
 
     return df, unnested
