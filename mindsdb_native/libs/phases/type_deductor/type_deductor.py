@@ -309,7 +309,9 @@ class TypeDeductor(BaseModule):
 
         proc_count = 1
         available_mem = psutil.virtual_memory().available
-        while available_mem > 2 * pow(10,9) and proc_count < (mp.cpu_count() - 1):
+        max_per_proc_usage = 2.5 * pow(10,9)
+        while available_mem > max_per_proc_usage and proc_count < (mp.cpu_count() - 1):
+            available_mem -= max_per_proc_usage
             proc_count += 1
         pool = mp.Pool(processes = (mp.cpu_count() - 1))
         # Make type `object` so that dataframe cells can be python lists
