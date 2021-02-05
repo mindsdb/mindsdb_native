@@ -246,10 +246,11 @@ class LightwoodBackend:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
                 self.nn_mixer_only = True
 
+            grouped_by = self.transaction.lmd['tss'].get('group_by', [])
             col_config = {
                 'name': col_name,
                 'type': lightwood_data_type,
-                'grouped_by': col_name in self.transaction.lmd['tss']['group_by']
+                'grouped_by': col_name in grouped_by if grouped_by else False
             }
 
             if data_subtype == DATA_SUBTYPES.SHORT:
