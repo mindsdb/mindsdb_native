@@ -20,7 +20,6 @@ def try_convert_to_dict(val):
 def unnest_df(df):
     original_columns = df.columns
     unnested = 0
-    print(len(df))
     for col in original_columns:
         try:
             json_col = df[col].apply(try_convert_to_dict)
