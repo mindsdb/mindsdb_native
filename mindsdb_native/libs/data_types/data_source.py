@@ -239,7 +239,7 @@ class SQLDataSource(DataSource):
             if get_col_map:
                 return df, col_map
             else:
-                return df, col_map
+                return df
 
         except Exception as e:
             print(traceback.format_exc())
