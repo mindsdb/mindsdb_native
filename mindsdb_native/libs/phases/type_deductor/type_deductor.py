@@ -6,6 +6,8 @@ from copy import deepcopy
 from collections import Counter, defaultdict
 import multiprocessing as mp
 from functools import partial
+import psutil
+
 
 import six
 from dateutil.parser import parse as parse_datetime
@@ -305,6 +307,10 @@ class TypeDeductor(BaseModule):
         else:
             sample_df = input_data.data_frame
 
+        proc_count = 1
+        available_mem = psutil.virtual_memory().available
+        while available_mem > 2 * pow(10,9) and proc_count < (mp.cpu_count() - 1):
+            proc_count += 1
         pool = mp.Pool(processes = (mp.cpu_count() - 1))
         # Make type `object` so that dataframe cells can be python lists
         answer_arr = pool.map(partial(get_column_data_type, lmd=self.transaction.lmd), [
