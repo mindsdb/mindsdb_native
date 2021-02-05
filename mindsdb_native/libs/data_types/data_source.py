@@ -153,6 +153,7 @@ class DataSource:
         if where:
             for cond in where:
                 df = self._filter_df(cond, df)
+
         return df.head(limit) if limit else df
 
     def __getstate__(self):
