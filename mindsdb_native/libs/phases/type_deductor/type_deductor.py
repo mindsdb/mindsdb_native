@@ -147,9 +147,11 @@ def get_column_data_type(arg_tup, lmd):
     data, full_data, col_name = arg_tup
     additional_info = {'other_potential_subtypes': [], 'other_potential_types': []}
 
+    warn = []
+    info = []
     if len(data) == 0:
-        #self.log.warning(f'Column {col_name} has no data in it. '
-        #                 f'Please remove {col_name} from the training file or fill in some of the values !')
+        warn.append(f'Column {col_name} has no data in it. ')
+        warn.append(f'Please remove {col_name} from the training file or fill in some of the values !')
         return None, None, None, None, additional_info
 
     type_dist, subtype_dist = {}, {}
@@ -160,7 +162,7 @@ def get_column_data_type(arg_tup, lmd):
         curr_data_subtype = lmd['data_subtypes'][col_name]
         type_dist[curr_data_type] = len(data)
         subtype_dist[curr_data_subtype] = len(data)
-        #self.log.info(f'Manually setting the types for column {col_name} to {curr_data_type}->{curr_data_subtype}')
+        info.append(f'Manually setting the types for column {col_name} to {curr_data_type}->{curr_data_subtype}')
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
 
     # Forced categorical dtype
@@ -270,7 +272,7 @@ def get_column_data_type(arg_tup, lmd):
         type_dist = {curr_data_type: len(data)}
         subtype_dist = {curr_data_subtype: len(data)}
 
-    return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
+    return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
 class TypeDeductor(BaseModule):
     """
@@ -311,7 +313,11 @@ class TypeDeductor(BaseModule):
 
         for i, col_name in enumerate(sample_df.columns.values):
             (data_type, data_subtype, data_type_dist,
-             data_subtype_dist, additional_info) = answer_arr[i]
+             data_subtype_dist, additional_info, warn, info) = answer_arr[i]
+            for msg in warn:
+                self.log.warning(msg)
+            for msg in info:
+                self.log.info(msg)
 
             type_data = {
                 'data_type': data_type,
