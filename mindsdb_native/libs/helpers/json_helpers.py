@@ -4,6 +4,8 @@ import numpy as np
 
 
 def try_convert_to_dict(val):
+    if isinstance(val, dict):
+        return val
     if pd.notnull(val):
         try:
             obj = json.loads(val)
@@ -11,7 +13,7 @@ def try_convert_to_dict(val):
                 return obj
             else:
                 raise Exception('Not a json dictionary (could be an int because json.loads is weird)!')
-        except Exception:
+        except Exception as e:
             return dict(val)
     else:
         return {}

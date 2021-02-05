@@ -59,9 +59,6 @@ class MongoDS(DataSource):
         coll = db[self.collection]
 
         df = pd.DataFrame(list(coll.find(q, {'_id': 0})))
-        for col in df.columns:
-            if not is_numeric_dtype(df[col]):
-                df[col] = df[col].astype(str)
 
         return df, self._make_colmap(df)
 
