@@ -119,7 +119,11 @@ def cast_string_to_python_type(string):
         return None
 
     if string.isnumeric():
-        return int(string)
+        # Did you know you can write fractions in unicode, and they are numeric but can't be cast to integers !?
+        try:
+            return int(string)
+        except Exception:
+            return None
 
     try:
         return clean_float(string)
