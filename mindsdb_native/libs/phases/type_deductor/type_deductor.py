@@ -306,7 +306,7 @@ class TypeDeductor(BaseModule):
         else:
             sample_df = input_data.data_frame
 
-        if get_nr_procs() > 1:
+        if get_nr_procs() > 1 and False:
             pool = mp.Pool(processes=get_nr_procs())
             # Make type `object` so that dataframe cells can be python lists
             answer_arr = pool.map(partial(get_column_data_type, lmd=self.transaction.lmd), [
@@ -317,10 +317,10 @@ class TypeDeductor(BaseModule):
         else:
             answer_arr = []
             for x in sample_df.columns.values:
-                answer = get_column_data_type([sample_df[x].dropna(), input_data.data_frame[x], x], lmd=self.transaction.lmd)
-                answer_arr.append(answer)
+                answer_arr.append(get_column_data_type([sample_df[x].dropna(), input_data.data_frame[x], x], lmd=self.transaction.lmd))
 
         for i, col_name in enumerate(sample_df.columns.values):
+            print(answer_arr[i])
             (data_type, data_subtype, data_type_dist,
              data_subtype_dist, additional_info, warn, info) = answer_arr[i]
             for msg in warn:
