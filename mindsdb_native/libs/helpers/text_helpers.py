@@ -195,7 +195,7 @@ def get_pct_auto_increment(data):
 
     return increase_by_one/(len(data) - 1)
 
-def get_identifier_description_mp(arr):
+def get_identifier_description_mp(arg_tup):
     data, column_name, data_type, data_subtype, other_potential_subtypes = arr
     return get_identifier_description(data, column_name, data_type, data_subtype, other_potential_subtypes)
 

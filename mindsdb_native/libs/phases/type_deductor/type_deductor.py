@@ -317,7 +317,7 @@ class TypeDeductor(BaseModule):
         else:
             answer_arr = []
             for x in sample_df.columns.values:
-                answer = partial(get_column_data_type, lmd=self.transaction.lmd)(sample_df[x].dropna(), input_data.data_frame[x], x)
+                answer = get_column_data_type([sample_df[x].dropna(), input_data.data_frame[x], x], lmd=self.transaction.lmd)
                 answer_arr.append(answer)
 
         for i, col_name in enumerate(sample_df.columns.values):
@@ -353,7 +353,7 @@ class TypeDeductor(BaseModule):
         else:
             answer_arr = []
             for x in sample_df.columns.values:
-                answer = get_identifier_description_mp(input_data.data_frame[x], x, stats_v2[x]['typing']['data_type'], stats_v2[x]['typing']['data_subtype'], stats_v2[x]['additional_info'])
+                answer = get_identifier_description_mp([input_data.data_frame[x], x, stats_v2[x]['typing']['data_type'], stats_v2[x]['typing']['data_subtype'], stats_v2[x]['additional_info']])
                 answer_arr.append(answer)
 
 
