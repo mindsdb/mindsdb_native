@@ -8,7 +8,6 @@ import multiprocessing as mp
 from functools import partial
 import psutil
 
-
 import six
 from dateutil.parser import parse as parse_datetime
 from mindsdb_native.libs.helpers.text_helpers import (
@@ -313,11 +312,14 @@ class TypeDeductor(BaseModule):
         while available_mem > max_per_proc_usage and proc_count < (mp.cpu_count() - 1):
             available_mem -= max_per_proc_usage
             proc_count += 1
+
         pool = mp.Pool(processes = (mp.cpu_count() - 1))
         # Make type `object` so that dataframe cells can be python lists
         answer_arr = pool.map(partial(get_column_data_type, lmd=self.transaction.lmd), [
             (sample_df[x].dropna(), input_data.data_frame[x], x) for x in sample_df.columns.values
         ])
+        pool.close()
+        pool.join()
 
         for i, col_name in enumerate(sample_df.columns.values):
             (data_type, data_subtype, data_type_dist,
@@ -338,6 +340,7 @@ class TypeDeductor(BaseModule):
             stats_v2[col_name]['typing'] = type_data
             stats_v2[col_name]['additional_info'] = additional_info
 
+        pool = mp.Pool(processes = (mp.cpu_count() - 1))
         answer_arr = pool.map(get_identifier_description_mp, [
             (input_data.data_frame[x],
                 x,
@@ -345,9 +348,9 @@ class TypeDeductor(BaseModule):
                 stats_v2[x]['typing']['data_subtype'],
                 stats_v2[x]['additional_info']) for x in sample_df.columns.values
         ])
-
         pool.close()
         pool.join()
+
         for i, col_name in enumerate(sample_df.columns.values):
             # work with the full data
             stats_v2[col_name]['identifier'] = answer_arr[i]
