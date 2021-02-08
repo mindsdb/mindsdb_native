@@ -6,7 +6,6 @@ from copy import deepcopy
 from collections import Counter, defaultdict
 import multiprocessing as mp
 from functools import partial
-import psutil
 
 import six
 from dateutil.parser import parse as parse_datetime
@@ -27,6 +26,7 @@ from mindsdb_native.libs.helpers.text_helpers import (
 )
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
+from mindsdb_native.libs.helpers.mp_helpers import get_nr_procs
 
 import flair
 
@@ -306,20 +306,19 @@ class TypeDeductor(BaseModule):
         else:
             sample_df = input_data.data_frame
 
-        proc_count = 1
-        available_mem = psutil.virtual_memory().available
-        max_per_proc_usage = 2.5 * pow(10,9)
-        while available_mem > max_per_proc_usage and proc_count < (mp.cpu_count() - 1):
-            available_mem -= max_per_proc_usage
-            proc_count += 1
-
-        pool = mp.Pool(processes = (mp.cpu_count() - 1))
-        # Make type `object` so that dataframe cells can be python lists
-        answer_arr = pool.map(partial(get_column_data_type, lmd=self.transaction.lmd), [
-            (sample_df[x].dropna(), input_data.data_frame[x], x) for x in sample_df.columns.values
-        ])
-        pool.close()
-        pool.join()
+        if get_nr_procs() > 1:
+            pool = mp.Pool(processes=get_nr_procs())
+            # Make type `object` so that dataframe cells can be python lists
+            answer_arr = pool.map(partial(get_column_data_type, lmd=self.transaction.lmd), [
+                (sample_df[x].dropna(), input_data.data_frame[x], x) for x in sample_df.columns.values
+            ])
+            pool.close()
+            pool.join()
+        else:
+            answer_arr = []
+            for x in sample_df.columns.values:
+                answer = partial(get_column_data_type, lmd=self.transaction.lmd)(sample_df[x].dropna(), input_data.data_frame[x], x)
+                answer_arr.append(answer)
 
         for i, col_name in enumerate(sample_df.columns.values):
             (data_type, data_subtype, data_type_dist,
@@ -340,16 +339,25 @@ class TypeDeductor(BaseModule):
             stats_v2[col_name]['typing'] = type_data
             stats_v2[col_name]['additional_info'] = additional_info
 
-        pool = mp.Pool(processes = (mp.cpu_count() - 1))
-        answer_arr = pool.map(get_identifier_description_mp, [
-            (input_data.data_frame[x],
-                x,
-                stats_v2[x]['typing']['data_type'],
-                stats_v2[x]['typing']['data_subtype'],
-                stats_v2[x]['additional_info']) for x in sample_df.columns.values
-        ])
-        pool.close()
-        pool.join()
+        if get_nr_procs() > 1:
+            pool = mp.Pool(processes=get_nr_procs())
+            answer_arr = pool.map(get_identifier_description_mp, [
+                (input_data.data_frame[x],
+                    x,
+                    stats_v2[x]['typing']['data_type'],
+                    stats_v2[x]['typing']['data_subtype'],
+                    stats_v2[x]['additional_info']) for x in sample_df.columns.values
+            ])
+            pool.close()
+            pool.join()
+        else:
+            answer_arr = []
+            for x in sample_df.columns.values:
+                answer = get_identifier_description_mp(input_data.data_frame[x], x, stats_v2[x]['typing']['data_type'], stats_v2[x]['typing']['data_subtype'], stats_v2[x]['additional_info']) for x in sample_df.columns.values)
+                answer_arr.append(answer)
+
+
+
 
         for i, col_name in enumerate(sample_df.columns.values):
             # work with the full data
