@@ -13,6 +13,7 @@ from lightwood.constants.lightwood import ColumnDataTypes
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
+from mindsdb_native.libs.helpers.mp_helpers import get_nr_procs
 
 
 def _make_pred(row):
@@ -134,7 +135,7 @@ class LightwoodBackend:
             df_arr = [original_df]
 
         if len(original_df) > 500:
-            pool = mp.Pool(processes = (mp.cpu_count() - 1))
+            pool = mp.Pool(processes=get_nr_procs())
             # Make type `object` so that dataframe cells can be python lists
             df_arr = pool.map(partial(_ts_to_obj, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
             df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
