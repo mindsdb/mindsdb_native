@@ -175,7 +175,6 @@ class TestPredictor(unittest.TestCase):
         """
         Tests whole pipeline from downloading the dataset to making predictions and explanations.
         """
-        print(f'########## test {name}')
         predictor = Predictor(name=name)
         # Create & Learn
         predictor.learn(
