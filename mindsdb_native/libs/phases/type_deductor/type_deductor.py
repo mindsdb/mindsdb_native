@@ -353,7 +353,7 @@ class TypeDeductor(BaseModule):
         else:
             answer_arr = []
             for x in sample_df.columns.values:
-                answer = get_identifier_description_mp(input_data.data_frame[x], x, stats_v2[x]['typing']['data_type'], stats_v2[x]['typing']['data_subtype'], stats_v2[x]['additional_info']) for x in sample_df.columns.values)
+                answer = get_identifier_description_mp(input_data.data_frame[x], x, stats_v2[x]['typing']['data_type'], stats_v2[x]['typing']['data_subtype'], stats_v2[x]['additional_info'])
                 answer_arr.append(answer)
 
 
