@@ -35,16 +35,19 @@ class TransactionOutputRow:
     def explain(self):
         answers = {}
 
-        lmd = self._transaction_output._transaction.lmd
-        is_output_class_distribution = lmd.get('output_class_distribution', False)
-        class_distribution_map = {}
-        if is_output_class_distribution:
-            for column in self._predict_columns:
-                if f'{column}_class_map' in lmd['lightwood_data']:
-                    class_map = lmd['lightwood_data'][f'{column}_class_map']
-                    class_map_items = list(class_map.items())
-                    class_map_items.sort(key=lambda x: int(x[0]))
-                    class_distribution_map[column] = [x[1] for x in class_map_items]
+        try:
+            lmd = self._transaction_output._transaction.lmd
+            is_output_class_distribution = lmd.get('output_class_distribution', False)
+            class_distribution_map = {}
+            if is_output_class_distribution:
+                for column in self._predict_columns:
+                    if f'{column}_class_map' in lmd['lightwood_data']:
+                        class_map = lmd['lightwood_data'][f'{column}_class_map']
+                        class_map_items = list(class_map.items())
+                        class_map_items.sort(key=lambda x: int(x[0]))
+                        class_distribution_map[column] = [x[1] for x in class_map_items]
+        except Exception:
+            class_distribution_map = {}
 
         for pred_col in self._predict_columns:
             answers[pred_col] = {}
