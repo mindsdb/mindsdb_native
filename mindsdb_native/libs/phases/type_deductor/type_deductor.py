@@ -153,7 +153,7 @@ def get_column_data_type(arg_tup, lmd):
     if len(data) == 0:
         warn.append(f'Column {col_name} has no data in it. ')
         warn.append(f'Please remove {col_name} from the training file or fill in some of the values !')
-        return None, None, None, None, additional_info
+        return None, None, None, None, additional_info, warn, info
 
     type_dist, subtype_dist = {}, {}
 
@@ -164,7 +164,7 @@ def get_column_data_type(arg_tup, lmd):
         type_dist[curr_data_type] = len(data)
         subtype_dist[curr_data_subtype] = len(data)
         info.append(f'Manually setting the types for column {col_name} to {curr_data_type}->{curr_data_subtype}')
-        return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
+        return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
     # Forced categorical dtype
     if col_name in lmd['force_categorical_encoding']:
@@ -172,7 +172,7 @@ def get_column_data_type(arg_tup, lmd):
         curr_data_subtype = DATA_SUBTYPES.MULTIPLE
         type_dist[DATA_TYPES.CATEGORICAL] = len(data)
         subtype_dist[DATA_SUBTYPES.MULTIPLE] = len(data)
-        return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
+        return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
     type_dist, subtype_dist, new_additional_info = count_data_types_in_column(data)
 
@@ -261,7 +261,7 @@ def get_column_data_type(arg_tup, lmd):
                 type_dist = {curr_data_type: len(data)}
                 subtype_dist = {curr_data_subtype: len(data)}
 
-                return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info
+                return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
     if curr_data_type == DATA_TYPES.CATEGORICAL and curr_data_subtype != DATA_SUBTYPES.TAGS:
         if nr_distinct_vals > 2:
@@ -320,9 +320,7 @@ class TypeDeductor(BaseModule):
                 answer_arr.append(get_column_data_type([sample_df[x].dropna(), input_data.data_frame[x], x], lmd=self.transaction.lmd))
 
         for i, col_name in enumerate(sample_df.columns.values):
-            print(answer_arr[i])
-            (data_type, data_subtype, data_type_dist,
-             data_subtype_dist, additional_info, warn, info) = answer_arr[i]
+            (data_type, data_subtype, data_type_dist, data_subtype_dist, additional_info, warn, info) = answer_arr[i]
             for msg in warn:
                 self.log.warning(msg)
             for msg in info:
