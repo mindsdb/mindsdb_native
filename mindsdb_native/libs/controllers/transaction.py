@@ -168,6 +168,11 @@ class Transaction:
         Loads the module and runs it
         """
 
+        try:
+            print(self.lmd['stats_v2'].keys())
+        except:
+            print('==PASS==')
+
         self.lmd['is_active'] = True
         self.lmd['phase'] = module_name
         module_path = convert_cammelcase_to_snake_string(module_name)
