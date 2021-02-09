@@ -277,9 +277,7 @@ class TypeDeductor(BaseModule):
 
     def run(self, input_data):
         stats_v2 = defaultdict(dict)
-        stats_v2['columns'] = set(input_data.data_frame.columns.values)
-        stats_v2['columns'].update(self.transaction.lmd['columns_to_ignore'])
-        stats_v2['columns'] = list(stats_v2['columns'])
+
 
         sample_settings = self.transaction.lmd['sample_settings']
         if sample_settings['sample_for_analysis']:
@@ -339,6 +337,7 @@ class TypeDeductor(BaseModule):
                             pass
                         else:
                             self.transaction.lmd['columns_to_ignore'].append(col_name)
+                            self.transaction.input_data.data_frame.drop(columns=[col_name], inplace=True)
 
             stats_v2[col_name]['broken'] = None
             if data_type is None or data_subtype is None:
@@ -369,9 +368,9 @@ class TypeDeductor(BaseModule):
                     # Functionality is specific to mindsdb logger
                     pass
 
-        stats_v2['useable_input_columns'] = []
-        for col_name in stats_v2['columns']:
+        self.transaction.lmd['useable_input_columns'] = []
+        for col_name in self.transaction.lmd['columns']:
             if col_name not in self.transaction.lmd['columns_to_ignore'] and col_name not in self.transaction.lmd['predict_columns'] and stats_v2[col_name]['broken'] is None and stats_v2[col_name]['identifier'] is None:
-                    stats_v2['useable_input_columns'].append(col_name)
+                    self.transaction.lmd['useable_input_columns'].append(col_name)
 
         self.transaction.lmd['stats_v2'] = stats_v2

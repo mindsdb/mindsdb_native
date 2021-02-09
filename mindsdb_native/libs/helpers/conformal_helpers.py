@@ -43,7 +43,7 @@ def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
         for significance in significances:
             ranges = all_ranges[:, :, significance]
             spread = np.mean(ranges[:, 1] - ranges[:, 0])
-            tolerance = lmd['stats_v2']['train_std_dev'][target] * std_tol
+            tolerance = lmd['stats_v2'][target]['train_std_dev'] * std_tol
 
             if spread <= tolerance:
                 confidence = (99-significance)/100

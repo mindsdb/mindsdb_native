@@ -66,9 +66,9 @@ class TestNestedDataset(unittest.TestCase):
         model_data = F.get_model_data('airline_delays_train')
 
         for expected_column in self.expected_columns:
-            self.assertTrue(expected_column in model_data['data_analysis_v2']['columns'])
+            self.assertTrue(expected_column in model_data['columns'])
 
-        for existing_column in model_data['data_analysis_v2']['columns']:
+        for existing_column in model_data['columns']:
             self.assertTrue(existing_column in self.expected_columns)
 
     def test_3_airline_delays_predict(self):

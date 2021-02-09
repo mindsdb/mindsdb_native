@@ -236,16 +236,18 @@ def get_model_data(model_name=None, lmd=None):
         pass
     elif model_name is not None:
         with MDBLock('shared', 'get_data_' + model_name):
-            lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'))
+            lmd = load_lmd(os.path.join(
+                CONFIG.MINDSDB_STORAGE_PATH,
+                model_name,
+                'light_model_metadata.pickle'
+            ))
 
     # ADAPTOR CODE
     amd = {}
 
     amd['data_source'] = lmd['data_source_name']
 
-    amd['timeseries'] = {
-        'is_timeseries': False
-    }
+    amd['timeseries'] = {'is_timeseries': False}
     if 'tss' in lmd:
         if lmd['tss']['is_timeseries']:
             amd['timeseries']['is_timeseries'] = True

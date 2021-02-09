@@ -42,7 +42,6 @@ class ModelAnalyzer(BaseModule):
         self.transaction.lmd['test_data_plot'] = {}
 
         # conformal prediction confidence estimation
-        self.transaction.lmd['stats_v2']['train_std_dev'] = {}
         self.transaction.hmd['label_encoders'] = {}
         self.transaction.hmd['icp'] = {'active': False}
 
@@ -56,7 +55,7 @@ class ModelAnalyzer(BaseModule):
                                  DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())
 
             fit_params = {
-                'columns_to_ignore': self.transaction.lmd['columns_to_ignore'],
+                'columns_to_ignore': [],
                 'nr_preds': self.transaction.lmd['tss'].get('nr_predictions', 0)
             }
             fit_params['columns_to_ignore'].extend([col for col in output_columns if col != target])
@@ -110,7 +109,7 @@ class ModelAnalyzer(BaseModule):
                     normalizer.prediction_cache = normal_predictions
 
                 if not is_classification:
-                    self.transaction.lmd['stats_v2']['train_std_dev'][target] = self.transaction.input_data.train_df[target].std()
+                    self.transaction.lmd['stats_v2'][target]['train_std_dev'] = self.transaction.input_data.train_df[target].std()
 
                 self.transaction.hmd['icp'][target].fit(None, None)
                 self.transaction.hmd['icp']['active'] = True
@@ -203,10 +202,7 @@ class ModelAnalyzer(BaseModule):
         for col in output_columns:
 
             # Training data accuracy
-            predictions = self.transaction.model_backend.predict(
-                'predict_on_train_data',
-                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
-            )
+            predictions = self.transaction.model_backend.predict('predict_on_train_data')
             self.transaction.lmd['train_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
                 self.transaction.input_data.train_df,
@@ -216,10 +212,7 @@ class ModelAnalyzer(BaseModule):
             )
 
             # Testing data accuracy
-            predictions = self.transaction.model_backend.predict(
-                'test',
-                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
-            )
+            predictions = self.transaction.model_backend.predict('test')
             self.transaction.lmd['test_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
                 test_df,
@@ -229,10 +222,7 @@ class ModelAnalyzer(BaseModule):
             )
 
             # Validation data accuracy
-            predictions = self.transaction.model_backend.predict(
-                'validate',
-                ignore_columns=self.transaction.lmd['stats_v2']['columns_to_ignore']
-            )
+            predictions = self.transaction.model_backend.predict('validate')
             self.transaction.lmd['valid_data_accuracy'][col] = evaluate_accuracy(
                 predictions,
                 validation_df,
