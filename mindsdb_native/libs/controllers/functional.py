@@ -259,6 +259,8 @@ def get_model_data(model_name=None, lmd=None):
     amd['setup_args'] = lmd.get('setup_args')
     amd['test_data_plot'] = lmd.get('test_data_plot')
     amd['columns_to_ignore'] = lmd.get('columns_to_ignore')
+    amd['columns'] = lmd.get('columns')
+    amd['predict_columns'] = lmd.get('predict_columns')
     amd['output_class_distribution'] = lmd.get('output_class_distribution')
 
     if lmd['current_phase'] == MODEL_STATUS_TRAINED:
