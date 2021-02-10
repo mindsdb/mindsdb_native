@@ -129,8 +129,7 @@ class LightwoodBackend:
         if len(gb_arr) > 0:
             df_arr = []
             for _, df in original_df.groupby(gb_arr):
-                df.sort_values(by=ob_arr, inplace=True)
-                df_arr.append(df)
+                df_arr.append(df.sort_values(by=ob_arr))
         else:
             df_arr = [original_df]
 
