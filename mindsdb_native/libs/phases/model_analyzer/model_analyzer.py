@@ -4,7 +4,7 @@ from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
 from mindsdb_native.libs.helpers.conformal_helpers import SelfawareNormalizer, clean_df, get_conf_range
-from mindsdb_native.libs.helpers.conformal_helpers import BoostedSignErrorErrFunc
+from mindsdb_native.libs.helpers.conformal_helpers import BoostedAbsErrorErrFunc
 from mindsdb_native.libs.helpers.accuracy_stats import AccStats
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from sklearn.metrics import balanced_accuracy_score, r2_score
@@ -77,7 +77,7 @@ class ModelAnalyzer(BaseModule):
 
             else:
                 adapter = ConformalRegressorAdapter
-                nc_function = BoostedSignErrorErrFunc()
+                nc_function = BoostedAbsErrorErrFunc()
                 nc_class = RegressorNc
                 icp_class = IcpRegressor
 

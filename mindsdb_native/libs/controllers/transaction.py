@@ -278,7 +278,6 @@ class LearnTransaction(Transaction):
         else:
             _thread.start_new_thread(self._run(), ())
 
-
 class AnalyseTransaction(Transaction):
     def run(self):
         self._call_phase_module(module_name='DataExtractor')

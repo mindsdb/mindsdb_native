@@ -25,7 +25,7 @@ def _get_memory_optimizations(df):
 
     mem_usage_ratio = df_memory / total_memory
 
-    sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > (3 * pow(10, 4))
+    sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > pow(10, 4)
     disable_lightwood_transform_cache = mem_usage_ratio >= 0.2
 
     return sample_for_analysis, disable_lightwood_transform_cache
@@ -35,7 +35,7 @@ def _prepare_sample_settings(user_provided_settings,
                              sample_for_analysis):
     default_sample_settings = dict(
         sample_for_analysis=sample_for_analysis,
-        sample_margin_of_error=0.005,
+        sample_margin_of_error=0.01,
         sample_confidence_level=1 - 0.005,
         sample_percentage=None,
         sample_function=sample_data
@@ -274,8 +274,6 @@ class Predictor:
                 disable_column_importance = advanced_args.get('disable_column_importance', False),
                 split_models_on = advanced_args.get('split_models_on', []),
                 remove_target_outliers = advanced_args.get('remove_target_outliers', 0),
-                unnest_constant = advanced_args.get('unnest_constant', 0.99),
-                unnested_fields = advanced_args.get('unnested_fields', {}),
                 learn_started_at = time.time(),
             )
 
