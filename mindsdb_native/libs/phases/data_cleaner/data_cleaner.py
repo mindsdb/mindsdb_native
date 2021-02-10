@@ -61,8 +61,8 @@ class DataCleaner(BaseModule):
         )
 
         cols_to_drop = [col for col in df.columns if col in self.transaction.lmd['columns_to_ignore']]
-        if cols_to_drop:
-            df.drop(columns=cols_to_drop, inplace=True)
+        if len(cols_to_drop) > 0:
+            df.drop(columns=cols_to_drop, inplace=True)        
 
         self._remove_missing_targets(df)
 

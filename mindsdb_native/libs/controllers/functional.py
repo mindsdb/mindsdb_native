@@ -236,27 +236,32 @@ def get_model_data(model_name=None, lmd=None):
         pass
     elif model_name is not None:
         with MDBLock('shared', 'get_data_' + model_name):
-            lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'))
+            lmd = load_lmd(os.path.join(
+                CONFIG.MINDSDB_STORAGE_PATH,
+                model_name,
+                'light_model_metadata.pickle'
+            ))
 
     # ADAPTOR CODE
     amd = {}
 
     amd['data_source'] = lmd['data_source_name']
 
-    amd['timeseries'] = {
-        'is_timeseries': False
-    }
+    amd['timeseries'] = {'is_timeseries': False}
     if 'tss' in lmd:
         if lmd['tss']['is_timeseries']:
+            amd['timeseries']['is_timeseries'] = True
             amd['timeseries'] = {}
             amd['timeseries']['user_settings'] = lmd['tss']
 
 
-    amd['data_analysis_v2'] = lmd.get('stats_v2',None)
-    amd['setup_args'] = lmd.get('setup_args',None)
-    amd['test_data_plot'] = lmd.get('test_data_plot',None)
-
-    amd['output_class_distribution'] = lmd.get('output_class_distribution', None)
+    amd['data_analysis_v2'] = lmd.get('stats_v2')
+    amd['setup_args'] = lmd.get('setup_args')
+    amd['test_data_plot'] = lmd.get('test_data_plot')
+    amd['columns_to_ignore'] = lmd.get('columns_to_ignore')
+    amd['columns'] = lmd.get('columns')
+    amd['predict_columns'] = lmd.get('predict_columns')
+    amd['output_class_distribution'] = lmd.get('output_class_distribution')
 
     if lmd['current_phase'] == MODEL_STATUS_TRAINED:
         amd['status'] = 'complete'
