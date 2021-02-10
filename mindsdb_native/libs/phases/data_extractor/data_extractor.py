@@ -147,7 +147,7 @@ class DataExtractor(BaseModule):
 
         if self.transaction.lmd['type'] == TRANSACTION_LEARN:
             for col_target in self.transaction.lmd['predict_columns']:
-                if col_target not in self.transaction.input_data.columns:
+                if col_target not in self.transaction.lmd['columns']:
                     err = 'Trying to predict column {column} but column not in source data'.format(column=col_target)
                     self.log.error(err)
                     self.transaction.error = True
@@ -184,8 +184,7 @@ class DataExtractor(BaseModule):
         # --- Replace -inf/inf values with None --- #
 
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
-        self.transaction.input_data.columns = [x for x in df.columns.values.tolist() if x != 'make_predictions']
-        self.transaction.lmd['columns'] = self.transaction.input_data.columns
+        self.transaction.lmd['columns'] = [x for x in df.columns.values.tolist() if x != 'make_predictions']
         self.transaction.input_data.data_frame = df
         # --- Some information about the dataset gets transplanted into transaction level variables --- #
 

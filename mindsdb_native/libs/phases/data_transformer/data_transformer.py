@@ -100,7 +100,7 @@ class DataTransformer(BaseModule):
 
     def run(self, input_data):
         transaction_type = self.transaction.lmd['type']
-        for column in input_data.columns:
+        for column in self.transaction.lmd['columns']:
             if column in self.transaction.lmd['columns_to_ignore'] or column not in self.transaction.lmd['stats_v2']:
                 continue
 

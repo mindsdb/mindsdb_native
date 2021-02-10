@@ -71,7 +71,7 @@ class TestTypeDeductor(unittest.TestCase):
             assert stats_v2[col_name]['typing']['data_type_dist'][expected_type] == 100
             assert stats_v2[col_name]['typing']['data_subtype_dist'][expected_subtype] == 100
 
-        for col_name in stats_v2['columns']:
+        for col_name in predictor.transaction.lmd['columns']:
             if col_name in predictor.transaction.lmd['columns_to_ignore']:
                 continue
             assert stats_v2[col_name]['identifier'] is None
@@ -83,7 +83,7 @@ class TestTypeDeductor(unittest.TestCase):
         except Exception:
             raise AssertionError
 
-        assert set(predictor.transaction.lmd['stats_v2']['columns']) == set(df.columns)
+        assert set(predictor.transaction.lmd['columns']) == set(df.columns)
 
     def test_deduce_foreign_key(self):
         """Tests that basic cases of type deduction work correctly"""
