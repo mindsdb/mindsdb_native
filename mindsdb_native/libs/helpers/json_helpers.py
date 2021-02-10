@@ -1,4 +1,5 @@
 import json
+import ast
 import pandas as pd
 import numpy as np
 
@@ -14,7 +15,12 @@ def try_convert_to_dict(val):
             else:
                 raise Exception('Not a json dictionary (could be an int because json.loads is weird)!')
         except Exception as e:
-            return dict(val)
+            obj = ast.literal_eval(val)
+            if isinstance(obj, dict):
+                return obj
+            else:
+                raise Exception('Expression failed to evaluate to a dictionary')
+            return obj
     else:
         return {}
 
@@ -27,7 +33,7 @@ def unnest_df(df):
             json_col = df[col].apply(try_convert_to_dict)
             if np.sum(len(x) for x in json_col) == 0:
                 raise Exception('Empty column !')
-        except:
+        except Exception as e:
             continue
 
         unnested += 1
