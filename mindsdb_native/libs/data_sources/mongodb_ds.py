@@ -8,9 +8,9 @@ from pandas.api.types import is_numeric_dtype
 from mindsdb_native.libs.data_types.data_source import DataSource
 
 class MongoDS(DataSource):
-    def __init__(self, query, collection,
-                 database='database', limit=None, sort_by=None,
-                 host='127.0.0.1', port=None, user=None, password=None):
+    def __init__(self, query, collection, database='database',
+                 host='127.0.0.1', port=None, user=None, password=None,
+                 limit=None, sort_by=None):
 
         """params:
             limit: limit of requested documents
