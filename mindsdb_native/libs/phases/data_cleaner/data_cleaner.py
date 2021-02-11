@@ -62,9 +62,10 @@ class DataCleaner(BaseModule):
 
         cols_to_drop = [col for col in df.columns if col in self.transaction.lmd['columns_to_ignore']]
         if len(cols_to_drop) > 0:
-            df.drop(columns=cols_to_drop, inplace=True)        
+            df.drop(columns=cols_to_drop, inplace=True)
 
-        self._remove_missing_targets(df)
+        if self.transaction.lmd['remove_columns_with_missing_targets']:
+            self._remove_missing_targets(df)
 
         len_before_dedupe = len(df)
         if self.transaction.lmd.get('deduplicate_data'):

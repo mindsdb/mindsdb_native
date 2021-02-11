@@ -274,6 +274,7 @@ class Predictor:
                 disable_column_importance = advanced_args.get('disable_column_importance', False),
                 split_models_on = advanced_args.get('split_models_on', []),
                 remove_target_outliers = advanced_args.get('remove_target_outliers', 0),
+                remove_columns_with_missing_targets = advanced_args.get('remove_columns_with_missing_targets', True),
                 learn_started_at = time.time(),
             )
 
