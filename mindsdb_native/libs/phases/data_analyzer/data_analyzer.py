@@ -259,7 +259,9 @@ class DataAnalyzer(BaseModule):
             stats_v2[col_name]['empty'] = {'is_empty': True}
             self.log.warning(f'Column {col_name} is empty.')
 
-        for col_name in sample_df.columns.values:
+        for col_name in self.transaction.lmd['columns']:
+            if col_name in self.transaction.lmd['columns_to_ignore']:
+                continue
             self.log.info(f'Analyzing column: {col_name} !')
             data_type = stats_v2[col_name]['typing']['data_type']
             data_subtype = stats_v2[col_name]['typing']['data_subtype']

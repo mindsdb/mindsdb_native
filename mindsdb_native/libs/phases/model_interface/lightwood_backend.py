@@ -13,6 +13,7 @@ from lightwood.constants.lightwood import ColumnDataTypes
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
+from mindsdb_native.libs.helpers.mp_helpers import get_nr_procs
 
 
 def _make_pred(row):
@@ -128,13 +129,12 @@ class LightwoodBackend:
         if len(gb_arr) > 0:
             df_arr = []
             for _, df in original_df.groupby(gb_arr):
-                df.sort_values(by=ob_arr, inplace=True)
-                df_arr.append(df)
+                df_arr.append(df.sort_values(by=ob_arr))
         else:
             df_arr = [original_df]
 
         if len(original_df) > 500:
-            pool = mp.Pool(processes = (mp.cpu_count() - 1))
+            pool = mp.Pool(processes=get_nr_procs())
             # Make type `object` so that dataframe cells can be python lists
             df_arr = pool.map(partial(_ts_to_obj, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
             df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
@@ -192,7 +192,7 @@ class LightwoodBackend:
         config['input_features'] = []
         config['output_features'] = []
 
-        for col_name in self.transaction.input_data.columns:
+        for col_name in self.transaction.lmd['columns']:
             if col_name in self.transaction.lmd['columns_to_ignore'] or col_name not in self.transaction.lmd['stats_v2']:
                 continue
 

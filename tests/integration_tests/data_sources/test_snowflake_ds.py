@@ -35,4 +35,4 @@ class TestSnowflake(unittest.TestCase):
             sample_settings={'sample_percentage': 5}
         )
 
-        assert len(data_analysis['data_analysis_v2']['columns']) == 7
+        assert len(data_analysis['columns']) == 7

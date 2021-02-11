@@ -228,7 +228,7 @@ class LearnTransaction(Transaction):
 
             # quick_learn can still be set to False explicitly to disable this behavior
             if self.lmd['quick_learn'] is None:
-                n_cols = len(self.input_data.columns)
+                n_cols = len(self.lmd['columns'])
                 n_cells = n_cols * self.lmd['data_preparation']['used_row_count']
                 if n_cols >= 80 and n_cells > int(1e5):
                     self.log.warning('Data has too many columns, disabling column importance feature')
@@ -345,7 +345,7 @@ class PredictTransaction(Transaction):
         else:
             predictions_df = self.input_data.data_frame
 
-        for col in self.input_data.columns:
+        for col in self.lmd['columns']:
             if col in self.lmd['predict_columns']:
                 output_data[f'__observed_{col}'] = list(predictions_df[col])
                 output_data[col] = self.hmd['predictions'][col]
@@ -389,7 +389,7 @@ class PredictTransaction(Transaction):
                             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                                 DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
                         std_tol = 1
-                        tolerance = self.lmd['stats_v2']['train_std_dev'][predicted_col] * std_tol
+                        tolerance = self.lmd['stats_v2'][predicted_col]['train_std_dev'] * std_tol
                         if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
                             # bounds in time series are only given for the first forecast
                             self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
