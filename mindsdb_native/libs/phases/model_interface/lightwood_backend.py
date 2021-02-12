@@ -246,14 +246,15 @@ class LightwoodBackend:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
                 self.nn_mixer_only = True
 
+            grouped_by = self.transaction.lmd['tss'].get('group_by', [])
             col_config = {
                 'name': col_name,
-                'type': lightwood_data_type
+                'type': lightwood_data_type,
+                'grouped_by': col_name in grouped_by if grouped_by else False
             }
 
             if data_subtype == DATA_SUBTYPES.SHORT:
                 col_config['encoder_class'] = lightwood.encoders.text.short.ShortTextEncoder
-
 
             if col_name in self.transaction.lmd['weight_map']:
                 col_config['weights'] = self.transaction.lmd['weight_map'][col_name]
@@ -269,7 +270,8 @@ class LightwoodBackend:
 
                 if self.transaction.lmd['tss']['is_timeseries']:
                     col_config['additional_info'] = {
-                        'nr_predictions': self.transaction.lmd['tss']['nr_predictions']
+                        'nr_predictions': self.transaction.lmd['tss']['nr_predictions'],
+                        'time_series_target': True,
                     }
                 config['output_features'].append(col_config)
 
