@@ -14,6 +14,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, f1_score, accuracy_score
 from sklearn.datasets import load_iris
 
+from lightwood.config.config import CONFIG as LIGHTWOOD_CONFIG
+
 from mindsdb_native import F
 from mindsdb_native.libs.data_sources.file_ds import FileDS
 from mindsdb_native.libs.controllers.predictor import Predictor
@@ -158,7 +160,7 @@ class TestPredictor(unittest.TestCase):
 
     def test_house_pricing(self):
         self._test_house_pricing('home_rentals_cpu', use_gpu=False)
-        if torch.cuda.is_available():
+        if LIGHTWOOD_CONFIG.USE_CUDA:
             self._test_house_pricing('home_rentals_gpu', use_gpu=True)
         else:
             pass

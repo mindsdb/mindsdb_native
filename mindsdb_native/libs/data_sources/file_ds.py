@@ -6,7 +6,6 @@ import json
 import traceback
 
 import pandas as pd
-from pandas.io.json import json_normalize
 import requests
 
 from mindsdb_native.libs.data_types.data_source import DataSource
@@ -39,7 +38,6 @@ class FileDS(DataSource):
         self.clean_rows = clean_rows
         self.custom_parser = custom_parser
         self.dialect = None
-        self.col_map = None
 
     def _handle_source(self):
         self._file_name = os.path.basename(self.file)
@@ -65,7 +63,7 @@ class FileDS(DataSource):
         elif fmt == 'json':
             data.seek(0)
             json_doc = json.loads(data.read())
-            df = json_normalize(json_doc, max_level=0)
+            df = pd.json_normalize(json_doc, max_level=0)
             header = df.columns.values.tolist()
             file_data = df.values.tolist()
 
@@ -77,8 +75,8 @@ class FileDS(DataSource):
         else:
             file_list_data = file_data
 
-        self.col_map = dict((col, col) for col in header)
-        return pd.DataFrame(file_list_data, columns=header), self.col_map
+        col_map = dict((col, col) for col in header)
+        return pd.DataFrame(file_list_data, columns=header), col_map
 
     def query(self, q=None):
         try:
@@ -86,7 +84,9 @@ class FileDS(DataSource):
         except Exception as e:
             log.error(f"Error creating dataframe from handled data: {e}")
             log.error("pd.read_csv data handler would be used.")
-            return pd.read_csv(self.file, sep=self.dialect.delimiter), self.col_map
+            df = pd.read_csv(self.file, sep=self.dialect.delimiter)
+            col_map = dict((col, col) for col in df.columns)
+            return df, col_map
 
     def _getDataIo(self, file):
         """

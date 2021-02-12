@@ -119,7 +119,11 @@ def cast_string_to_python_type(string):
         return None
 
     if string.isnumeric():
-        return int(string)
+        # Did you know you can write fractions in unicode, and they are numeric but can't be cast to integers !?
+        try:
+            return int(string)
+        except Exception:
+            return None
 
     try:
         return clean_float(string)
@@ -191,6 +195,9 @@ def get_pct_auto_increment(data):
 
     return increase_by_one/(len(data) - 1)
 
+def get_identifier_description_mp(arg_tup):
+    data, column_name, data_type, data_subtype, other_potential_subtypes = arg_tup
+    return get_identifier_description(data, column_name, data_type, data_subtype, other_potential_subtypes)
 
 def get_identifier_description(data, column_name, data_type, data_subtype, other_potential_subtypes):
     data = list(data)
