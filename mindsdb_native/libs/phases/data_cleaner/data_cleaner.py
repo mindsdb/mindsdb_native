@@ -64,7 +64,7 @@ class DataCleaner(BaseModule):
         if len(cols_to_drop) > 0:
             df.drop(columns=cols_to_drop, inplace=True)
 
-        if self.transaction.lmd['remove_columns_with_missing_targets']:
+        if self.transaction.lmd.get('remove_columns_with_missing_targets', True):
             self._remove_missing_targets(df)
 
         len_before_dedupe = len(df)
