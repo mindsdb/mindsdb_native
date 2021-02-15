@@ -246,7 +246,8 @@ def get_model_data(model_name=None, lmd=None):
     amd = {}
 
     amd['data_source'] = lmd['data_source_name']
-
+    amd['useable_input_columns'] = lmd['useable_input_columns']
+    
     amd['timeseries'] = {'is_timeseries': False}
     if 'tss' in lmd:
         if lmd['tss']['is_timeseries']:
