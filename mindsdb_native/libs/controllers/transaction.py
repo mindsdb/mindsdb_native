@@ -407,16 +407,22 @@ class PredictTransaction(Transaction):
                                     output_data[f'{predicted_col}_confidence'][sample_idx] = significance
                                     conf_range = list(sample[:, idx])
 
-                                    # for positive numerical domains
                                     if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
                                         conf_range[0] = max(0, conf_range[0])
+
                                     output_data[f'{predicted_col}_confidence_range'][sample_idx] = conf_range
                                     break
                             else:
                                 output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
                                 bounds = sample[:, 0]
                                 sigma = (bounds[1] - bounds[0]) / 2
-                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = [bounds[0] - sigma, bounds[1] + sigma]
+                                conf_range = [bounds[0] - sigma, bounds[1] + sigma]
+
+                                if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
+                                    conf_range[0] = max(0, conf_range[0])
+
+                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = conf_range
+
                     # categorical
                     elif typing_info['data_type'] == DATA_TYPES.CATEGORICAL or \
                             (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
