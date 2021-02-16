@@ -236,7 +236,6 @@ class LightwoodBackend:
 
             elif data_subtype == DATA_SUBTYPES.ARRAY:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
-                # self.nn_mixer_only = True
 
             else:
                 self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
@@ -244,7 +243,6 @@ class LightwoodBackend:
 
             if self.transaction.lmd['tss']['is_timeseries'] and col_name in self.transaction.lmd['tss']['order_by']:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
-                # self.nn_mixer_only = True
 
             grouped_by = self.transaction.lmd['tss'].get('group_by', [])
             col_config = {
