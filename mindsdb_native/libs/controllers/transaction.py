@@ -408,7 +408,7 @@ class PredictTransaction(Transaction):
                                     conf_range = list(sample[:, idx])
 
                                     if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
-                                        conf_range[0] = max(0, conf_range[0])
+                                        conf_range[0] = max(0.0, conf_range[0])
 
                                     output_data[f'{predicted_col}_confidence_range'][sample_idx] = conf_range
                                     break
@@ -419,7 +419,7 @@ class PredictTransaction(Transaction):
                                 conf_range = [bounds[0] - sigma, bounds[1] + sigma]
 
                                 if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
-                                    conf_range[0] = max(0, conf_range[0])
+                                    conf_range[0] = max(0.0, conf_range[0])
 
                                 output_data[f'{predicted_col}_confidence_range'][sample_idx] = conf_range
 
