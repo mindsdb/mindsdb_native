@@ -304,7 +304,8 @@ class TypeDeductor(BaseModule):
         else:
             sample_df = input_data.data_frame
 
-        nr_procs = get_nr_procs(self.transaction.lmd('max_processes'), self.transaction.lmd('max_per_proc_usage'))
+        nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
+                                self.transaction.lmd.get('max_per_proc_usage', None))
         if nr_procs > 1 and False:
             pool = mp.Pool(processes=nr_procs)
             # Make type `object` so that dataframe cells can be python lists
