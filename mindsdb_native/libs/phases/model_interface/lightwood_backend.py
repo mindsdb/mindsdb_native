@@ -134,7 +134,7 @@ class LightwoodBackend:
             df_arr = [original_df]
 
         if len(original_df) > 500:
-            pool = mp.Pool(processes=get_nr_procs())
+            pool = mp.Pool(processes=get_nr_procs(self.transaction.lmd('max_processes'), self.transaction.lmd('max_per_proc_usage')))
             # Make type `object` so that dataframe cells can be python lists
             df_arr = pool.map(partial(_ts_to_obj, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
             df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)

@@ -304,8 +304,9 @@ class TypeDeductor(BaseModule):
         else:
             sample_df = input_data.data_frame
 
-        if get_nr_procs() > 1 and False:
-            pool = mp.Pool(processes=get_nr_procs())
+        nr_procs = get_nr_procs(self.transaction.lmd('max_processes'), self.transaction.lmd('max_per_proc_usage'))
+        if nr_procs > 1 and False:
+            pool = mp.Pool(processes=nr_procs)
             # Make type `object` so that dataframe cells can be python lists
             answer_arr = pool.map(partial(get_column_data_type, lmd=self.transaction.lmd), [
                 (sample_df[x].dropna(), input_data.data_frame[x], x) for x in sample_df.columns.values
@@ -335,8 +336,8 @@ class TypeDeductor(BaseModule):
             stats_v2[col_name]['typing'] = type_data
             stats_v2[col_name]['additional_info'] = additional_info
 
-        if get_nr_procs() > 1:
-            pool = mp.Pool(processes=get_nr_procs())
+        if nr_procs > 1:
+            pool = mp.Pool(processes=nr_procs)
             answer_arr = pool.map(get_identifier_description_mp, [
                 (input_data.data_frame[x],
                     x,
