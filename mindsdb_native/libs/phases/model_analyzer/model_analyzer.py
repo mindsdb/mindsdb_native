@@ -21,6 +21,7 @@ from nonconformist.nc import RegressorNc, ClassifierNc, MarginErrFunc
 class ModelAnalyzer(BaseModule):
     def run(self):
         np.seterr(divide='warn', invalid='warn')
+        np.random.seed(0)
         """
         # Runs the model on the validation set in order to evaluate the accuracy and confidence of future predictions
         """
