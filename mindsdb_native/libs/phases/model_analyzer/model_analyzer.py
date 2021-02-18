@@ -167,6 +167,8 @@ class ModelAnalyzer(BaseModule):
                                  x not in self.transaction.lmd['tss']['historical_columns']))]
 
             for col in ignorable_input_columns:
+                # TODO: if we return the already shaped df, then we could also simply pass it here and avoid approx.
+                # TODO: n_col reshapings, making model analysis SO much faster, very likely worth the effort!
                 empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
                 empty_input_predictions_test[col] = self.transaction.model_backend.predict('test', ignore_columns=[col])
                 empty_input_accuracy[col] = evaluate_accuracy(
@@ -209,9 +211,9 @@ class ModelAnalyzer(BaseModule):
             )
 
             # Testing data accuracy
-            predictions = self.transaction.model_backend.predict('test')
+            # predictions = self.transaction.model_backend.predict('test')  # TODO: check if this can be replaced
             self.transaction.lmd['test_data_accuracy'][col] = evaluate_accuracy(
-                predictions,
+                normal_predictions_test,
                 test_df,
                 self.transaction.lmd['stats_v2'],
                 [col],
@@ -219,9 +221,9 @@ class ModelAnalyzer(BaseModule):
             )
 
             # Validation data accuracy
-            predictions = self.transaction.model_backend.predict('validate')
+            # predictions = self.transaction.model_backend.predict('validate')  # TODO: check if this can be replaced
             self.transaction.lmd['valid_data_accuracy'][col] = evaluate_accuracy(
-                predictions,
+                normal_predictions,
                 validation_df,
                 self.transaction.lmd['stats_v2'],
                 [col],
