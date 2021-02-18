@@ -24,9 +24,6 @@ class ModelAnalyzer(BaseModule):
         validation_df = self.transaction.input_data.validation_df
         if self.transaction.lmd['tss']['is_timeseries']:
             validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
-            # TODO: modify model_backend.predict to optionally return the reshaped DF, then use that here
-            # TODO: also, minimize # of predict calls
-            # val_combined_df, val_secondary_type_dict, val_timeseries_row_mapping, val_df_gb_map = self.transaction.model_backend._ts_reshape(validation_df) # -> TODO: this is duplicate work, avoid at all costs
 
         test_df = self.transaction.input_data.test_df
         if self.transaction.lmd['tss']['is_timeseries']:
@@ -114,7 +111,14 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp'][target].fit(None, None)
                 self.transaction.hmd['icp']['active'] = True
 
-                icp_df = deepcopy(validation_df)
+                # TODO: modify model_backend.predict to optionally return the reshaped DF, then use that here
+                # TODO: also, minimize # of predict calls
+                # if self.transaction.lmd['df_cache']:
+                # -> TODO: this is duplicate work, avoid at all costs
+                # val_combined_df, val_secondary_type_dict, val_timeseries_row_mapping, val_df_gb_map = \
+                # self.transaction.model_backend._ts_reshape(validation_df)
+
+                icp_df = deepcopy(self.transaction.input_data.cached_val_df)  # validation_df)
                 y = icp_df.pop(target).values
 
                 if is_classification:
