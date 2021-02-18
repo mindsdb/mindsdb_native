@@ -1,21 +1,17 @@
-from mindsdb_native.libs.helpers.general_helpers import pickle_obj, disable_console_output
-from mindsdb_native.libs.constants.mindsdb import *
-from mindsdb_native.libs.phases.base_module import BaseModule
-from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
-from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
-from mindsdb_native.libs.helpers.conformal_helpers import SelfawareNormalizer, clean_df, get_conf_range
-from mindsdb_native.libs.helpers.conformal_helpers import BoostedAbsErrorErrFunc
-from mindsdb_native.libs.helpers.accuracy_stats import AccStats
-from mindsdb_native.libs.data_types.mindsdb_logger import log
-from sklearn.metrics import balanced_accuracy_score, r2_score
-
-import inspect
 import numpy as np
 from copy import deepcopy
 from sklearn.preprocessing import OneHotEncoder
-from lightwood.mixers.nn import NnMixer
 from nonconformist.icp import IcpRegressor, IcpClassifier
 from nonconformist.nc import RegressorNc, ClassifierNc, MarginErrFunc
+
+from lightwood.mixers.nn import NnMixer
+from mindsdb_native.libs.constants.mindsdb import *
+from mindsdb_native.libs.phases.base_module import BaseModule
+from mindsdb_native.libs.helpers.accuracy_stats import AccStats
+from mindsdb_native.libs.helpers.general_helpers import pickle_obj, evaluate_accuracy
+from mindsdb_native.libs.helpers.conformal_helpers import clean_df, get_conf_range
+from mindsdb_native.libs.helpers.conformal_helpers import BoostedAbsErrorErrFunc, SelfawareNormalizer
+from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
 
 
 class ModelAnalyzer(BaseModule):
@@ -28,6 +24,9 @@ class ModelAnalyzer(BaseModule):
         validation_df = self.transaction.input_data.validation_df
         if self.transaction.lmd['tss']['is_timeseries']:
             validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
+            # TODO: modify model_backend.predict to optionally return the reshaped DF, then use that here
+            # TODO: also, minimize # of predict calls
+            # val_combined_df, val_secondary_type_dict, val_timeseries_row_mapping, val_df_gb_map = self.transaction.model_backend._ts_reshape(validation_df) # -> TODO: this is duplicate work, avoid at all costs
 
         test_df = self.transaction.input_data.test_df
         if self.transaction.lmd['tss']['is_timeseries']:
@@ -116,9 +115,6 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp']['active'] = True
 
                 icp_df = deepcopy(validation_df)
-                if self.transaction.lmd['tss']['is_timeseries']:
-                   # TODO: erase all ts_reshaping from ICP code, inefficient
-                   icp_df, _, _, _ = self.transaction.model_backend._ts_reshape(icp_df)
                 y = icp_df.pop(target).values
 
                 if is_classification:
