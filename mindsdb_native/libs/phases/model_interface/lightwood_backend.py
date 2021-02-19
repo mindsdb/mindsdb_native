@@ -21,25 +21,25 @@ def _make_pred(row):
 
 
 def _ts_to_obj(df, historical_columns):
-    print(f'proc: {mp.curent_process()}, start _ts_to_obj, df {df.memory_usage().Index}')
+    print(f'proc: {mp.current_process()}, start _ts_to_obj, df {df.memory_usage(index=True, deep=True).sum()}')
     for hist_col in historical_columns:
         df.loc[:, hist_col] = df[hist_col].astype(object)
-    print(f'proc: {mp.current_process()}, end _ts_to_obj, df {df.memory_usage().Index}')
+    print(f'proc: {mp.current_process()}, end _ts_to_obj, df {df.memory_usage(index=True, deep=True).sum()}')
     return df
 
 
 def _ts_order_col_to_cell_lists(df, historical_columns):
-    print(f'proc: {mp.curent_process()}, start _ts_order_col_to_cell_lists, df {df.memory_usage().Index}')
+    print(f'proc: {mp.current_process()}, start _ts_order_col_to_cell_lists, df {df.memory_usage(index=True, deep=True).sum()}')
     for order_col in historical_columns:
         for ii in range(len(df)):
             label = df.index.values[ii]
             df.at[label, order_col] = [df.at[label, order_col]]
-    print(f'proc: {mp.curent_process()}, end _ts_order_col_to_cell_lists, df {df.memory_usage().Index}')
+    print(f'proc: {mp.current_process()}, end _ts_order_col_to_cell_lists, df {df.memory_usage(index=True, deep=True).sum()}')
     return df
 
 
 def _ts_add_previous_rows(df, historical_columns, window):
-    print(f'proc: {mp.curent_process()}, start _ts_add_previous_rows, df {df.memory_usage().Index}')
+    print(f'proc: {mp.current_process()}, start _ts_add_previous_rows, df {df.memory_usage(index=True, deep=True).sum()}')
     for order_col in historical_columns:
         for i in range(len(df)):
             previous_indexes = [*range(max(0, i - window), i)]
@@ -55,12 +55,12 @@ def _ts_add_previous_rows(df, historical_columns, window):
                 [0] * (1 + window - len(df.iloc[i][order_col]))
             )
             df.iloc[i][order_col].reverse()
-    print(f'proc: {mp.curent_process()}, end _ts_add_previous_rows, df {df.memory_usage().Index}')
+    print(f'proc: {mp.current_process()}, end _ts_add_previous_rows, df {df.memory_usage(index=True, deep=True).sum()}')
     return df
 
 
 def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
-    print(f'proc: {mp.curent_process()}, start _ts_add_previous_target, df {df.memory_usage().Index}')
+    print(f'proc: {mp.current_process()}, start _ts_add_previous_target, df {df.memory_usage(index=True, deep=True).sum()}')
     for target_column in predict_columns:
         previous_target_values = list(df[target_column])
         del previous_target_values[-1]
@@ -81,7 +81,7 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
                 next_target_value_arr.append(0)
             # @TODO: Maybe ignore the rows with `None` next targets for training
             df[f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
-    print(f'proc: {mp.curent_process()}, end _ts_add_previous_target, df {df.memory_usage().Index}')
+    print(f'proc: {mp.current_process()}, end _ts_add_previous_target, df {df.memory_usage(index=True, deep=True).sum()}')
     return df
 
 
@@ -117,7 +117,7 @@ class LightwoodBackend:
             else:
                 secondary_type_dict[col] = ColumnDataTypes.NUMERIC
 
-        print(f'proc: {mp.curent_process()}, stop nr 1')
+        print(f'proc: {mp.current_process()}, stop nr 1')
 
         # Convert order_by columns to numbers (note, rows are references to mutable rows in `original_df`)
         for _, row in original_df.iterrows():
@@ -143,7 +143,7 @@ class LightwoodBackend:
         else:
             df_arr = [original_df]
 
-        print(f'proc: {mp.curent_process()}, stop nr 2')
+        print(f'proc: {mp.current_process()}, stop nr 2')
 
         if len(original_df) > 500:
             nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
@@ -166,7 +166,6 @@ class LightwoodBackend:
                 if self.transaction.lmd['tss']['use_previous_target']:
                     df_arr[i] = _ts_add_previous_target(df_arr[i], predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window)
 
-
         combined_df = pd.concat(df_arr)
 
         if 'make_predictions' in combined_df.columns:
@@ -175,6 +174,9 @@ class LightwoodBackend:
 
         if len(combined_df) == 0:
             raise Exception(f'Not enough historical context to make a timeseries prediction. Please provide a number of rows greater or equal to the window size. If you can\'t get enough rows, consider lowering your window size. If you want to force timeseries predictions lacking historical context please set the `allow_incomplete_history` advanced argument to `True`, but this might lead to subpar predictions.')
+
+        print(
+            f'proc: {mp.current_process()}, reshaped df memusage {combined_df.memory_usage(index=True, deep=True).sum()}')
 
         df_gb_map = None
         if len(df_arr) > 1 and (self.transaction.lmd['quick_learn'] or self.transaction.lmd['quick_predict']):
@@ -351,10 +353,15 @@ class LightwoodBackend:
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
-            self.transaction.log.info(f'train DF memusage: {self.transaction.input_data.train_df.memory_usage()}')
+
+            self.transaction.log.error(f'train DF memusage: {self.transaction.input_data.train_df.memory_usage(index=True, deep=True).sum()}')
             train_df, secondary_type_dict, _, train_df_gb_map = self._ts_reshape(self.transaction.input_data.train_df)
-            self.transaction.log.info(f'reshaping test, DF memusage: {self.transaction.input_data.test_df.memory_usage()}')
+            self.transaction.log.error(f'reshaped train DF memusage: {train_df.memory_usage(index=True, deep=True).sum()}')
+
+            self.transaction.log.error(f'reshaping test, DF memusage: {self.transaction.input_data.test_df.memory_usage(index=True, deep=True).sum()}')
             test_df, _, _, test_df_gb_map = self._ts_reshape(self.transaction.input_data.test_df)
+            self.transaction.log.error(f'reshaped test DF memusage: {test_df.memory_usage(index=True, deep=True).sum()}')
+
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
             # @TODO: Make sampling work for timeseries
