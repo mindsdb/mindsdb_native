@@ -308,6 +308,7 @@ class TypeDeductor(BaseModule):
         nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
                                 self.transaction.lmd.get('max_per_proc_usage', None))
         if nr_procs > 1 and False:
+            self.transaction.log.info(f'Using {nr_procs} processes to deduct types.')
             pool = mp.Pool(processes=nr_procs)
             # Make type `object` so that dataframe cells can be python lists
             answer_arr = pool.map(partial(get_column_data_type, lmd=self.transaction.lmd), [
