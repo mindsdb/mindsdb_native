@@ -298,6 +298,7 @@ class TypeDeductor(BaseModule):
 
             sample_size = len(sample_df)
             population_size = len(input_data.data_frame)
+            self.transaction.log.error(f'DF memusage: {sample_df.memory_usage()}')
             self.transaction.log.info(f'Analyzing a sample of {sample_size} '
                                       f'from a total population of {population_size},'
                                       f' this is equivalent to {round(sample_size*100/population_size, 1)}% of your data.')

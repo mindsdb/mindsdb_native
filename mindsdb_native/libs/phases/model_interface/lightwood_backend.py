@@ -21,20 +21,25 @@ def _make_pred(row):
 
 
 def _ts_to_obj(df, historical_columns):
+    print(f'proc: {mp.curent_process()}, start _ts_to_obj, df {df.memory_usage().Index}')
     for hist_col in historical_columns:
         df.loc[:, hist_col] = df[hist_col].astype(object)
+    print(f'proc: {mp.current_process()}, end _ts_to_obj, df {df.memory_usage().Index}')
     return df
 
 
 def _ts_order_col_to_cell_lists(df, historical_columns):
+    print(f'proc: {mp.curent_process()}, start _ts_order_col_to_cell_lists, df {df.memory_usage().Index}')
     for order_col in historical_columns:
         for ii in range(len(df)):
             label = df.index.values[ii]
             df.at[label, order_col] = [df.at[label, order_col]]
+    print(f'proc: {mp.curent_process()}, end _ts_order_col_to_cell_lists, df {df.memory_usage().Index}')
     return df
 
 
 def _ts_add_previous_rows(df, historical_columns, window):
+    print(f'proc: {mp.curent_process()}, start _ts_add_previous_rows, df {df.memory_usage().Index}')
     for order_col in historical_columns:
         for i in range(len(df)):
             previous_indexes = [*range(max(0, i - window), i)]
@@ -50,10 +55,12 @@ def _ts_add_previous_rows(df, historical_columns, window):
                 [0] * (1 + window - len(df.iloc[i][order_col]))
             )
             df.iloc[i][order_col].reverse()
+    print(f'proc: {mp.curent_process()}, end _ts_add_previous_rows, df {df.memory_usage().Index}')
     return df
 
 
 def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
+    print(f'proc: {mp.curent_process()}, start _ts_add_previous_target, df {df.memory_usage().Index}')
     for target_column in predict_columns:
         previous_target_values = list(df[target_column])
         del previous_target_values[-1]
@@ -74,6 +81,7 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
                 next_target_value_arr.append(0)
             # @TODO: Maybe ignore the rows with `None` next targets for training
             df[f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
+    print(f'proc: {mp.curent_process()}, end _ts_add_previous_target, df {df.memory_usage().Index}')
     return df
 
 
@@ -109,6 +117,8 @@ class LightwoodBackend:
             else:
                 secondary_type_dict[col] = ColumnDataTypes.NUMERIC
 
+        print(f'proc: {mp.curent_process()}, stop nr 1')
+
         # Convert order_by columns to numbers (note, rows are references to mutable rows in `original_df`)
         for _, row in original_df.iterrows():
             for col in ob_arr:
@@ -132,6 +142,8 @@ class LightwoodBackend:
                 df_arr.append(df.sort_values(by=ob_arr))
         else:
             df_arr = [original_df]
+
+        print(f'proc: {mp.curent_process()}, stop nr 2')
 
         if len(original_df) > 500:
             nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
@@ -338,7 +350,9 @@ class LightwoodBackend:
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
+            self.transaction.log.info(f'train DF memusage: {self.transaction.input_data.train_df.memory_usage()}')
             train_df, secondary_type_dict, _, train_df_gb_map = self._ts_reshape(self.transaction.input_data.train_df)
+            self.transaction.log.info(f'reshaping test, DF memusage: {self.transaction.input_data.test_df.memory_usage()}')
             test_df, _, _, test_df_gb_map = self._ts_reshape(self.transaction.input_data.test_df)
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
