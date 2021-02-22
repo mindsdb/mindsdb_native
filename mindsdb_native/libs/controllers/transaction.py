@@ -86,14 +86,31 @@ class Transaction:
                 # restore MDB predictors in ICP objects
                 for col in self.lmd['predict_columns']:
                     try:
-                        self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
+                        if '__groups' not in self.hmd['icp'][col].keys():
+                            self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
+                        else:
+                            for group, icp in self.hmd['icp'][col].items():
+                                if group not in ['__groups', '__group_keys']:
+                                    self.hmd['icp'][col][group].nc_function.model.model = self.session.transaction.model_backend.predictor
+
                     except AttributeError:
                         model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'lightwood_data')
-                        self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
+                        if '__groups' not in self.hmd['icp'][col].keys():
+                            self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
+                        else:
+                            for group, icp in self.hmd['icp'][col].items():
+                                if group not in ['__groups', '__group_keys']:
+                                    self.hmd['icp'][col][group].nc_function.model.model = Predictor(load_from_path=model_path)
 
                     # restore model in normalizer
-                    if self.hmd['icp'][col].nc_function.normalizer is not None:
-                        self.hmd['icp'][col].nc_function.normalizer.model = self.hmd['icp'][col].nc_function.model.model
+                    if '__groups' not in self.hmd['icp'][col].keys():
+                        if self.hmd['icp'][col].nc_function.normalizer is not None:
+                            self.hmd['icp'][col].nc_function.normalizer.model = self.hmd['icp'][col].nc_function.model.model
+                    else:
+                        for group, icp in self.hmd['icp'][col].items():
+                            if group not in ['__groups', '__group_keys']:
+                                if self.hmd['icp'][col][group].nc_function.normalizer is not None:
+                                    self.hmd['icp'][col][group].nc_function.normalizer.model = self.hmd['icp'][col][group].nc_function.model.model
 
         except FileNotFoundError as e:
             self.hmd['icp'] = {'active': False}
