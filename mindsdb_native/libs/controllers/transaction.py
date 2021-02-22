@@ -144,19 +144,36 @@ class Transaction:
                     # clear data cache
                     for key in self.hmd['icp'].keys():
                         if key != 'active':
-                            mdb_predictors[key] = self.hmd['icp'][key].nc_function.model.model
-                            self.hmd['icp'][key].nc_function.model.model = None
-                            self.hmd['icp'][key].nc_function.model.last_x = None
-                            self.hmd['icp'][key].nc_function.model.last_y = None
-                            if self.hmd['icp'][key].nc_function.normalizer is not None:
-                                self.hmd['icp'][key].nc_function.normalizer.model = None
+                            if '__groups' not in self.hmd['icp'][key].keys():
+                                mdb_predictors[key] = self.hmd['icp'][key].nc_function.model.model
+                                self.hmd['icp'][key].nc_function.model.model = None
+                                self.hmd['icp'][key].nc_function.model.last_x = None
+                                self.hmd['icp'][key].nc_function.model.last_y = None
+                                if self.hmd['icp'][key].nc_function.normalizer is not None:
+                                    self.hmd['icp'][key].nc_function.normalizer.model = None
+                            else:
+                                # grouped by time series ICPs
+                                mdb_predictors[key] = {}
+                                for group, icp in self.hmd['icp'][key].items():
+                                    if group not in ['__groups', '__group_keys']:
+                                        mdb_predictors[key][group] = self.hmd['icp'][key][group].nc_function.model.model
+                                        self.hmd['icp'][key][group].nc_function.model.model = None
+                                        self.hmd['icp'][key][group].nc_function.model.last_x = None
+                                        self.hmd['icp'][key][group].nc_function.model.last_y = None
+                                        if self.hmd['icp'][key][group].nc_function.normalizer is not None:
+                                            self.hmd['icp'][key][group].nc_function.normalizer.model = None
 
                     dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
 
                     # restore predictor in ICP
                     for key in self.hmd['icp'].keys():
                         if key != 'active':
-                            self.hmd['icp'][key].nc_function.model.model = mdb_predictors[key]
+                            if '__groups' not in self.hmd['icp'][key].keys():
+                                self.hmd['icp'][key].nc_function.model.model = mdb_predictors[key]
+                            else:
+                                for group, icp in self.hmd['icp'][key].items():
+                                    if group not in ['__groups', '__group_keys']:
+                                        self.hmd['icp'][key][group].nc_function.model.model = mdb_predictors[key][group]
 
             except Exception as e:
                 self.log.error(e)

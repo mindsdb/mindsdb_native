@@ -161,6 +161,9 @@ class ModelAnalyzer(BaseModule):
                         result_df['lower'][icp_df.index] = group_ranges[:, 0]
                         result_df['upper'][icp_df.index] = group_ranges[:, 1]
 
+                    # cast results_df to list
+                    ranges = result_df.values#.tolist()
+
                 # default case
                 else:
                     icp_df = deepcopy(self.transaction.input_data.cached_val_df)
