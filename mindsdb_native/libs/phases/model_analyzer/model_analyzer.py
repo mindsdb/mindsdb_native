@@ -92,9 +92,6 @@ class ModelAnalyzer(BaseModule):
                 if normalizer is not None:
                     normalizer.prediction_cache = normal_predictions
 
-                if not is_classification:
-                    self.transaction.lmd['stats_v2'][target]['train_std_dev'] = self.transaction.input_data.train_df[target].std()
-
                 nc = nc_class(model, nc_function, normalizer=normalizer)
                 icp = icp_class(nc)
 
@@ -111,39 +108,63 @@ class ModelAnalyzer(BaseModule):
                 # check if we need more than one ICP depending on grouped by columns for time series tasks
                 if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['group_by']:
                     self.transaction.hmd['icp'][target] = {}
+
+                    # create an ICP for each possible group
                     group_info = self.transaction.input_data.train_df[self.transaction.lmd['tss']['group_by']].to_dict('list')
                     all_group_combinations = list(product(*[set(x) for x in group_info.values()]))
                     group_keys = [x for x in group_info.keys()]
                     self.transaction.hmd['icp'][target]['__groups'] = all_group_combinations
                     self.transaction.hmd['icp'][target]['__group_keys'] = group_keys
+
+                    if not is_classification:
+                        self.transaction.lmd['stats_v2'][target]['train_std_dev'] = {}
+
                     for combination in all_group_combinations:
                         self.transaction.hmd['icp'][target][frozenset(combination)] = deepcopy(icp)
                         self.transaction.hmd['icp'][target][frozenset(combination)].fit(None, None)
+
+                # simple case: no time series
                 else:
                     self.transaction.hmd['icp'][target] = icp
                     self.transaction.hmd['icp'][target].fit(None, None)
                 self.transaction.hmd['icp']['active'] = True
 
                 # calibrate conformal estimator with validation dataset
+                # grouped time series case
                 if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['group_by']:
                     icp = self.transaction.hmd['icp'][target]
                     group_keys = icp['__group_keys']
                     for group in icp['__groups']:
-                        icp_df = deepcopy(self.transaction.input_data.cached_val_df)  # validation_df)
+                        # take cached DF and filter out irrelevant rows
+
+                        icp_df = deepcopy(self.transaction.input_data.cached_val_df)
                         icp_df[f'__predicted_{target}'] = normal_predictions[target]
                         icp[frozenset(group)].index = icp_df.columns
                         for key, val in zip(group_keys, group):
                             icp_df = icp_df[icp_df[key] == val]  # select only relevant rows
+
+                        # save predictions in the cache, then calibrate the ICP
                         icp[frozenset(group)].nc_function.model.prediction_cache = icp_df.pop(f'__predicted_{target}').values
                         icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
                         icp[frozenset(group)].calibrate(icp_df.values, y)
+
+                        # save each group spread for inference
+                        if not is_classification:
+                            self.transaction.lmd['stats_v2'][target]['train_std_dev'] = y.std()
+
+                # default case
                 else:
                     icp_df = deepcopy(self.transaction.input_data.cached_val_df)
                     icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
                     self.transaction.hmd['icp'][target].index = icp_df.columns
                     self.transaction.hmd['icp'][target].calibrate(icp_df.values, y)
 
+                    # save spread for inference
+                    if not is_classification:
+                        self.transaction.lmd['stats_v2'][target]['train_std_dev'] = y.std()
+
                 # TODO: modify this method so that it triggers gby behavior if passed a list of icps
+                # get confidence estimation for validation dataset
                 conf, ranges = get_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
 
                 if not is_classification:
