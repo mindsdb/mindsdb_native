@@ -13,18 +13,30 @@ def t_softmax(x, t=1.0, axis=1):
     return softmax(torch.Tensor(x)/t, dim=axis).numpy()
 
 
-def clean_df(df, stats, output_columns, ignored_columns):
+def clean_df(df, target, transaction, is_classification, extra_params):
     """
-    :param stats: dict with information about every column
-    :param output_columns: to be predicted
+    Returns cleaned DF for nonconformist calibration
     """
+    output_columns = transaction.lmd['predict_columns']
+    ignored_columns = extra_params['columns_to_ignore']
+    enc = transaction.hmd['label_encoders'].get(target, None)
+    stats = transaction.lmd['stats_v2']
+
+    y = df.pop(target).values
+
+    if is_classification:
+        if enc and isinstance(enc.categories_[0][0], str):
+            cats = enc.categories_[0].tolist()
+            y = np.array([cats.index(i) for i in y])
+        y = y.astype(int)
+
     for key, value in stats.items():
         if key in df.columns and key in output_columns:
             df.pop(key)
     for col in ignored_columns:
         if col in df.columns:
             df.pop(col)
-    return df
+    return df, y
 
 
 def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
