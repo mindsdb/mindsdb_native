@@ -39,7 +39,7 @@ def clean_df(df, target, transaction, is_classification, extra_params):
     return df, y
 
 
-def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
+def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group=None):
     """ Returns confidence and confidence ranges for predictions """
     # numerical
     if typing_info['data_type'] == DATA_TYPES.NUMERIC or (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
@@ -48,14 +48,18 @@ def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
         all_ranges = icp.predict(X.values)
 
         # iterate over confidence levels until spread >= a multiplier of the dataset stddev
-        for significance in range(99):
-            ranges = all_ranges[:, :, significance]
-            spread = np.mean(ranges[:, 1] - ranges[:, 0])
-            tolerance = lmd['stats_v2'][target]['train_std_dev'] * std_tol
+        for tol in [std_tol, std_tol+1, std_tol+2]:
+            for significance in range(99):
+                ranges = all_ranges[:, :, significance]
+                spread = np.mean(ranges[:, 1] - ranges[:, 0])
+                if group is None:
+                    tolerance = lmd['stats_v2'][target]['train_std_dev'] * tol
+                else:
+                    tolerance = lmd['stats_v2'][target]['train_std_dev'][frozenset(group)] * tol
 
-            if spread <= tolerance:
-                confidence = (99-significance)/100
-                return confidence, ranges
+                if spread <= tolerance:
+                    confidence = (99-significance)/100
+                    return confidence, ranges
 
     # categorical
     elif (typing_info['data_type'] == DATA_TYPES.CATEGORICAL or                         # categorical
@@ -68,7 +72,7 @@ def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1):
         return conf, pvals
 
     # default
-    return 0.005, np.zeros_like((X.size, 2)).reshape(1, -1)
+    return 0.005, np.zeros((X.shape[0], 2))
 
 
 class BoostedAbsErrorErrFunc(RegressionErrFunc):

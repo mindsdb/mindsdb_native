@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from copy import deepcopy
 from itertools import product
 from sklearn.preprocessing import OneHotEncoder
@@ -132,25 +133,33 @@ class ModelAnalyzer(BaseModule):
                 # calibrate conformal estimator with validation dataset
                 # grouped time series case
                 if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['group_by']:
-                    icp = self.transaction.hmd['icp'][target]
-                    group_keys = icp['__group_keys']
-                    for group in icp['__groups']:
-                        # take cached DF and filter out irrelevant rows
+                    icps = self.transaction.hmd['icp'][target]
+                    group_keys = icps['__group_keys']
+                    result_df = pd.DataFrame(index=self.transaction.input_data.cached_val_df.index,
+                                             columns=['lower', 'upper'])
 
+                    for group in icps['__groups']:
+                        # take cached DF and filter out irrelevant rows
                         icp_df = deepcopy(self.transaction.input_data.cached_val_df)
                         icp_df[f'__predicted_{target}'] = normal_predictions[target]
-                        icp[frozenset(group)].index = icp_df.columns
+                        icps[frozenset(group)].index = icp_df.columns
                         for key, val in zip(group_keys, group):
                             icp_df = icp_df[icp_df[key] == val]  # select only relevant rows
 
                         # save predictions in the cache, then calibrate the ICP
-                        icp[frozenset(group)].nc_function.model.prediction_cache = icp_df.pop(f'__predicted_{target}').values
+                        icps[frozenset(group)].nc_function.model.prediction_cache = icp_df.pop(f'__predicted_{target}').values
                         icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
-                        icp[frozenset(group)].calibrate(icp_df.values, y)
+                        icps[frozenset(group)].calibrate(icp_df.values, y)
 
                         # save each group spread for inference
                         if not is_classification:
-                            self.transaction.lmd['stats_v2'][target]['train_std_dev'] = y.std()
+                            self.transaction.lmd['stats_v2'][target]['train_std_dev'][frozenset(group)] = y.std()
+
+                        # estimate confidence for relevant rows in validation dataset
+                        _, group_ranges = get_conf_range(icp_df, icps[frozenset(group)], target, typing_info,
+                                                                  self.transaction.lmd, group=group)
+                        result_df['lower'][icp_df.index] = group_ranges[:, 0]
+                        result_df['upper'][icp_df.index] = group_ranges[:, 1]
 
                 # default case
                 else:
@@ -163,9 +172,8 @@ class ModelAnalyzer(BaseModule):
                     if not is_classification:
                         self.transaction.lmd['stats_v2'][target]['train_std_dev'] = y.std()
 
-                # TODO: modify this method so that it triggers gby behavior if passed a list of icps
-                # get confidence estimation for validation dataset
-                conf, ranges = get_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
+                    # get confidence estimation for validation dataset
+                    _, ranges = get_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
 
                 if not is_classification:
                     normal_predictions[f'{target}_confidence_range'] = ranges
