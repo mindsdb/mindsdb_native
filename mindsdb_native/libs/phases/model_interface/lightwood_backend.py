@@ -135,7 +135,8 @@ class LightwoodBackend:
 
         if len(original_df) > 500:
             nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
-                                    self.transaction.lmd.get('max_per_proc_usage', None))
+                                    self.transaction.lmd.get('max_per_proc_usage', None),
+                                    df_arr)
             self.transaction.log.info(f'Using {nr_procs} processes to reshape.')
             pool = mp.Pool(processes=nr_procs)
             # Make type `object` so that dataframe cells can be python lists
