@@ -275,7 +275,7 @@ class Predictor:
                 split_models_on = advanced_args.get('split_models_on', []),
                 remove_target_outliers = advanced_args.get('remove_target_outliers', 0),
                 remove_columns_with_missing_targets = advanced_args.get('remove_columns_with_missing_targets', True),
-                max_processes = advanced_args.get('max_processes', 8),
+                max_processes = advanced_args.get('max_processes', None),
                 max_per_proc_usage = advanced_args.get('max_per_proc_usage', None),
                 learn_started_at = time.time(),
             )
