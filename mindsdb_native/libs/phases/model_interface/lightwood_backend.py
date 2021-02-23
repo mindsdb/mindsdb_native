@@ -238,8 +238,9 @@ class LightwoodBackend:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
 
             else:
-                self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
-                raise Exception('Failed to build data definition for Lightwood model backend')
+                err = f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !'
+                self.transaction.log.error(err)
+                raise Exception(err)
 
             if self.transaction.lmd['tss']['is_timeseries'] and col_name in self.transaction.lmd['tss']['order_by']:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
