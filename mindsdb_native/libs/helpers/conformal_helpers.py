@@ -1,78 +1,9 @@
-import torch
 import numpy as np
 from scipy.interpolate import interp1d
-from torch.nn.functional import softmax
 from nonconformist.base import RegressorAdapter
 from nonconformist.base import ClassifierAdapter
 from nonconformist.nc import BaseScorer, RegressionErrFunc
-from mindsdb_native.libs.constants.mindsdb import *
 
-
-def t_softmax(x, t=1.0, axis=1):
-    """ Softmax with temperature scaling """
-    return softmax(torch.Tensor(x)/t, dim=axis).numpy()
-
-
-def clean_df(df, target, transaction, is_classification, extra_params):
-    """
-    Returns cleaned DF for nonconformist calibration
-    """
-    output_columns = transaction.lmd['predict_columns']
-    ignored_columns = extra_params['columns_to_ignore']
-    enc = transaction.hmd['label_encoders'].get(target, None)
-    stats = transaction.lmd['stats_v2']
-
-    y = df.pop(target).values
-
-    if is_classification:
-        if enc and isinstance(enc.categories_[0][0], str):
-            cats = enc.categories_[0].tolist()
-            y = np.array([cats.index(i) for i in y])
-        y = y.astype(int)
-
-    for key, value in stats.items():
-        if key in df.columns and key in output_columns:
-            df.pop(key)
-    for col in ignored_columns:
-        if col in df.columns:
-            df.pop(col)
-    return df, y
-
-
-def get_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group=None):
-    """ Returns confidence and confidence ranges for predictions """
-    # numerical
-    if typing_info['data_type'] == DATA_TYPES.NUMERIC or (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
-                                                          DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
-        # ICP gets all possible bounds (shape: (B, 2, 99))
-        all_ranges = icp.predict(X.values)
-
-        # iterate over confidence levels until spread >= a multiplier of the dataset stddev
-        for tol in [std_tol, std_tol+1, std_tol+2]:
-            for significance in range(99):
-                ranges = all_ranges[:, :, significance]
-                spread = np.mean(ranges[:, 1] - ranges[:, 0])
-                if group is None:
-                    tolerance = lmd['stats_v2'][target]['train_std_dev'] * tol
-                else:
-                    tolerance = lmd['stats_v2'][target]['train_std_dev'][frozenset(group)] * tol
-
-                if spread <= tolerance:
-                    confidence = (99-significance)/100
-                    return confidence, ranges
-
-    # categorical
-    elif (typing_info['data_type'] == DATA_TYPES.CATEGORICAL or                         # categorical
-            (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and                      # time-series w/ cat target
-             DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())) and \
-            lmd['stats_v2'][target]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:    # no tag support yet
-
-        pvals = icp.predict(X.values)
-        conf = np.subtract(1, pvals.min(axis=1)).mean()
-        return conf, pvals
-
-    # default
-    return 0.005, np.zeros((X.shape[0], 2))
 
 
 class BoostedAbsErrorErrFunc(RegressionErrFunc):

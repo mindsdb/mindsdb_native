@@ -1,5 +1,5 @@
-from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import *
+from mindsdb_native.libs.helpers.confidence_helpers import get_numerical_conf_range, get_categorical_conf_range
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
 from mindsdb_native.libs.data_types.transaction_output_data import (
     PredictTransactionOutputData,
@@ -392,9 +392,8 @@ class PredictTransaction(Transaction):
 
         # confidence estimation
         if self.hmd['icp']['active'] and not self.lmd['quick_predict']:
-            self.lmd['all_conformal_ranges'] = {}
-            icp_X = deepcopy(predictions_df)
 
+            icp_X = deepcopy(predictions_df)
             if self.lmd['tss']['is_timeseries']:
                 icp_X, _, _, _ = self.model_backend._ts_reshape(icp_X)  # TODO: avoid inefficient reshaping
 
@@ -407,77 +406,114 @@ class PredictTransaction(Transaction):
                 output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
                 output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
 
-                if self.hmd['icp'].get(predicted_col, False):
-                    typing_info = self.lmd['stats_v2'][predicted_col]['typing']
-                    X = deepcopy(icp_X)
+                # get task type
+                typing_info = self.lmd['stats_v2'][predicted_col]['typing']
+                is_numerical = typing_info['data_type'] == DATA_TYPES.NUMERIC or \
+                               (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                                DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys())
 
-                    # preserve order that the ICP expects, else bounds are useless
-                    X = X.reindex(columns=self.hmd['icp'][predicted_col].index.values)
+                is_categorical = (typing_info['data_type'] == DATA_TYPES.CATEGORICAL or
+                                 (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                                  DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())) and \
+                                  typing_info['data_subtype'] != DATA_SUBTYPES.TAGS
 
-                    normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
-                    if normalizer:
-                        normalizer.prediction_cache = self.hmd['predictions']
+                if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
 
-                    # numerical
-                    if typing_info['data_type'] == DATA_TYPES.NUMERIC or \
-                            (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
-                                DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
-                        std_tol = 1
-                        tolerance = self.lmd['stats_v2'][predicted_col]['train_std_dev'] * std_tol
+                    # setup normalizer and its cache
+                    if '__groups' not in self.hmd['icp'][predicted_col].keys():
+                        normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
+                        if normalizer:
+                            normalizer.prediction_cache = self.hmd['predictions']
+                    else:
+                        for group, icp in self.hmd['icp'][predicted_col].items():
+                            if group not in ['__groups', '__group_keys']:
+                                normalizer = self.hmd['icp'][predicted_col][group].nc_function.normalizer
+                                if normalizer:
+                                    normalizer.prediction_cache = self.hmd['predictions']
+
+                                # preserve order that the ICP expects, else bounds are useless
+                                icp_X = icp_X.reindex(columns=self.hmd['icp'][predicted_col][group].index.values)
+                                break
+
+                    # get ICP predictions
+                    result = pd.DataFrame(index=icp_X.index, columns=['lower', 'upper', 'significance'])
+                    if '__groups' not in self.hmd['icp'][predicted_col].keys():
+                        X = deepcopy(icp_X)
+
+                        # TODO: test cat TS case, works?
                         if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
                             # bounds in time series are only given for the first forecast
                             self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
                                 [p[0] for p in output_data[predicted_col]]
+                            all_confs = self.hmd['icp'][predicted_col].predict(X.values)
+                        elif is_numerical:
+                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
+                                output_data[predicted_col]
+                            all_confs = self.hmd['icp'][predicted_col].predict(X.values)
                         else:
-                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = output_data[predicted_col]
-                        self.lmd['all_conformal_ranges'][predicted_col] = self.hmd['icp'][predicted_col].predict(X.values)
-
-                        for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
-                            sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
-                            for idx in range(sample.shape[1]):
-                                significance = (99 - idx) / 100
-                                diff = sample[1, idx] - sample[0, idx]
-                                if diff <= tolerance:
-                                    output_data[f'{predicted_col}_confidence'][sample_idx] = significance
-                                    conf_range = list(sample[:, idx])
-
-                                    if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
-                                        conf_range[0] = max(0.0, conf_range[0])
-
-                                    output_data[f'{predicted_col}_confidence_range'][sample_idx] = conf_range
-                                    break
-                            else:
-                                output_data[f'{predicted_col}_confidence'][sample_idx] = 0.9901  # default
-                                bounds = sample[:, 0]
-                                sigma = (bounds[1] - bounds[0]) / 2
-                                conf_range = [bounds[0] - sigma, bounds[1] + sigma]
-
-                                if self.lmd['stats_v2'][predicted_col].get('positive_domain', False):
-                                    conf_range[0] = max(0.0, conf_range[0])
-
-                                output_data[f'{predicted_col}_confidence_range'][sample_idx] = conf_range
-
-                    # categorical
-                    elif typing_info['data_type'] == DATA_TYPES.CATEGORICAL or \
-                            (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
-                                DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys()):
-                        if self.lmd['stats_v2'][predicted_col]['typing']['data_subtype'] != DATA_SUBTYPES.TAGS:
-                            significances = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
-                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = output_data[f'{predicted_col}_class_distribution']
+                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
+                                output_data[f'{predicted_col}_class_distribution']
+                            conf_candidates = list(range(20)) + list(range(20, 100, 10))
                             all_ranges = np.array(
                                 [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
-                                    for s in significances])
-                            self.lmd['all_conformal_ranges'][predicted_col] = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+                                 for s in conf_candidates])
+                            all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
 
-                            for sample_idx in range(self.lmd['all_conformal_ranges'][predicted_col].shape[0]):
-                                sample = self.lmd['all_conformal_ranges'][predicted_col][sample_idx, :, :]
-                                for idx in range(sample.shape[1]):
-                                    conf = (99 - significances[idx]) / 100
-                                    if np.sum(sample[:, idx]) == 1:
-                                        output_data[f'{predicted_col}_confidence'][sample_idx] = conf
-                                        break
-                                else:
-                                    output_data[f'{predicted_col}_confidence'][sample_idx] = 0.005
+                        # convert (B, 2, 99) into (B, 2) given width or error rate constraints
+                        # TODO: reformat this and below duplicate into fn call
+                        get_conf = get_numerical_conf_range if is_numerical else get_categorical_conf_range
+                        significance, confs = get_conf(predicted_col, self.lmd['stats_v2'], all_confs)
+
+                        result['lower'][X.index] = confs[:, 0]
+                        result['upper'][X.index] = confs[:, 1]
+                        result['significance'][X.index] = significance
+
+                    else:
+                        # grouped time series
+                        icps = self.hmd['icp'][predicted_col]
+                        group_keys = icps['__group_keys']
+
+                        for group in icps['__groups']:
+
+                            # copy formatted DF, append predictions
+                            X = deepcopy(icp_X)
+                            if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
+                                X[f'__predicted_{predicted_col}'] = [p[0] for p in output_data[predicted_col]]
+                            elif is_numerical:
+                                X[f'__predicted_{predicted_col}'] = output_data[predicted_col]
+                            else:
+                                X[f'__predicted_{predicted_col}'] = output_data[f'{predicted_col}_class_distribution']
+
+                            # filter rows by group
+                            for key, val in zip(group_keys, group):
+                                X = X[X[key] == val]  # select only relevant rows
+
+                            # set ICP cache
+                            icps[frozenset(group)].nc_function.model.prediction_cache = X.pop(f'__predicted_{predicted_col}').values
+
+                            # predict and get conf level given width or error rate constraints
+                            if is_numerical:
+                                all_confs = icps[frozenset(group)].predict(X.values)
+                                significances, confs = get_numerical_conf_range(all_confs, predicted_col,
+                                                                               self.lmd['stats_v2'],
+                                                                               group=frozenset(group))
+                            else:
+                                conf_candidates = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
+                                all_ranges = np.array(
+                                    [icps[frozenset(group)].predict(X.values, significance=s / 100)
+                                     for s in conf_candidates])
+                                all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+                                significances, confs = get_categorical_conf_range(all_confs, conf_candidates)
+
+                            result['lower'][X.index] = confs[:, 0]
+                            result['upper'][X.index] = confs[:, 1]
+                            result['significance'][X.index] = significances
+
+                    output_data[f'{predicted_col}_confidence'] = result['significance'].tolist()
+                    confs = [(a, b) for a, b in zip(result['lower'], result['upper'])]
+                    output_data[f'{predicted_col}_confidence_range'] = confs
+
+
         else:
             for predicted_col in self.lmd['predict_columns']:
                 output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])

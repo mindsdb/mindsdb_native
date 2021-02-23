@@ -10,8 +10,8 @@ from lightwood.mixers.nn import NnMixer
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.accuracy_stats import AccStats
+from mindsdb_native.libs.helpers.confidence_helpers import clean_df, set_conf_range
 from mindsdb_native.libs.helpers.general_helpers import pickle_obj, evaluate_accuracy
-from mindsdb_native.libs.helpers.conformal_helpers import clean_df, get_conf_range
 from mindsdb_native.libs.helpers.conformal_helpers import BoostedAbsErrorErrFunc, SelfawareNormalizer
 from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
 
@@ -156,7 +156,7 @@ class ModelAnalyzer(BaseModule):
                             self.transaction.lmd['stats_v2'][target]['train_std_dev'][frozenset(group)] = y.std()
 
                         # estimate confidence for relevant rows in validation dataset
-                        _, group_ranges = get_conf_range(icp_df, icps[frozenset(group)], target, typing_info,
+                        _, group_ranges = set_conf_range(icp_df, icps[frozenset(group)], target, typing_info,
                                                                   self.transaction.lmd, group=group)
                         result_df['lower'][icp_df.index] = group_ranges[:, 0]
                         result_df['upper'][icp_df.index] = group_ranges[:, 1]
@@ -176,7 +176,7 @@ class ModelAnalyzer(BaseModule):
                         self.transaction.lmd['stats_v2'][target]['train_std_dev'] = y.std()
 
                     # get confidence estimation for validation dataset
-                    _, ranges = get_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
+                    _, ranges = set_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
 
                 if not is_classification:
                     normal_predictions[f'{target}_confidence_range'] = ranges
