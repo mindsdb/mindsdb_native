@@ -153,7 +153,11 @@ class ModelAnalyzer(BaseModule):
 
                         # save each group spread for inference
                         if not is_classification:
-                            self.transaction.lmd['stats_v2'][target]['train_std_dev'][frozenset(group)] = y.std()
+                            icp_train_df = self.transaction.input_data.cached_val_df
+                            for key, val in zip(group_keys, group):
+                                icp_train_df = icp_train_df[icp_train_df[key] == val]
+                            icp_train_df, y_train = clean_df(icp_train_df, target, self.transaction, is_classification, fit_params)
+                            self.transaction.lmd['stats_v2'][target]['train_std_dev'][frozenset(group)] = y_train.std()
 
                         # estimate confidence for relevant rows in validation dataset
                         _, group_ranges = set_conf_range(icp_df, icps[frozenset(group)], target, typing_info,
@@ -173,7 +177,10 @@ class ModelAnalyzer(BaseModule):
 
                     # save spread for inference
                     if not is_classification:
-                        self.transaction.lmd['stats_v2'][target]['train_std_dev'] = y.std()
+                        icp_train_df = self.transaction.input_data.cached_val_df
+                        icp_train_df, y_train = clean_df(icp_train_df, target, self.transaction, is_classification,
+                                                         fit_params)
+                        self.transaction.lmd['stats_v2'][target]['train_std_dev'] = y_train.std()
 
                     # get confidence estimation for validation dataset
                     _, ranges = set_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
