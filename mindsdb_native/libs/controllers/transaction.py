@@ -394,15 +394,24 @@ class PredictTransaction(Transaction):
         if self.hmd['icp']['active'] and not self.lmd['quick_predict']:
 
             icp_X = deepcopy(predictions_df)
+
+            # replace observed data w/predictions
+            for col in self.lmd['predict_columns']:
+                if col in icp_X.columns:
+                    icp_X[col] = self.hmd['predictions'][col]
+
+            # reshape if time series
             if self.lmd['tss']['is_timeseries']:
                 icp_X, _, _, _ = self.model_backend._ts_reshape(icp_X)  # TODO: avoid inefficient reshaping
 
-            for col in self.lmd['columns_to_ignore'] + self.lmd['predict_columns']:
+            # erase ignorable columns
+            for col in self.lmd['columns_to_ignore']:# + self.lmd['predict_columns']:
                 if col in icp_X.columns:
                     icp_X.pop(col)
 
+            # get confidence bounds for each target
             for predicted_col in self.lmd['predict_columns']:
-                output_data[predicted_col] = list(self.hmd['predictions'][predicted_col])
+                output_data[predicted_col] = list(icp_X[predicted_col].values)
                 output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
                 output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
 
@@ -432,7 +441,8 @@ class PredictTransaction(Transaction):
                                     normalizer.prediction_cache = self.hmd['predictions']
 
                                 # preserve order that the ICP expects, else bounds are useless
-                                icp_X = icp_X.reindex(columns=self.hmd['icp'][predicted_col][group].index.values)
+                                index = np.append(self.hmd['icp'][predicted_col][group].index.values, 'plays')
+                                icp_X = icp_X.reindex(columns=index)
                                 break
 
                     # get ICP predictions
@@ -476,20 +486,21 @@ class PredictTransaction(Transaction):
                         for group in icps['__groups']:
 
                             # copy formatted DF, append predictions
+                            #  TODO: Does nr_preds > 1 and/or cat work here?
                             X = deepcopy(icp_X)
-                            if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
-                                X[f'__predicted_{predicted_col}'] = [p[0] for p in output_data[predicted_col]]
-                            elif is_numerical:
-                                X[f'__predicted_{predicted_col}'] = output_data[predicted_col]
-                            else:
-                                X[f'__predicted_{predicted_col}'] = output_data[f'{predicted_col}_class_distribution']
+                            #if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
+                            #    X[f'__predicted_{predicted_col}'] = [p[0] for p in output_data[predicted_col]]
+                            #elif is_numerical:
+                            #    X[f'__predicted_{predicted_col}'] = output_data[predicted_col]
+                            #else:
+                            #    X[f'__predicted_{predicted_col}'] = output_data[f'{predicted_col}_class_distribution']
 
                             # filter rows by group
                             for key, val in zip(group_keys, group):
                                 X = X[X[key] == val]  # select only relevant rows
 
                             # set ICP cache
-                            icps[frozenset(group)].nc_function.model.prediction_cache = X.pop(f'__predicted_{predicted_col}').values
+                            icps[frozenset(group)].nc_function.model.prediction_cache = X.pop(predicted_col).values
 
                             # predict and get conf level given width or error rate constraints
                             if is_numerical:
