@@ -23,6 +23,10 @@ class ModelAnalyzer(BaseModule):
         """
         # Runs the model on the validation set in order to evaluate the accuracy and confidence of future predictions
         """
+        train_df = self.transaction.input_data.train_df
+        if self.transaction.lmd['tss']['is_timeseries']:
+            train_df = self.transaction.input_data.train_df[self.transaction.input_data.train_df['make_predictions'] == True]
+
         validation_df = self.transaction.input_data.validation_df
         if self.transaction.lmd['tss']['is_timeseries']:
             validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
@@ -49,15 +53,21 @@ class ModelAnalyzer(BaseModule):
             data_type = typing_info['data_type']
             data_subtype = typing_info['data_subtype']
 
-            is_classification = (data_type == DATA_TYPES.CATEGORICAL) or \
+            is_numerical = data_type == DATA_TYPES.NUMERIC or \
+                           (data_type == DATA_TYPES.SEQUENTIAL and
+                            DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys())
+
+            is_classification = data_type == DATA_TYPES.CATEGORICAL or \
                                 (data_type == DATA_TYPES.SEQUENTIAL and
                                  DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())
 
+            is_multi_ts = self.transaction.lmd['tss']['is_timeseries'] and \
+                          self.transaction.lmd['tss']['nr_predictions'] > 1
+
             fit_params = {
-                'columns_to_ignore': [],
+                'columns_to_ignore': [col for col in output_columns if col != target],
                 'nr_preds': self.transaction.lmd['tss'].get('nr_predictions', 0)
             }
-            fit_params['columns_to_ignore'].extend([col for col in output_columns if col != target])
             fit_params['columns_to_ignore'].extend([f'{target}_timestep_{i}' for i in range(1, fit_params['nr_preds'])])
 
             if is_classification:
@@ -80,7 +90,7 @@ class ModelAnalyzer(BaseModule):
                 nc_class = RegressorNc
                 icp_class = IcpRegressor
 
-            if data_type in (DATA_TYPES.NUMERIC, DATA_TYPES.SEQUENTIAL) or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
+            if is_numerical or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
                 model = adapter(self.transaction.model_backend.predictor)
 
                 if isinstance(self.transaction.model_backend.predictor._mixer, NnMixer) and \
@@ -99,12 +109,11 @@ class ModelAnalyzer(BaseModule):
                 if is_classification:
                     icp.nc_function.model.prediction_cache = np.array(normal_predictions[f'{target}_class_distribution'])
                     icp.nc_function.model.class_map = self.transaction.lmd['stats_v2'][target]['lightwood_class_map']
+                elif is_multi_ts:
+                    # time series confidence bounds only at t+1 forecast
+                    icp.nc_function.model.prediction_cache = np.array([p[0] for p in normal_predictions[target]])
                 else:
-                    if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['nr_predictions'] > 1:
-                        # time series confidence bounds only at t+1 forecast
-                        icp.nc_function.model.prediction_cache = np.array([p[0] for p in normal_predictions[target]])
-                    else:
-                        icp.nc_function.model.prediction_cache = np.array(normal_predictions[target])
+                    icp.nc_function.model.prediction_cache = np.array(normal_predictions[target])
 
                 # check if we need more than one ICP depending on grouped by columns for time series tasks
                 if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['group_by']:
@@ -113,9 +122,8 @@ class ModelAnalyzer(BaseModule):
                     # create an ICP for each possible group
                     group_info = self.transaction.input_data.train_df[self.transaction.lmd['tss']['group_by']].to_dict('list')
                     all_group_combinations = list(product(*[set(x) for x in group_info.values()]))
-                    group_keys = [x for x in group_info.keys()]
                     self.transaction.hmd['icp'][target]['__groups'] = all_group_combinations
-                    self.transaction.hmd['icp'][target]['__group_keys'] = group_keys
+                    self.transaction.hmd['icp'][target]['__group_keys'] = [x for x in group_info.keys()]
 
                     if not is_classification:
                         self.transaction.lmd['stats_v2'][target]['train_std_dev'] = {}
@@ -128,35 +136,41 @@ class ModelAnalyzer(BaseModule):
                 else:
                     self.transaction.hmd['icp'][target] = icp
                     self.transaction.hmd['icp'][target].fit(None, None)
-                self.transaction.hmd['icp']['active'] = True
 
                 # calibrate conformal estimator with validation dataset
-                # grouped time series case
                 if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['group_by']:
+
+                    # grouped time series case
                     icps = self.transaction.hmd['icp'][target]
                     group_keys = icps['__group_keys']
                     result_df = pd.DataFrame(index=self.transaction.input_data.cached_val_df.index,
                                              columns=['lower', 'upper'])
 
                     for group in icps['__groups']:
-                        # take cached DF and filter out irrelevant rows
                         icp_df = deepcopy(self.transaction.input_data.cached_val_df)
-                        icp_df[f'__predicted_{target}'] = normal_predictions[target]
-                        icps[frozenset(group)].index = icp_df.columns
-                        for key, val in zip(group_keys, group):
-                            icp_df = icp_df[icp_df[key] == val]  # select only relevant rows
 
-                        # save predictions in the cache, then calibrate the ICP
+                        # add predictions so that after filtering we only store relevant ones in the cache
+                        if is_multi_ts:
+                            icp_df[f'__predicted_{target}'] = [p[0] for p in normal_predictions[target]]
+                        else:
+                            icp_df[f'__predicted_{target}'] = normal_predictions[target]
+
+                        for key, val in zip(group_keys, group):
+                            icp_df = icp_df[icp_df[key] == val]  # select relevant rows
+
+                        # save predictions in the cache, then calibrate the ICP w/real values
                         icps[frozenset(group)].nc_function.model.prediction_cache = icp_df.pop(f'__predicted_{target}').values
                         icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
+
+                        icps[frozenset(group)].index = icp_df.columns  # important at inference time
                         icps[frozenset(group)].calibrate(icp_df.values, y)
 
                         # save each group spread for inference
                         if not is_classification:
-                            icp_train_df = self.transaction.input_data.cached_val_df
+                            icp_train_df = deepcopy(train_df)
                             for key, val in zip(group_keys, group):
                                 icp_train_df = icp_train_df[icp_train_df[key] == val]
-                            icp_train_df, y_train = clean_df(icp_train_df, target, self.transaction, is_classification, fit_params)
+                            _, y_train = clean_df(icp_train_df, target, self.transaction, is_classification, fit_params)
                             self.transaction.lmd['stats_v2'][target]['train_std_dev'][frozenset(group)] = y_train.std()
 
                         # estimate confidence for relevant rows in validation dataset
@@ -165,10 +179,8 @@ class ModelAnalyzer(BaseModule):
                         result_df['lower'][icp_df.index] = group_ranges[:, 0]
                         result_df['upper'][icp_df.index] = group_ranges[:, 1]
 
-                    # cast results_df to list
-                    ranges = result_df.values#.tolist()
+                    ranges = result_df.values
 
-                # default case
                 else:
                     icp_df = deepcopy(self.transaction.input_data.cached_val_df)
                     icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
@@ -177,9 +189,8 @@ class ModelAnalyzer(BaseModule):
 
                     # save spread for inference
                     if not is_classification:
-                        icp_train_df = self.transaction.input_data.cached_val_df
-                        icp_train_df, y_train = clean_df(icp_train_df, target, self.transaction, is_classification,
-                                                         fit_params)
+                        icp_train_df = deepcopy(train_df)
+                        _, y_train = clean_df(icp_train_df, target, self.transaction, is_classification, fit_params)
                         self.transaction.lmd['stats_v2'][target]['train_std_dev'] = y_train.std()
 
                     # get confidence estimation for validation dataset
@@ -187,6 +198,8 @@ class ModelAnalyzer(BaseModule):
 
                 if not is_classification:
                     normal_predictions[f'{target}_confidence_range'] = ranges
+
+                self.transaction.hmd['icp']['active'] = True
 
                 # send data to GUI
                 # @TODO Limiting to 4 as to not kill the GUI, sample later (or maybe only select latest?)
