@@ -390,7 +390,7 @@ class PredictTransaction(Transaction):
             else:
                 output_data[col] = list(predictions_df[col])
 
-        # confidence estimation
+        # confidence estimation using calibrated inductive conformal predictors (ICPs)
         if self.hmd['icp']['active'] and not self.lmd['quick_predict']:
 
             icp_X = deepcopy(predictions_df)
@@ -408,17 +408,15 @@ class PredictTransaction(Transaction):
                 icp_X, _, _, _ = self.model_backend._ts_reshape(icp_X)  # TODO: avoid inefficient reshaping
 
             # erase ignorable columns
-            for col in self.lmd['columns_to_ignore']:# + self.lmd['predict_columns']:
+            for col in self.lmd['columns_to_ignore']:
                 if col in icp_X.columns:
                     icp_X.pop(col)
 
             # get confidence bounds for each target
             for predicted_col in self.lmd['predict_columns']:
-                #output_data[predicted_col] = list(icp_X[predicted_col].values)
                 output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
                 output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
 
-                # get task type
                 typing_info = self.lmd['stats_v2'][predicted_col]['typing']
                 is_numerical = typing_info['data_type'] == DATA_TYPES.NUMERIC or \
                                (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
@@ -431,43 +429,54 @@ class PredictTransaction(Transaction):
 
                 if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
 
-                    # setup normalizer and its cache
+                    # reorder DF index, setup normalizers
                     if not isinstance(self.hmd['icp'][predicted_col], dict):
+                        index = self.hmd['icp'][predicted_col].index.values
+                        index = np.append(index, predicted_col) if predicted_col not in index else index
+                        icp_X = icp_X.reindex(columns=index)  # important, else bounds can be invalid
+
                         normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
                         if normalizer:
                             normalizer.prediction_cache = self.hmd['predictions']
                     else:
-                        for group, icp in self.hmd['icp'][predicted_col].items():
-                            if group not in ['__groups', '__group_keys']:
-                                normalizer = self.hmd['icp'][predicted_col][group].nc_function.normalizer
-                                if normalizer:
-                                    normalizer.prediction_cache = self.hmd['predictions']
+                        icps = self.hmd['icp'][predicted_col]['__groups']
+                        for group in icps:
+                            icp = icps[frozenset(group)]
+                            index = icp.index.values
+                            index = np.append(index, predicted_col) if predicted_col not in index else index
+                            icp_X = icp_X.reindex(columns=index)
 
-                                # preserve order that the ICP expects, else bounds are useless
-                                index = self.hmd['icp'][predicted_col][group].index.values
-                                if predicted_col not in index:
-                                    index = np.append(index, predicted_col)
-                                icp_X = icp_X.reindex(columns=index)
-                                break
+                            # we use one normalizer for all grouped ICPs, so we can break
+                            normalizer = icp.nc_function.normalizer
+                            if normalizer:
+                                normalizer.prediction_cache = self.hmd['predictions']
+                            break
 
                     # get ICP predictions
                     result = pd.DataFrame(index=icp_X.index, columns=['lower', 'upper', 'significance'])
+
+                    # single ICP case
                     if not isinstance(self.hmd['icp'][predicted_col], dict):
                         X = deepcopy(icp_X)
 
-                        # TODO: test cat TS case, works?
-                        if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
+                        # get all possible ranges
+                        if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1 and is_numerical:
+
                             # bounds in time series are only given for the first forecast
                             self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
                                 [p[0] for p in output_data[predicted_col]]
                             all_confs = self.hmd['icp'][predicted_col].predict(X.values)
+
                         elif is_numerical:
                             self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
                                 output_data[predicted_col]
                             all_confs = self.hmd['icp'][predicted_col].predict(X.values)
+
+                        # categorical
                         else:
                             self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
                                 output_data[f'{predicted_col}_class_distribution']
+
                             conf_candidates = list(range(20)) + list(range(20, 100, 10))
                             all_ranges = np.array(
                                 [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
@@ -476,16 +485,13 @@ class PredictTransaction(Transaction):
 
                         # convert (B, 2, 99) into (B, 2) given width or error rate constraints
                         # TODO: reformat this and below duplicate into fn call
-                        #get_conf = get_numerical_conf_range if is_numerical else get_categorical_conf_range
-                        #significance, confs = get_conf(predicted_col, self.lmd['stats_v2'], all_confs)
-
                         if is_numerical:
                             significances, confs = get_numerical_conf_range(all_confs, predicted_col,
                                                                             self.lmd['stats_v2'])
                             result['lower'][X.index] = confs[:, 0]
                             result['upper'][X.index] = confs[:, 1]
                         else:
-                            conf_candidates = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
+                            conf_candidates = list(range(20)) + list(range(20, 100, 10))
                             significances = get_categorical_conf_range(all_confs, conf_candidates)
 
                         result['significance'][X.index] = significances
@@ -497,34 +503,26 @@ class PredictTransaction(Transaction):
 
                         for group in icps['__groups']:
 
-                            # copy formatted DF, append predictions
-                            #  TODO: Does nr_preds > 1 and/or cat work here?
-                            X = deepcopy(icp_X)
-                            #if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
-                            #    X[f'__predicted_{predicted_col}'] = [p[0] for p in output_data[predicted_col]]
-                            #elif is_numerical:
-                            #    X[f'__predicted_{predicted_col}'] = output_data[predicted_col]
-                            #else:
-                            #    X[f'__predicted_{predicted_col}'] = output_data[f'{predicted_col}_class_distribution']
-
                             # filter rows by group
+                            X = deepcopy(icp_X)
                             for key, val in zip(group_keys, group):
-                                X = X[X[key] == val]  # select only relevant rows
+                                X = X[X[key] == val]
 
                             # set ICP cache
                             icps[frozenset(group)].nc_function.model.prediction_cache = X.pop(predicted_col).values
 
-                            # predict and get conf level given width or error rate constraints
+                            # predict and get confidence level given width or error rate constraints
+                            # TODO: nr_preds > 1 case is necessary here, too
                             if is_numerical:
                                 all_confs = icps[frozenset(group)].predict(X.values)
                                 significances, confs = get_numerical_conf_range(all_confs, predicted_col,
-                                                                               self.lmd['stats_v2'],
-                                                                               group=frozenset(group))
+                                                                                self.lmd['stats_v2'],
+                                                                                group=frozenset(group))
                                 result['lower'][X.index] = confs[:, 0]
                                 result['upper'][X.index] = confs[:, 1]
 
                             else:
-                                conf_candidates = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
+                                conf_candidates = list(range(20)) + list(range(20, 100, 10))
                                 all_ranges = np.array(
                                     [icps[frozenset(group)].predict(X.values, significance=s / 100)
                                      for s in conf_candidates])
@@ -536,7 +534,6 @@ class PredictTransaction(Transaction):
                     output_data[f'{predicted_col}_confidence'] = result['significance'].tolist()
                     confs = [[a, b] for a, b in zip(result['lower'], result['upper'])]
                     output_data[f'{predicted_col}_confidence_range'] = confs
-
 
         else:
             for predicted_col in self.lmd['predict_columns']:
