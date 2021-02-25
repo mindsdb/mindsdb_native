@@ -398,7 +398,10 @@ class PredictTransaction(Transaction):
             # replace observed data w/predictions
             for col in self.lmd['predict_columns']:
                 if col in icp_X.columns:
-                    icp_X[col] = self.hmd['predictions'][col]
+                    preds = self.hmd['predictions'][col]
+                    if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
+                        preds = [p[0] for p in preds]
+                    icp_X[col] = preds
 
             # reshape if time series
             if self.lmd['tss']['is_timeseries']:
@@ -441,7 +444,9 @@ class PredictTransaction(Transaction):
                                     normalizer.prediction_cache = self.hmd['predictions']
 
                                 # preserve order that the ICP expects, else bounds are useless
-                                index = np.append(self.hmd['icp'][predicted_col][group].index.values, 'plays')
+                                index = self.hmd['icp'][predicted_col][group].index.values
+                                if predicted_col not in index:
+                                    index = np.append(index, predicted_col)
                                 icp_X = icp_X.reindex(columns=index)
                                 break
 
