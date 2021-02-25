@@ -439,8 +439,8 @@ class PredictTransaction(Transaction):
                         if normalizer:
                             normalizer.prediction_cache = self.hmd['predictions']
                     else:
-                        icps = self.hmd['icp'][predicted_col]['__groups']
-                        for group in icps:
+                        icps = self.hmd['icp'][predicted_col]
+                        for group in icps['__groups']:
                             icp = icps[frozenset(group)]
                             index = icp.index.values
                             index = np.append(index, predicted_col) if predicted_col not in index else index
