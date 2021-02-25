@@ -1,9 +1,15 @@
+import torch
 import numpy as np
 from scipy.interpolate import interp1d
+from torch.nn.functional import softmax
 from nonconformist.base import RegressorAdapter
 from nonconformist.base import ClassifierAdapter
 from nonconformist.nc import BaseScorer, RegressionErrFunc
 
+
+def t_softmax(x, t=1.0, axis=1):
+    """ Softmax with temperature scaling """
+    return softmax(torch.Tensor(x) / t, dim=axis).numpy()
 
 
 class BoostedAbsErrorErrFunc(RegressionErrFunc):

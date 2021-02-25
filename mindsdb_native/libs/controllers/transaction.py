@@ -86,7 +86,7 @@ class Transaction:
                 # restore MDB predictors in ICP objects
                 for col in self.lmd['predict_columns']:
                     try:
-                        if '__groups' not in self.hmd['icp'][col].keys():
+                        if '__groups' not in self.hmd['icp'].keys():
                             self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
                         else:
                             for group, icp in self.hmd['icp'][col].items():
@@ -95,7 +95,7 @@ class Transaction:
 
                     except AttributeError:
                         model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'lightwood_data')
-                        if '__groups' not in self.hmd['icp'][col].keys():
+                        if '__groups' not in self.hmd['icp'].keys():
                             self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
                         else:
                             for group, icp in self.hmd['icp'][col].items():
@@ -103,7 +103,7 @@ class Transaction:
                                     self.hmd['icp'][col][group].nc_function.model.model = Predictor(load_from_path=model_path)
 
                     # restore model in normalizer
-                    if '__groups' not in self.hmd['icp'][col].keys():
+                    if '__groups' not in self.hmd['icp'].keys():
                         if self.hmd['icp'][col].nc_function.normalizer is not None:
                             self.hmd['icp'][col].nc_function.normalizer.model = self.hmd['icp'][col].nc_function.model.model
                     else:
@@ -161,7 +161,7 @@ class Transaction:
                     # clear data cache
                     for key in self.hmd['icp'].keys():
                         if key != 'active':
-                            if '__groups' not in self.hmd['icp'][key].keys():
+                            if '__groups' not in self.hmd['icp'].keys():
                                 mdb_predictors[key] = self.hmd['icp'][key].nc_function.model.model
                                 self.hmd['icp'][key].nc_function.model.model = None
                                 self.hmd['icp'][key].nc_function.model.last_x = None
@@ -185,7 +185,7 @@ class Transaction:
                     # restore predictor in ICP
                     for key in self.hmd['icp'].keys():
                         if key != 'active':
-                            if '__groups' not in self.hmd['icp'][key].keys():
+                            if '__groups' not in self.hmd['icp'].keys():
                                 self.hmd['icp'][key].nc_function.model.model = mdb_predictors[key]
                             else:
                                 for group, icp in self.hmd['icp'][key].items():
@@ -432,7 +432,7 @@ class PredictTransaction(Transaction):
                 if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
 
                     # setup normalizer and its cache
-                    if '__groups' not in self.hmd['icp'][predicted_col].keys():
+                    if '__groups' not in self.hmd['icp'].keys():
                         normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
                         if normalizer:
                             normalizer.prediction_cache = self.hmd['predictions']
@@ -452,7 +452,7 @@ class PredictTransaction(Transaction):
 
                     # get ICP predictions
                     result = pd.DataFrame(index=icp_X.index, columns=['lower', 'upper', 'significance'])
-                    if '__groups' not in self.hmd['icp'][predicted_col].keys():
+                    if '__groups' not in self.hmd['icp'].keys():
                         X = deepcopy(icp_X)
 
                         # TODO: test cat TS case, works?
@@ -476,12 +476,19 @@ class PredictTransaction(Transaction):
 
                         # convert (B, 2, 99) into (B, 2) given width or error rate constraints
                         # TODO: reformat this and below duplicate into fn call
-                        get_conf = get_numerical_conf_range if is_numerical else get_categorical_conf_range
-                        significance, confs = get_conf(predicted_col, self.lmd['stats_v2'], all_confs)
+                        #get_conf = get_numerical_conf_range if is_numerical else get_categorical_conf_range
+                        #significance, confs = get_conf(predicted_col, self.lmd['stats_v2'], all_confs)
 
-                        result['lower'][X.index] = confs[:, 0]
-                        result['upper'][X.index] = confs[:, 1]
-                        result['significance'][X.index] = significance
+                        if is_numerical:
+                            significances, confs = get_numerical_conf_range(all_confs, predicted_col,
+                                                                            self.lmd['stats_v2'])
+                            result['lower'][X.index] = confs[:, 0]
+                            result['upper'][X.index] = confs[:, 1]
+                        else:
+                            conf_candidates = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
+                            significances = get_categorical_conf_range(all_confs, conf_candidates)
+
+                        result['significance'][X.index] = significances
 
                     else:
                         # grouped time series
@@ -513,16 +520,17 @@ class PredictTransaction(Transaction):
                                 significances, confs = get_numerical_conf_range(all_confs, predicted_col,
                                                                                self.lmd['stats_v2'],
                                                                                group=frozenset(group))
+                                result['lower'][X.index] = confs[:, 0]
+                                result['upper'][X.index] = confs[:, 1]
+                                
                             else:
                                 conf_candidates = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
                                 all_ranges = np.array(
                                     [icps[frozenset(group)].predict(X.values, significance=s / 100)
                                      for s in conf_candidates])
                                 all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
-                                significances, confs = get_categorical_conf_range(all_confs, conf_candidates)
+                                significances = get_categorical_conf_range(all_confs, conf_candidates)
 
-                            result['lower'][X.index] = confs[:, 0]
-                            result['upper'][X.index] = confs[:, 1]
                             result['significance'][X.index] = significances
 
                     output_data[f'{predicted_col}_confidence'] = result['significance'].tolist()
