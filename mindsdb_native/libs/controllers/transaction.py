@@ -86,7 +86,7 @@ class Transaction:
                 # restore MDB predictors in ICP objects
                 for col in self.lmd['predict_columns']:
                     try:
-                        if '__groups' not in self.hmd['icp'].keys():
+                        if not isinstance(self.hmd['icp'][col], dict):
                             self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
                         else:
                             for group, icp in self.hmd['icp'][col].items():
@@ -95,7 +95,7 @@ class Transaction:
 
                     except AttributeError:
                         model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'lightwood_data')
-                        if '__groups' not in self.hmd['icp'].keys():
+                        if not isinstance(self.hmd['icp'][col], dict):
                             self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
                         else:
                             for group, icp in self.hmd['icp'][col].items():
@@ -103,7 +103,7 @@ class Transaction:
                                     self.hmd['icp'][col][group].nc_function.model.model = Predictor(load_from_path=model_path)
 
                     # restore model in normalizer
-                    if '__groups' not in self.hmd['icp'].keys():
+                    if not isinstance(self.hmd['icp'][col], dict):
                         if self.hmd['icp'][col].nc_function.normalizer is not None:
                             self.hmd['icp'][col].nc_function.normalizer.model = self.hmd['icp'][col].nc_function.model.model
                     else:
@@ -161,7 +161,7 @@ class Transaction:
                     # clear data cache
                     for key in self.hmd['icp'].keys():
                         if key != 'active':
-                            if '__groups' not in self.hmd['icp'].keys():
+                            if not isinstance(self.hmd['icp'][key], dict):
                                 mdb_predictors[key] = self.hmd['icp'][key].nc_function.model.model
                                 self.hmd['icp'][key].nc_function.model.model = None
                                 self.hmd['icp'][key].nc_function.model.last_x = None
@@ -414,7 +414,7 @@ class PredictTransaction(Transaction):
 
             # get confidence bounds for each target
             for predicted_col in self.lmd['predict_columns']:
-                output_data[predicted_col] = list(icp_X[predicted_col].values)
+                #output_data[predicted_col] = list(icp_X[predicted_col].values)
                 output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
                 output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
 
@@ -432,7 +432,7 @@ class PredictTransaction(Transaction):
                 if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
 
                     # setup normalizer and its cache
-                    if '__groups' not in self.hmd['icp'].keys():
+                    if not isinstance(self.hmd['icp'][predicted_col], dict):
                         normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
                         if normalizer:
                             normalizer.prediction_cache = self.hmd['predictions']
@@ -452,7 +452,7 @@ class PredictTransaction(Transaction):
 
                     # get ICP predictions
                     result = pd.DataFrame(index=icp_X.index, columns=['lower', 'upper', 'significance'])
-                    if '__groups' not in self.hmd['icp'].keys():
+                    if not isinstance(self.hmd['icp'][predicted_col], dict):
                         X = deepcopy(icp_X)
 
                         # TODO: test cat TS case, works?
@@ -522,7 +522,7 @@ class PredictTransaction(Transaction):
                                                                                group=frozenset(group))
                                 result['lower'][X.index] = confs[:, 0]
                                 result['upper'][X.index] = confs[:, 1]
-                                
+
                             else:
                                 conf_candidates = list(range(20)) + list(range(20, 100, 10))  # max permitted error rate
                                 all_ranges = np.array(
