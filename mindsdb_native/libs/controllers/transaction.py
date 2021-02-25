@@ -534,7 +534,7 @@ class PredictTransaction(Transaction):
                             result['significance'][X.index] = significances
 
                     output_data[f'{predicted_col}_confidence'] = result['significance'].tolist()
-                    confs = [(a, b) for a, b in zip(result['lower'], result['upper'])]
+                    confs = [[a, b] for a, b in zip(result['lower'], result['upper'])]
                     output_data[f'{predicted_col}_confidence_range'] = confs
 
 

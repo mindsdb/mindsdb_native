@@ -49,12 +49,12 @@ def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group=None):
 
                 if spread <= tolerance:
                     confidence = (99 - significance) / 100
-                    if lmd['stats_v2'][target]['positive_domain']:
+                    if lmd['stats_v2'][target].get('positive_domain', False):
                         ranges[ranges < 0] = 0
                     return confidence, ranges
             else:
                 ranges = all_ranges[:, :, 0]
-                if lmd['stats_v2'][target]['positive_domain']:
+                if lmd['stats_v2'][target].get('positive_domain', False):
                     ranges[ranges < 0] = 0
                 return 0.9901, ranges
 
