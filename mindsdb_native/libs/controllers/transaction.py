@@ -508,28 +508,29 @@ class PredictTransaction(Transaction):
                             for key, val in zip(group_keys, group):
                                 X = X[X[key] == val]
 
-                            # set ICP cache
-                            icps[frozenset(group)].nc_function.model.prediction_cache = X.pop(predicted_col).values
+                            if X.size > 0:
+                                # set ICP cache
+                                icps[frozenset(group)].nc_function.model.prediction_cache = X.pop(predicted_col).values
 
-                            # predict and get confidence level given width or error rate constraints
-                            # TODO: nr_preds > 1 case is necessary here, too
-                            if is_numerical:
-                                all_confs = icps[frozenset(group)].predict(X.values)
-                                significances, confs = get_numerical_conf_range(all_confs, predicted_col,
-                                                                                self.lmd['stats_v2'],
-                                                                                group=frozenset(group))
-                                result['lower'][X.index] = confs[:, 0]
-                                result['upper'][X.index] = confs[:, 1]
+                                # predict and get confidence level given width or error rate constraints
+                                # TODO: nr_preds > 1 case is necessary here, too
+                                if is_numerical:
+                                    all_confs = icps[frozenset(group)].predict(X.values)
+                                    significances, confs = get_numerical_conf_range(all_confs, predicted_col,
+                                                                                    self.lmd['stats_v2'],
+                                                                                    group=frozenset(group))
+                                    result['lower'][X.index] = confs[:, 0]
+                                    result['upper'][X.index] = confs[:, 1]
 
-                            else:
-                                conf_candidates = list(range(20)) + list(range(20, 100, 10))
-                                all_ranges = np.array(
-                                    [icps[frozenset(group)].predict(X.values, significance=s / 100)
-                                     for s in conf_candidates])
-                                all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
-                                significances = get_categorical_conf_range(all_confs, conf_candidates)
+                                else:
+                                    conf_candidates = list(range(20)) + list(range(20, 100, 10))
+                                    all_ranges = np.array(
+                                        [icps[frozenset(group)].predict(X.values, significance=s / 100)
+                                         for s in conf_candidates])
+                                    all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+                                    significances = get_categorical_conf_range(all_confs, conf_candidates)
 
-                            result['significance'][X.index] = significances
+                                result['significance'][X.index] = significances
 
                     output_data[f'{predicted_col}_confidence'] = result['significance'].tolist()
                     confs = [[a, b] for a, b in zip(result['lower'], result['upper'])]
