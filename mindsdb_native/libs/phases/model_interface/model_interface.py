@@ -1,8 +1,7 @@
-from mindsdb_native.libs.phases.base_module import BaseModule
-from mindsdb_native.libs.constants.mindsdb import *
-from mindsdb_native.libs.phases.model_interface.lightwood_backend import LightwoodBackend
-
 import datetime
+
+from mindsdb_native.libs.phases.base_module import BaseModule
+from mindsdb_native.libs.phases.model_interface.lightwood_backend import LightwoodBackend
 
 
 class ModelInterface(BaseModule):

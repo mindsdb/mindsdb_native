@@ -1,19 +1,17 @@
 import copy
-import traceback
-from pathlib import Path
-import multiprocessing as mp
-from functools import partial
 import time
-
 import numpy as np
 import pandas as pd
+import multiprocessing as mp
+from functools import partial
+
 import lightwood
 from lightwood.constants.lightwood import ColumnDataTypes
 
-from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
-from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
+from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.mp_helpers import get_nr_procs
+from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
 
 
 def _make_pred(row):
@@ -82,8 +80,6 @@ class LightwoodBackend:
         self.transaction = transaction
         self.predictor = None
         self.nr_predictions = self.transaction.lmd['tss']['nr_predictions']
-        # Ideally this will go away soon but still a necessity for now
-        self.nn_mixer_only = False
 
     def _ts_reshape(self, original_df):
         original_df = copy.deepcopy(original_df)
@@ -267,8 +263,6 @@ class LightwoodBackend:
             col_config.update(other_keys)
 
             if col_name in self.transaction.lmd['predict_columns']:
-                if not ((data_type == DATA_TYPES.CATEGORICAL and data_subtype != DATA_SUBTYPES.TAGS) or data_type == DATA_TYPES.NUMERIC):
-                    self.nn_mixer_only = True
 
                 if self.transaction.lmd['tss']['is_timeseries']:
                     col_config['additional_info'] = {
@@ -308,7 +302,6 @@ class LightwoodBackend:
         config['data_source']['cache_transformed_data'] = not self.transaction.lmd['force_disable_cache']
 
         config['mixer'] = {
-            'class': lightwood.mixers.NnMixer,
             'kwargs': {
                 'selfaware': self.transaction.lmd['use_selfaware_model']
             }
@@ -317,7 +310,6 @@ class LightwoodBackend:
         return config
 
     def callback_on_iter(self, epoch, mix_error, test_error, delta_mean, accuracy):
-        test_error_rounded = round(test_error, 4)
         for col in accuracy:
             value = accuracy[col]['value']
             if accuracy[col]['function'] == 'r2_score':
@@ -370,14 +362,10 @@ class LightwoodBackend:
 
             logging.getLogger().setLevel(logging.DEBUG)
 
-            reasonable_training_time = train_df.shape[0] * train_df.shape[1] / 20
-
             predictors_and_accuracies = []
 
             if self.transaction.lmd.get('use_mixers', None) is not None:
                 mixer_classes = self.transaction.lmd['use_mixers']
-            elif self.nn_mixer_only:
-                mixer_classes = [lightwood.mixers.NnMixer]
             else:
                 mixer_classes = [lightwood.mixers.LightGBMMixer, lightwood.mixers.NnMixer]
 
@@ -458,11 +446,11 @@ class LightwoodBackend:
                 validation_df = self.transaction.input_data.validation_df
 
                 if self.transaction.lmd['tss']['is_timeseries']:
-                    validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
+                    validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True]
 
                 validation_accuracy = evaluate_accuracy(
                     validation_predictions,
-                    self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df,
+                    validation_df,
                     self.transaction.lmd['stats_v2'],
                     self.transaction.lmd['predict_columns'],
                     backend=self
