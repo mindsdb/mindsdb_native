@@ -367,7 +367,7 @@ class LightwoodBackend:
             if self.transaction.lmd.get('use_mixers', None) is not None:
                 mixer_classes = self.transaction.lmd['use_mixers']
             else:
-                mixer_classes = [lightwood.mixers.LightGBMMixer, lightwood.mixers.NnMixer]
+                mixer_classes = [lightwood.mixers.LightGBMMixer, lightwood.mixers.NnMixer, lightwood.mixers.AvgEnsemble]
 
             final_mixer_classes = []
             for mixer_class in mixer_classes:
@@ -420,6 +420,9 @@ class LightwoodBackend:
                     lightwood_config['mixer']['kwargs']['eval_every_x_epochs'] = eval_every_x_epochs / len(final_mixer_classes)
 
                 lightwood_config['mixer']['kwargs']['stop_training_after_seconds'] = training_time_per_mixer
+
+                if lightwood_config['mixer']['class'] == lightwood.mixers.AvgEnsemble:
+                    lightwood_config['mixer']['kwargs']['predictors'] = [pred for (pred, acc) in predictors_and_accuracies]
 
                 self.predictor = lightwood.Predictor(lightwood_config.copy())
 
