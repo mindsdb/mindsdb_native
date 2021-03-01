@@ -264,7 +264,7 @@ class Predictor:
                 data_split_indexes = advanced_args.get('data_split_indexes', None),
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
                 force_predict = advanced_args.get('force_predict', False),
-                use_mixers = advanced_args.get('use_mixers', None),
+                use_mixers = advanced_args.get('use_mixers', None) if advanced_args.get('models', None) is None else advanced_args['models'],
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
                 debug = advanced_args.get('debug', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
@@ -275,6 +275,8 @@ class Predictor:
                 split_models_on = advanced_args.get('split_models_on', []),
                 remove_target_outliers = advanced_args.get('remove_target_outliers', 0),
                 remove_columns_with_missing_targets = advanced_args.get('remove_columns_with_missing_targets', True),
+                max_processes = advanced_args.get('max_processes', None),
+                max_per_proc_usage = advanced_args.get('max_per_proc_usage', None),
                 learn_started_at = time.time(),
             )
 
