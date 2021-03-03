@@ -393,7 +393,7 @@ class PredictTransaction(Transaction):
         # confidence estimation using calibrated inductive conformal predictors (ICPs)
         if self.hmd['icp']['active'] and not self.lmd['quick_predict']:
 
-            icp_X = deepcopy(predictions_df)
+            icp_X = deepcopy(self.input_data.cached_pred_df)
 
             # replace observed data w/predictions
             for col in self.lmd['predict_columns']:
@@ -402,10 +402,6 @@ class PredictTransaction(Transaction):
                     if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1:
                         preds = [p[0] for p in preds]
                     icp_X[col] = preds
-
-            # reshape if time series
-            if self.lmd['tss']['is_timeseries']:
-                icp_X, _, _, _ = self.model_backend._ts_reshape(icp_X)  # TODO: avoid inefficient reshaping
 
             # erase ignorable columns
             for col in self.lmd['columns_to_ignore']:

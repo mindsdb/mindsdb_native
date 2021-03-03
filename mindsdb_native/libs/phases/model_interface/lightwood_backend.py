@@ -543,6 +543,8 @@ class LightwoodBackend:
                     self.transaction.input_data.cached_val_df = run_df
                 elif mode == 'test':
                     self.transaction.input_data.cached_test_df = run_df
+                elif mode == 'predict':
+                    self.transaction.input_data.cached_pred_df = run_df
 
             if self.transaction.lmd['quick_predict']:
                 for k in predictions:
