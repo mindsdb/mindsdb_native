@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 from scipy.interpolate import interp1d
@@ -6,10 +7,53 @@ from nonconformist.base import RegressorAdapter
 from nonconformist.base import ClassifierAdapter
 from nonconformist.nc import BaseScorer, RegressionErrFunc
 
+from lightwood.api.predictor import Predictor
+from mindsdb_native.config import CONFIG
 
 def t_softmax(x, t=1.0, axis=1):
     """ Softmax with temperature scaling """
     return softmax(torch.Tensor(x) / t, dim=axis).numpy()
+
+
+def clear_icp_state(icp):
+    """ We clear last_x and last_y to minimize file size. Model has to be cleared because it cannot be pickled. """
+    icp.model.model = None
+    icp.model.last_x = None
+    icp.model.last_y = None
+    if icp.normalizer is not None:
+        icp.normalizer.model = None
+
+
+def restore_icp_state(col, hmd, session):
+    icp = hmd['icp'][col]
+    try:
+        if not isinstance(icp, dict):
+            icp.nc_function.model.model = session.transaction.model_backend.predictor
+        else:
+            for group, icp in icp.items():
+                if group not in ['__groups', '__group_keys']:
+                    icp[group].nc_function.model.model = session.transaction.model_backend.predictor
+
+    except AttributeError:
+        model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, hmd['name'], 'lightwood_data')
+        if not isinstance(icp, dict):
+            icp.nc_function.model.model = Predictor(load_from_path=model_path)
+        else:
+            for group, icp in icp.items():
+                if group not in ['__groups', '__group_keys']:
+                    icp[group].nc_function.model.model = Predictor(load_from_path=model_path)
+
+    # restore model in normalizer
+    if not isinstance(icp, dict):
+        if icp.nc_function.normalizer is not None:
+            icp.nc_function.normalizer.model = icp.nc_function.model.model
+    else:
+        for group, icp in icp.items():
+            if group not in ['__groups', '__group_keys']:
+                if icp[group].nc_function.normalizer is not None:
+                    icp[group].nc_function.normalizer.model = icp[group].nc_function.model.model
+
+    # return hmd? icp? TODO
 
 
 class BoostedAbsErrorErrFunc(RegressionErrFunc):

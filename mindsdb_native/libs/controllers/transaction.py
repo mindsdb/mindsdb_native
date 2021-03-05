@@ -1,5 +1,6 @@
 from mindsdb_native.libs.helpers.general_helpers import *
 from mindsdb_native.libs.helpers.confidence_helpers import get_numerical_conf_range, get_categorical_conf_range
+from mindsdb_native.libs.helpers.conformal_helpers import restore_icp_state, clear_icp_state
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
 from mindsdb_native.libs.data_types.transaction_output_data import (
     PredictTransactionOutputData,
@@ -83,34 +84,8 @@ class Transaction:
         try:
             with open(icp_fn, 'rb') as fp:
                 self.hmd['icp'] = dill.load(fp)
-                # restore MDB predictors in ICP objects
                 for col in self.lmd['predict_columns']:
-                    try:
-                        if not isinstance(self.hmd['icp'][col], dict):
-                            self.hmd['icp'][col].nc_function.model.model = self.session.transaction.model_backend.predictor
-                        else:
-                            for group, icp in self.hmd['icp'][col].items():
-                                if group not in ['__groups', '__group_keys']:
-                                    self.hmd['icp'][col][group].nc_function.model.model = self.session.transaction.model_backend.predictor
-
-                    except AttributeError:
-                        model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'lightwood_data')
-                        if not isinstance(self.hmd['icp'][col], dict):
-                            self.hmd['icp'][col].nc_function.model.model = Predictor(load_from_path=model_path)
-                        else:
-                            for group, icp in self.hmd['icp'][col].items():
-                                if group not in ['__groups', '__group_keys']:
-                                    self.hmd['icp'][col][group].nc_function.model.model = Predictor(load_from_path=model_path)
-
-                    # restore model in normalizer
-                    if not isinstance(self.hmd['icp'][col], dict):
-                        if self.hmd['icp'][col].nc_function.normalizer is not None:
-                            self.hmd['icp'][col].nc_function.normalizer.model = self.hmd['icp'][col].nc_function.model.model
-                    else:
-                        for group, icp in self.hmd['icp'][col].items():
-                            if group not in ['__groups', '__group_keys']:
-                                if self.hmd['icp'][col][group].nc_function.normalizer is not None:
-                                    self.hmd['icp'][col][group].nc_function.normalizer.model = self.hmd['icp'][col][group].nc_function.model.model
+                    restore_icp_state(col, self.hmd, self.session)
 
         except FileNotFoundError as e:
             self.hmd['icp'] = {'active': False}
@@ -155,42 +130,28 @@ class Transaction:
 
         if 'icp' in self.hmd.keys() and self.hmd['icp']['active']:
             icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'icp.pickle')
+            mdb_predictors = {}
             try:
-                mdb_predictors = {}
                 with open(icp_fn, 'wb') as fp:
-                    # clear data cache
                     for key in self.hmd['icp'].keys():
-                        if key != 'active':
-                            if not isinstance(self.hmd['icp'][key], dict):
-                                mdb_predictors[key] = self.hmd['icp'][key].nc_function.model.model
-                                self.hmd['icp'][key].nc_function.model.model = None
-                                self.hmd['icp'][key].nc_function.model.last_x = None
-                                self.hmd['icp'][key].nc_function.model.last_y = None
-                                if self.hmd['icp'][key].nc_function.normalizer is not None:
-                                    self.hmd['icp'][key].nc_function.normalizer.model = None
-                            else:
-                                # grouped by time series ICPs
-                                mdb_predictors[key] = {}
-                                for group, icp in self.hmd['icp'][key].items():
-                                    if group not in ['__groups', '__group_keys']:
-                                        mdb_predictors[key][group] = self.hmd['icp'][key][group].nc_function.model.model
-                                        self.hmd['icp'][key][group].nc_function.model.model = None
-                                        self.hmd['icp'][key][group].nc_function.model.last_x = None
-                                        self.hmd['icp'][key][group].nc_function.model.last_y = None
-                                        if self.hmd['icp'][key][group].nc_function.normalizer is not None:
-                                            self.hmd['icp'][key][group].nc_function.normalizer.model = None
+                        if key != 'active' and not isinstance(self.hmd['icp'][key], dict):
+                            mdb_predictors[key] = self.hmd['icp'][key].nc_function.model.model
+                            clear_icp_state(self.hmd['icp'][key].nc_function)
+                        elif key != 'active':
+                            mdb_predictors[key] = {}
+                            for group in self.hmd['icp'][key]['__groups']:
+                                mdb_predictors[key][group] = self.hmd['icp'][key][frozenset(group)].nc_function.model.model
+                                clear_icp_state(self.hmd['icp'][key][frozenset(group)].nc_function)
 
                     dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
 
                     # restore predictor in ICP
                     for key in self.hmd['icp'].keys():
-                        if key != 'active':
-                            if '__groups' not in self.hmd['icp'].keys():
-                                self.hmd['icp'][key].nc_function.model.model = mdb_predictors[key]
-                            else:
-                                for group, icp in self.hmd['icp'][key].items():
-                                    if group not in ['__groups', '__group_keys']:
-                                        self.hmd['icp'][key][group].nc_function.model.model = mdb_predictors[key][group]
+                        if key != 'active' and not isinstance(self.hmd['icp'][key], dict):
+                            self.hmd['icp'][key].nc_function.model.model = mdb_predictors[key]
+                        elif key != 'active':
+                            for group in self.hmd['icp'][key]['__groups']:
+                                self.hmd['icp'][key][frozenset(group)].nc_function.model.model = mdb_predictors[key][group]
 
             except Exception as e:
                 self.log.error(e)
