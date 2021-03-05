@@ -536,15 +536,15 @@ class LightwoodBackend:
 
             predictions = self.predictor.predict(when_data=run_df)
 
-            if self.transaction.lmd['df_cache']:
-                if mode == 'predict_on_train_data':
-                    self.transaction.input_data.cached_train_df = run_df
-                elif mode == 'validate':
-                    self.transaction.input_data.cached_val_df = run_df
-                elif mode == 'test':
-                    self.transaction.input_data.cached_test_df = run_df
-                elif mode == 'predict':
-                    self.transaction.input_data.cached_pred_df = run_df
+            # cache run_df to avoid duplicate reshaping in analysis and predict transactions
+            if mode == 'predict_on_train_data':
+                self.transaction.input_data.cached_train_df = run_df
+            elif mode == 'validate':
+                self.transaction.input_data.cached_val_df = run_df
+            elif mode == 'test':
+                self.transaction.input_data.cached_test_df = run_df
+            elif mode == 'predict':
+                self.transaction.input_data.cached_pred_df = run_df
 
             if self.transaction.lmd['quick_predict']:
                 for k in predictions:

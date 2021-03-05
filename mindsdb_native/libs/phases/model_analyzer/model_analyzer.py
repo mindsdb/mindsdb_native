@@ -7,13 +7,13 @@ from nonconformist.icp import IcpRegressor, IcpClassifier
 from nonconformist.nc import RegressorNc, ClassifierNc, MarginErrFunc
 
 from lightwood.mixers.nn import NnMixer
+from mindsdb_native.libs.helpers.general_helpers import pickle_obj, evaluate_accuracy
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
-from mindsdb_native.libs.helpers.accuracy_stats import AccStats
-from mindsdb_native.libs.helpers.confidence_helpers import clean_df, set_conf_range
-from mindsdb_native.libs.helpers.general_helpers import pickle_obj, evaluate_accuracy
-from mindsdb_native.libs.helpers.conformal_helpers import BoostedAbsErrorErrFunc, SelfawareNormalizer
 from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
+from mindsdb_native.libs.helpers.conformal_helpers import BoostedAbsErrorErrFunc, SelfawareNormalizer
+from mindsdb_native.libs.helpers.confidence_helpers import clean_df, set_conf_range
+from mindsdb_native.libs.helpers.accuracy_stats import AccStats
 
 
 class ModelAnalyzer(BaseModule):
@@ -139,6 +139,8 @@ class ModelAnalyzer(BaseModule):
                 else:
                     self.transaction.hmd['icp'][target] = icp
                     self.transaction.hmd['icp'][target].fit(None, None)
+                    if not is_classification:
+                        self.transaction.lmd['stats_v2'][target]['train_std_dev'] = train_df[target].std()
 
                 # calibrate time series grouped ICPs
                 if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['group_by']:
@@ -157,7 +159,7 @@ class ModelAnalyzer(BaseModule):
                         else:
                             icp_df[f'__predicted_{target}'] = normal_predictions[target]
 
-                        # select relevant rows for each group combination
+                        # filter irrelevant rows for each group combination
                         for key, val in zip(group_keys, group):
                             icp_df = icp_df[icp_df[key] == val]
 
@@ -168,12 +170,12 @@ class ModelAnalyzer(BaseModule):
                         icps[frozenset(group)].index = icp_df.columns      # important at inference time
                         icps[frozenset(group)].calibrate(icp_df.values, y)
 
-                        # save each training set group spread for bounds width selection
+                        # save group training std() for bounds width selection
                         if not is_classification:
                             icp_train_df = deepcopy(train_df)
                             for key, val in zip(group_keys, group):
                                 icp_train_df = icp_train_df[icp_train_df[key] == val]
-                            _, y_train = clean_df(icp_train_df, target, self.transaction, is_classification, fit_params)
+                            y_train = icp_train_df[target].values
                             self.transaction.lmd['stats_v2'][target]['train_std_dev'][frozenset(group)] = y_train.std()
 
                         # get bounds for relevant rows in validation dataset
@@ -191,12 +193,6 @@ class ModelAnalyzer(BaseModule):
                     icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
                     self.transaction.hmd['icp'][target].index = icp_df.columns
                     self.transaction.hmd['icp'][target].calibrate(icp_df.values, y)
-
-                    # save spread for inference
-                    if not is_classification:
-                        icp_train_df = deepcopy(train_df)
-                        _, y_train = clean_df(icp_train_df, target, self.transaction, is_classification, fit_params)
-                        self.transaction.lmd['stats_v2'][target]['train_std_dev'] = y_train.std()
 
                     # get confidence estimation for validation dataset
                     _, ranges = set_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
@@ -236,8 +232,6 @@ class ModelAnalyzer(BaseModule):
                                  x not in self.transaction.lmd['tss']['historical_columns']))]
 
             for col in ignorable_input_columns:
-                # TODO: if we return the already shaped df, then we could also simply pass it here and avoid approx.
-                # TODO: n_col reshapings, making model analysis SO much faster, very likely worth the effort!
                 empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
                 empty_input_predictions_test[col] = self.transaction.model_backend.predict('test', ignore_columns=[col])
                 empty_input_accuracy[col] = evaluate_accuracy(
@@ -280,7 +274,6 @@ class ModelAnalyzer(BaseModule):
             )
 
             # Testing data accuracy
-            # predictions = self.transaction.model_backend.predict('test')  # TODO: check if this can be replaced
             self.transaction.lmd['test_data_accuracy'][col] = evaluate_accuracy(
                 normal_predictions_test,
                 test_df,
@@ -290,7 +283,6 @@ class ModelAnalyzer(BaseModule):
             )
 
             # Validation data accuracy
-            # predictions = self.transaction.model_backend.predict('validate')  # TODO: check if this can be replaced
             self.transaction.lmd['valid_data_accuracy'][col] = evaluate_accuracy(
                 normal_predictions,
                 validation_df,

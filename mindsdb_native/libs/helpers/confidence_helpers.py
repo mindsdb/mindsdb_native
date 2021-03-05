@@ -2,11 +2,8 @@ import numpy as np
 from mindsdb_native.libs.constants.mindsdb import *
 
 
-
 def clean_df(df, target, transaction, is_classification, extra_params):
-    """
-    Returns cleaned DF for nonconformist calibration
-    """
+    """ Returns cleaned DF for nonconformist calibration """
     output_columns = transaction.lmd['predict_columns']
     ignored_columns = extra_params['columns_to_ignore']
     enc = transaction.hmd['label_encoders'].get(target, None)
@@ -116,9 +113,7 @@ def get_categorical_conf_range(all_confs, conf_candidates):
             significance = (99 - conf_candidates[idx]) / 100
             if np.sum(sample[:, idx]) == 1:
                 return significance
-                # output_data[f'{predicted_col}_confidence'][sample_idx] = significance
         else:
             return 0.005
-            # output_data[f'{predicted_col}_confidence'][sample_idx] = significance
     else:
         return 0.005
