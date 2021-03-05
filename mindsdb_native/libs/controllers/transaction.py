@@ -9,7 +9,6 @@ from mindsdb_native.libs.data_types.transaction_output_data import (
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.config import CONFIG
 
-from lightwood.api.predictor import Predictor
 
 import _thread
 import traceback
@@ -441,7 +440,6 @@ class PredictTransaction(Transaction):
                             all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
 
                         # convert (B, 2, 99) into (B, 2) given width or error rate constraints
-                        # TODO: reformat this and below duplicate into fn call
                         if is_numerical:
                             significances, confs = get_numerical_conf_range(all_confs, predicted_col,
                                                                             self.lmd['stats_v2'])
@@ -470,7 +468,6 @@ class PredictTransaction(Transaction):
                                 icps[frozenset(group)].nc_function.model.prediction_cache = X.pop(predicted_col).values
 
                                 # predict and get confidence level given width or error rate constraints
-                                # TODO: nr_preds > 1 case is necessary here, too
                                 if is_numerical:
                                     all_confs = icps[frozenset(group)].predict(X.values)
                                     significances, confs = get_numerical_conf_range(all_confs, predicted_col,

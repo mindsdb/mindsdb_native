@@ -10,6 +10,7 @@ from nonconformist.nc import BaseScorer, RegressionErrFunc
 from lightwood.api.predictor import Predictor
 from mindsdb_native.config import CONFIG
 
+
 def t_softmax(x, t=1.0, axis=1):
     """ Softmax with temperature scaling """
     return softmax(torch.Tensor(x) / t, dim=axis).numpy()
@@ -52,8 +53,6 @@ def restore_icp_state(col, hmd, session):
             if group not in ['__groups', '__group_keys']:
                 if icp[group].nc_function.normalizer is not None:
                     icp[group].nc_function.normalizer.model = icp[group].nc_function.model.model
-
-    # return hmd? icp? TODO
 
 
 class BoostedAbsErrorErrFunc(RegressionErrFunc):
