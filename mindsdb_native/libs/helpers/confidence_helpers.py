@@ -27,7 +27,7 @@ def clean_df(df, target, transaction, is_classification, extra_params):
 
 
 def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group=None):
-    """ Returns confidence and confidence ranges for predictions """
+    """ Sets confidence level and returns it plus predictions regions """
     # numerical
     if typing_info['data_type'] == DATA_TYPES.NUMERIC or (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                                                           DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
@@ -70,6 +70,7 @@ def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group=None):
 
 
 def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group=None):
+    """ Gets prediction bounds for numerical targets, based on ICP estimation and width tolerance """
     significances = []
     conf_ranges = []
     if group is None:
@@ -93,7 +94,7 @@ def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group=N
                 conf_ranges.append(conf_range)
                 break
         else:
-            significances.append(0.9901)  # default
+            significances.append(0.9901)  # default: confident that value falls inside big bounds
             bounds = sample[:, 0]
             sigma = (bounds[1] - bounds[0]) / 2
             conf_range = [bounds[0] - sigma, bounds[1] + sigma]
@@ -106,14 +107,17 @@ def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group=N
     return significances, np.array(conf_ranges)
 
 
-def get_categorical_conf_range(all_confs, conf_candidates):
+def get_categorical_conf(all_confs, conf_candidates):
+    """ Gets ICP confidence estimation for categorical targets.
+    Prediction set is always unitary and includes only the predicted label. """
+    significances = []
     for sample_idx in range(all_confs.shape[0]):
         sample = all_confs[sample_idx, :, :]
         for idx in range(sample.shape[1]):
-            significance = (99 - conf_candidates[idx]) / 100
+            conf = (99 - conf_candidates[idx]) / 100
             if np.sum(sample[:, idx]) == 1:
-                return significance
+                significances.append(conf)
+                break
         else:
-            return 0.005
-    else:
-        return 0.005
+            significances.append(0.005)  # default: not confident label is the predicted one
+    return significances

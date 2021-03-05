@@ -1,5 +1,5 @@
 from mindsdb_native.libs.helpers.general_helpers import *
-from mindsdb_native.libs.helpers.confidence_helpers import get_numerical_conf_range, get_categorical_conf_range
+from mindsdb_native.libs.helpers.confidence_helpers import get_numerical_conf_range, get_categorical_conf
 from mindsdb_native.libs.helpers.conformal_helpers import restore_icp_state, clear_icp_state
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
 from mindsdb_native.libs.data_types.transaction_output_data import (
@@ -449,7 +449,7 @@ class PredictTransaction(Transaction):
                             result['upper'][X.index] = confs[:, 1]
                         else:
                             conf_candidates = list(range(20)) + list(range(20, 100, 10))
-                            significances = get_categorical_conf_range(all_confs, conf_candidates)
+                            significances = get_categorical_conf(all_confs, conf_candidates)
 
                         result['significance'][X.index] = significances
 
@@ -485,7 +485,7 @@ class PredictTransaction(Transaction):
                                         [icps[frozenset(group)].predict(X.values, significance=s / 100)
                                          for s in conf_candidates])
                                     all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
-                                    significances = get_categorical_conf_range(all_confs, conf_candidates)
+                                    significances = get_categorical_conf(all_confs, conf_candidates)
 
                                 result['significance'][X.index] = significances
 
