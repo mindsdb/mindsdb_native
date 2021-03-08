@@ -207,16 +207,6 @@ class ModelAnalyzer(BaseModule):
 
                 self.transaction.hmd['icp']['active'] = True
 
-                # send data to GUI
-                # @TODO Limiting to 4 as to not kill the GUI, sample later (or maybe only select latest?)
-                if self.transaction.lmd['tss']['is_timeseries'] and len(normal_predictions[output_columns[0]]) < pow(10, 4):
-                    self.transaction.lmd['test_data_plot'][target] = {
-                        'real': deepcopy(list(validation_df[target]))
-                        ,'predicted': deepcopy(list(normal_predictions[target])[0:200])
-                        ,'confidence': deepcopy(None if ranges is None else ranges[0:200])
-                        ,'order_by': deepcopy(list(validation_df[self.transaction.lmd['tss']['order_by'][0]])[0:200])
-                    }
-
         # get accuracy metric
         normal_accuracy = evaluate_accuracy(
             normal_predictions,
