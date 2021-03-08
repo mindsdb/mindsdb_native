@@ -443,13 +443,13 @@ class PredictTransaction(Transaction):
                         if is_numerical:
                             significances, confs = get_numerical_conf_range(all_confs, predicted_col,
                                                                             self.lmd['stats_v2'])
-                            result['lower'][X.index] = confs[:, 0]
-                            result['upper'][X.index] = confs[:, 1]
+                            result.loc[X.index, 'lower'] = confs[:, 0]
+                            result.loc[X.index, 'upper'] = confs[:, 1]
                         else:
                             conf_candidates = list(range(20)) + list(range(20, 100, 10))
                             significances = get_categorical_conf(all_confs, conf_candidates)
 
-                        result['significance'][X.index] = significances
+                        result.loc[X.index, 'significance'] = significances
 
                     else:
                         # grouped time series
@@ -473,8 +473,8 @@ class PredictTransaction(Transaction):
                                     significances, confs = get_numerical_conf_range(all_confs, predicted_col,
                                                                                     self.lmd['stats_v2'],
                                                                                     group=frozenset(group))
-                                    result['lower'][X.index] = confs[:, 0]
-                                    result['upper'][X.index] = confs[:, 1]
+                                    result.loc[X.index, 'lower'] = confs[:, 0]
+                                    result.loc[X.index, 'upper'] = confs[:, 1]
 
                                 else:
                                     conf_candidates = list(range(20)) + list(range(20, 100, 10))
@@ -484,7 +484,7 @@ class PredictTransaction(Transaction):
                                     all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
                                     significances = get_categorical_conf(all_confs, conf_candidates)
 
-                                result['significance'][X.index] = significances
+                                result.loc[X.index, 'significance'] = significances
 
                     output_data[f'{predicted_col}_confidence'] = result['significance'].tolist()
                     confs = [[a, b] for a, b in zip(result['lower'], result['upper'])]
