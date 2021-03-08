@@ -94,9 +94,9 @@ def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group=N
                 conf_ranges.append(conf_range)
                 break
         else:
-            significances.append(0.9901)  # default: confident that value falls inside big bounds
+            significances.append(0.9991)  # default: confident that value falls inside big bounds
             bounds = sample[:, 0]
-            sigma = (bounds[1] - bounds[0]) / 2
+            sigma = (bounds[1] - bounds[0]) / 4
             conf_range = [bounds[0] - sigma, bounds[1] + sigma]
 
             if stats[predicted_col].get('positive_domain', False):

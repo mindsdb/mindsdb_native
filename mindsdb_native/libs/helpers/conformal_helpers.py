@@ -119,9 +119,9 @@ class SelfawareNormalizer(BaseScorer):
         pass
 
     def score(self, true_input, y=None):
-        sa_score = self.prediction_cache.get(f'{self.output_column}_selfaware_scores', None)
+        sa_score = self.prediction_cache
 
-        if not sa_score:
+        if sa_score is None:
             sa_score = np.ones(true_input.shape[0])  # by default, normalizing factor is 1 for all predictions
         else:
             sa_score = np.array(sa_score)

@@ -64,6 +64,9 @@ class ModelAnalyzer(BaseModule):
             is_multi_ts = self.transaction.lmd['tss']['is_timeseries'] and \
                           self.transaction.lmd['tss']['nr_predictions'] > 1
 
+            is_selfaware = isinstance(self.transaction.model_backend.predictor._mixer, NnMixer) and \
+                           self.transaction.model_backend.predictor._mixer.is_selfaware
+
             fit_params = {
                 'columns_to_ignore': [col for col in output_columns if col != target],
                 'nr_preds': self.transaction.lmd['tss'].get('nr_predictions', 0)
@@ -93,15 +96,12 @@ class ModelAnalyzer(BaseModule):
             if is_numerical or (is_classification and data_subtype != DATA_SUBTYPES.TAGS):
                 model = adapter(self.transaction.model_backend.predictor)
 
-                if isinstance(self.transaction.model_backend.predictor._mixer, NnMixer) and \
-                        self.transaction.model_backend.predictor._mixer.is_selfaware:
+                if is_selfaware:
                     norm_params = {'output_column': target}
                     normalizer = SelfawareNormalizer(fit_params=norm_params)
+                    normalizer.prediction_cache = normal_predictions.get(f'{target}_selfaware_scores', None)
                 else:
                     normalizer = None
-
-                if normalizer is not None:
-                    normalizer.prediction_cache = normal_predictions
 
                 # instance the ICP
                 nc = nc_class(model, nc_function, normalizer=normalizer)
@@ -158,14 +158,19 @@ class ModelAnalyzer(BaseModule):
                             icp_df[f'__predicted_{target}'] = [p[0] for p in normal_predictions[target]]
                         else:
                             icp_df[f'__predicted_{target}'] = normal_predictions[target]
+                        if is_selfaware:
+                            icp_df[f'__selfaware_{target}'] = icps[frozenset(group)].nc_function.normalizer.prediction_cache
 
                         # filter irrelevant rows for each group combination
                         for key, val in zip(group_keys, group):
                             icp_df = icp_df[icp_df[key] == val]
 
                         # save predictions in the cache, then calibrate the ICP
-                        icps[frozenset(group)].nc_function.model.prediction_cache = icp_df.pop(f'__predicted_{target}').values
+                        pred_cache = icp_df.pop(f'__predicted_{target}').values
+                        icps[frozenset(group)].nc_function.model.prediction_cache = pred_cache
                         icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
+                        if icps[frozenset(group)].nc_function.normalizer is not None:
+                            icps[frozenset(group)].nc_function.normalizer.prediction_cache = icp_df.pop(f'__selfaware_{target}').values
 
                         icps[frozenset(group)].index = icp_df.columns      # important at inference time
                         icps[frozenset(group)].calibrate(icp_df.values, y)

@@ -385,7 +385,7 @@ class PredictTransaction(Transaction):
 
                 if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
 
-                    # reorder DF index, setup normalizers
+                    # reorder DF index
                     if not isinstance(self.hmd['icp'][predicted_col], dict):
                         index = self.hmd['icp'][predicted_col].index.values
                         index = np.append(index, predicted_col) if predicted_col not in index else index
@@ -393,7 +393,8 @@ class PredictTransaction(Transaction):
 
                         normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
                         if normalizer:
-                            normalizer.prediction_cache = self.hmd['predictions']
+                            normalizer.prediction_cache = self.hmd['predictions'].get(
+                                f'{predicted_col}_selfaware_scores', None)
                     else:
                         icps = self.hmd['icp'][predicted_col]
                         for group in icps['__groups']:
@@ -402,11 +403,10 @@ class PredictTransaction(Transaction):
                             index = np.append(index, predicted_col) if predicted_col not in index else index
                             icp_X = icp_X.reindex(columns=index)
 
-                            # we use one normalizer for all grouped ICPs, so we can break
                             normalizer = icp.nc_function.normalizer
                             if normalizer:
-                                normalizer.prediction_cache = self.hmd['predictions']
-                            break
+                                icp_X['__mdb_selfaware_scores'] = self.hmd['predictions'][f'{predicted_col}_selfaware_scores']
+                            break  # only need to setup df once
 
                     # get ICP predictions
                     result = pd.DataFrame(index=icp_X.index, columns=['lower', 'upper', 'significance'])
@@ -464,8 +464,10 @@ class PredictTransaction(Transaction):
                                 X = X[X[key] == val]
 
                             if X.size > 0:
-                                # set ICP cache
+                                # set ICP caches
                                 icps[frozenset(group)].nc_function.model.prediction_cache = X.pop(predicted_col).values
+                                if icps[frozenset(group)].nc_function.normalizer:
+                                    icps[frozenset(group)].nc_function.normalizer.prediction_cache = X.pop('__mdb_selfaware_scores').values
 
                                 # predict and get confidence level given width or error rate constraints
                                 if is_numerical:
