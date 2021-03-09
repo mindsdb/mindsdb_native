@@ -26,23 +26,23 @@ def clear_icp_state(icp):
 
 
 def restore_icp_state(col, hmd, session):
-    icp = hmd['icp'][col]
+    icps = hmd['icp'][col]
     try:
-        for group, icp in icp.items():
+        for group, icp in icps.items():
             if group not in ['__groups', '__group_keys']:
-                icp[group].nc_function.model.model = session.transaction.model_backend.predictor
+                icp.nc_function.model.model = session.transaction.model_backend.predictor
 
     except AttributeError:
         model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, hmd['name'], 'lightwood_data')
-        for group, icp in icp.items():
+        for group, icp in icps.items():
             if group not in ['__groups', '__group_keys']:
-                icp[group].nc_function.model.model = Predictor(load_from_path=model_path)
+                icp.nc_function.model.model = Predictor(load_from_path=model_path)
 
     # restore model in normalizer
-    for group, icp in icp.items():
+    for group, icp in icps.items():
         if group not in ['__groups', '__group_keys']:
-            if icp[group].nc_function.normalizer is not None:
-                icp[group].nc_function.normalizer.model = icp[group].nc_function.model.model
+            if icp.nc_function.normalizer is not None:
+                icp.nc_function.normalizer.model = icp.nc_function.model.model
 
 
 class BoostedAbsErrorErrFunc(RegressionErrFunc):

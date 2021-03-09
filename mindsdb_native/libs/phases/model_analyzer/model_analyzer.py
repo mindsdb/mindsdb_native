@@ -121,7 +121,7 @@ class ModelAnalyzer(BaseModule):
                 # "fit" the default ICP
                 self.transaction.hmd['icp'][target]['__default'].fit(None, None)
                 if not is_classification:
-                    self.transaction.lmd['stats_v2'][target]['train_std_dev'] = train_df[target].std()
+                    self.transaction.lmd['stats_v2'][target]['train_std_dev'] = {'__default': train_df[target].std()}
 
                 # fit additional ICPs in time series tasks with grouped columns
                 if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['group_by']:
@@ -131,9 +131,6 @@ class ModelAnalyzer(BaseModule):
                     all_group_combinations = list(product(*[set(x) for x in group_info.values()]))
                     self.transaction.hmd['icp'][target]['__mdb_groups'] = all_group_combinations
                     self.transaction.hmd['icp'][target]['__mdb_group_keys'] = [x for x in group_info.keys()]
-
-                    if not is_classification:
-                        self.transaction.lmd['stats_v2'][target]['train_std_dev'] = {}
 
                     for combination in all_group_combinations:
                         # frozenset lets us hash
@@ -194,7 +191,7 @@ class ModelAnalyzer(BaseModule):
 
                         # get bounds for relevant rows in validation dataset
                         _, group_ranges = set_conf_range(icp_df, icps[frozenset(group)], target, typing_info,
-                                                                  self.transaction.lmd, group=group)
+                                                                  self.transaction.lmd, group=frozenset(group))
                         result_df['lower'][icp_df.index] = group_ranges[:, 0]
                         result_df['upper'][icp_df.index] = group_ranges[:, 1]
 

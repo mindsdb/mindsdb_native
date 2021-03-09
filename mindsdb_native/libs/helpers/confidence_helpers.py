@@ -26,7 +26,7 @@ def clean_df(df, target, transaction, is_classification, extra_params):
     return df, y
 
 
-def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group=None):
+def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group='__default'):
     """ Sets confidence level and returns it plus predictions regions """
     # numerical
     if typing_info['data_type'] == DATA_TYPES.NUMERIC or (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
@@ -39,10 +39,7 @@ def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group=None):
             for significance in range(99):
                 ranges = all_ranges[:, :, significance]
                 spread = np.mean(ranges[:, 1] - ranges[:, 0])
-                if group is None:
-                    tolerance = lmd['stats_v2'][target]['train_std_dev'] * tol
-                else:
-                    tolerance = lmd['stats_v2'][target]['train_std_dev'][frozenset(group)] * tol
+                tolerance = lmd['stats_v2'][target]['train_std_dev'][group] * tol
 
                 if spread <= tolerance:
                     confidence = (99 - significance) / 100
@@ -69,14 +66,11 @@ def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group=None):
     return 0.005, np.zeros((X.shape[0], 2))
 
 
-def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group=None):
+def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group='__default'):
     """ Gets prediction bounds for numerical targets, based on ICP estimation and width tolerance """
     significances = []
     conf_ranges = []
-    if group is None:
-        std_dev = stats[predicted_col]['train_std_dev']
-    else:
-        std_dev = stats[predicted_col]['train_std_dev'][group]
+    std_dev = stats[predicted_col]['train_std_dev'][group]
 
     tolerance = std_dev * std_tol
 

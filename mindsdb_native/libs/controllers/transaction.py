@@ -91,6 +91,7 @@ class Transaction:
             self.log.warning(f'Could not find mindsdb conformal predictor.')
 
         except Exception as e:
+            self.hmd['icp'] = {'__mdb_active': False}
             self.log.error(e)
             self.log.error(f'Could not load mindsdb conformal predictor in the file: {icp_fn}')
 
