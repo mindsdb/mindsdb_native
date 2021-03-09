@@ -150,14 +150,16 @@ class ModelAnalyzer(BaseModule):
                     result_df = pd.DataFrame(index=self.transaction.input_data.cached_val_df.index,
                                              columns=['lower', 'upper'])
 
-                    for group in icps['__groups']:
-                        icp_df = deepcopy(self.transaction.input_data.cached_val_df)
+                    # add all predictions to the cached DF
+                    icps_df = self.transaction.input_data.cached_val_df
+                    if is_multi_ts:
+                        icps_df[f'__predicted_{target}'] = [p[0] for p in normal_predictions[target]]
+                    else:
+                        icps_df[f'__predicted_{target}'] = normal_predictions[target]
 
-                        # add all predictions to the DF
-                        if is_multi_ts:
-                            icp_df[f'__predicted_{target}'] = [p[0] for p in normal_predictions[target]]
-                        else:
-                            icp_df[f'__predicted_{target}'] = normal_predictions[target]
+                    for group in icps['__groups']:
+                        icp_df = icps_df
+
                         if is_selfaware:
                             icp_df[f'__selfaware_{target}'] = icps[frozenset(group)].nc_function.normalizer.prediction_cache
 
@@ -177,7 +179,7 @@ class ModelAnalyzer(BaseModule):
 
                         # save group training std() for bounds width selection
                         if not is_classification:
-                            icp_train_df = deepcopy(train_df)
+                            icp_train_df = train_df
                             for key, val in zip(group_keys, group):
                                 icp_train_df = icp_train_df[icp_train_df[key] == val]
                             y_train = icp_train_df[target].values
@@ -194,7 +196,7 @@ class ModelAnalyzer(BaseModule):
 
                 # calibrate single ICP
                 else:
-                    icp_df = deepcopy(self.transaction.input_data.cached_val_df)
+                    icp_df = self.transaction.input_data.cached_val_df
                     icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
                     self.transaction.hmd['icp'][target].index = icp_df.columns
                     self.transaction.hmd['icp'][target].calibrate(icp_df.values, y)
