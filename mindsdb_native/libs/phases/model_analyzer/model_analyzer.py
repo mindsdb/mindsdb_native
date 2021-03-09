@@ -46,7 +46,7 @@ class ModelAnalyzer(BaseModule):
 
         # confidence estimation with inductive conformal predictors (ICPs)
         self.transaction.hmd['label_encoders'] = {}   # needed to represent categorical labels inside nonconformist
-        self.transaction.hmd['icp'] = {'active': False}
+        self.transaction.hmd['icp'] = {'__mdb_active': False}
 
         for target in output_columns:
             typing_info = self.transaction.lmd['stats_v2'][target]['typing']
@@ -106,6 +106,7 @@ class ModelAnalyzer(BaseModule):
                 # instance the ICP
                 nc = nc_class(model, nc_function, normalizer=normalizer)
                 icp = icp_class(nc)
+                self.transaction.hmd['icp'][target] = {'__default': icp}
 
                 # setup prediction cache to avoid additional .predict() calls
                 if is_classification:
@@ -117,15 +118,19 @@ class ModelAnalyzer(BaseModule):
                 else:
                     icp.nc_function.model.prediction_cache = np.array(normal_predictions[target])
 
-                # check if we need more than one ICP depending on grouped by columns for time series tasks
+                # "fit" the default ICP
+                self.transaction.hmd['icp'][target]['__default'].fit(None, None)
+                if not is_classification:
+                    self.transaction.lmd['stats_v2'][target]['train_std_dev'] = train_df[target].std()
+
+                # fit additional ICPs in time series tasks with grouped columns
                 if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['group_by']:
-                    self.transaction.hmd['icp'][target] = {}
 
                     # create an ICP for each possible group
                     group_info = self.transaction.input_data.train_df[self.transaction.lmd['tss']['group_by']].to_dict('list')
                     all_group_combinations = list(product(*[set(x) for x in group_info.values()]))
-                    self.transaction.hmd['icp'][target]['__groups'] = all_group_combinations
-                    self.transaction.hmd['icp'][target]['__group_keys'] = [x for x in group_info.keys()]
+                    self.transaction.hmd['icp'][target]['__mdb_groups'] = all_group_combinations
+                    self.transaction.hmd['icp'][target]['__mdb_group_keys'] = [x for x in group_info.keys()]
 
                     if not is_classification:
                         self.transaction.lmd['stats_v2'][target]['train_std_dev'] = {}
@@ -135,20 +140,22 @@ class ModelAnalyzer(BaseModule):
                         self.transaction.hmd['icp'][target][frozenset(combination)] = deepcopy(icp)
                         self.transaction.hmd['icp'][target][frozenset(combination)].fit(None, None)
 
-                # simple case: no time series, just one ICP per target column
-                else:
-                    self.transaction.hmd['icp'][target] = icp
-                    self.transaction.hmd['icp'][target].fit(None, None)
-                    if not is_classification:
-                        self.transaction.lmd['stats_v2'][target]['train_std_dev'] = train_df[target].std()
+                # calibrate ICP
+                icp_df = deepcopy(self.transaction.input_data.cached_val_df)
+                icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
+                self.transaction.hmd['icp'][target]['__default'].index = icp_df.columns
+                self.transaction.hmd['icp'][target]['__default'].calibrate(icp_df.values, y)
 
-                # calibrate time series grouped ICPs
+                # get confidence estimation for validation dataset
+                result_df = pd.DataFrame(index=self.transaction.input_data.cached_val_df.index, columns=['lower', 'upper'])
+                _, ranges = set_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
+                result_df['lower'][icp_df.index] = ranges[:, 0]
+                result_df['upper'][icp_df.index] = ranges[:, 1]
+
+                # calibrate additional grouped ICPs
                 if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['group_by']:
-
                     icps = self.transaction.hmd['icp'][target]
-                    group_keys = icps['__group_keys']
-                    result_df = pd.DataFrame(index=self.transaction.input_data.cached_val_df.index,
-                                             columns=['lower', 'upper'])
+                    group_keys = icps['__mdb_group_keys']
 
                     # add all predictions to the cached DF
                     icps_df = deepcopy(self.transaction.input_data.cached_val_df)
@@ -157,7 +164,7 @@ class ModelAnalyzer(BaseModule):
                     else:
                         icps_df[f'__predicted_{target}'] = normal_predictions[target]
 
-                    for group in icps['__groups']:
+                    for group in icps['__mdb_groups']:
                         icp_df = icps_df
 
                         if is_selfaware:
@@ -167,7 +174,7 @@ class ModelAnalyzer(BaseModule):
                         for key, val in zip(group_keys, group):
                             icp_df = icp_df[icp_df[key] == val]
 
-                        # save predictions in the cache, then calibrate the ICP
+                        # save relevant predictions in the caches, then calibrate the ICP
                         pred_cache = icp_df.pop(f'__predicted_{target}').values
                         icps[frozenset(group)].nc_function.model.prediction_cache = pred_cache
                         icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
@@ -191,23 +198,12 @@ class ModelAnalyzer(BaseModule):
                         result_df['lower'][icp_df.index] = group_ranges[:, 0]
                         result_df['upper'][icp_df.index] = group_ranges[:, 1]
 
-                    # consolidate all groups here
-                    ranges = result_df.values
-
-                # calibrate single ICP
-                else:
-                    icp_df = deepcopy(self.transaction.input_data.cached_val_df)
-                    icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
-                    self.transaction.hmd['icp'][target].index = icp_df.columns
-                    self.transaction.hmd['icp'][target].calibrate(icp_df.values, y)
-
-                    # get confidence estimation for validation dataset
-                    _, ranges = set_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
-
+                # consolidate all groups here
+                ranges = result_df.values
                 if not is_classification:
                     normal_predictions[f'{target}_confidence_range'] = ranges
 
-                self.transaction.hmd['icp']['active'] = True
+                self.transaction.hmd['icp']['__mdb_active'] = True
 
         # get accuracy metric
         normal_accuracy = evaluate_accuracy(

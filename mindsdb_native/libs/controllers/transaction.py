@@ -87,7 +87,7 @@ class Transaction:
                     restore_icp_state(col, self.hmd, self.session)
 
         except FileNotFoundError as e:
-            self.hmd['icp'] = {'active': False}
+            self.hmd['icp'] = {'__mdb_active': False}
             self.log.warning(f'Could not find mindsdb conformal predictor.')
 
         except Exception as e:
@@ -127,30 +127,27 @@ class Transaction:
             self.log.error(traceback.format_exc())
             self.log.error(f'Could not save mindsdb heavy metadata in the file: {fn}')
 
-        if 'icp' in self.hmd.keys() and self.hmd['icp']['active']:
+        if 'icp' in self.hmd.keys() and self.hmd['icp']['__mdb_active']:
             icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'icp.pickle')
             mdb_predictors = {}
             try:
                 with open(icp_fn, 'wb') as fp:
                     for key in self.hmd['icp'].keys():
-                        if key != 'active' and not isinstance(self.hmd['icp'][key], dict):
-                            mdb_predictors[key] = self.hmd['icp'][key].nc_function.model.model
-                            clear_icp_state(self.hmd['icp'][key].nc_function)
-                        elif key != 'active':
+                        if key != '__mdb_active':
                             mdb_predictors[key] = {}
-                            for group in self.hmd['icp'][key]['__groups']:
-                                mdb_predictors[key][group] = self.hmd['icp'][key][frozenset(group)].nc_function.model.model
-                                clear_icp_state(self.hmd['icp'][key][frozenset(group)].nc_function)
+                            for group, icp in self.hmd['icp'][key].items():
+                                if group not in ['__groups', '__group_keys']:
+                                    mdb_predictors[key][group] = icp.nc_function.model.model
+                                    clear_icp_state(icp.nc_function)
 
                     dill.dump(self.hmd['icp'], fp, protocol=dill.HIGHEST_PROTOCOL)
 
                     # restore predictor in ICP
                     for key in self.hmd['icp'].keys():
-                        if key != 'active' and not isinstance(self.hmd['icp'][key], dict):
-                            self.hmd['icp'][key].nc_function.model.model = mdb_predictors[key]
-                        elif key != 'active':
-                            for group in self.hmd['icp'][key]['__groups']:
-                                self.hmd['icp'][key][frozenset(group)].nc_function.model.model = mdb_predictors[key][group]
+                        if key != '__mdb_active':
+                            for group, icp in self.hmd['icp'][key].items():
+                                if group not in ['__groups', '__group_keys']:
+                                    icp.nc_function.model.model = mdb_predictors[key][group]
 
             except Exception as e:
                 self.log.error(e)
@@ -351,7 +348,7 @@ class PredictTransaction(Transaction):
                 output_data[col] = list(predictions_df[col])
 
         # confidence estimation using calibrated inductive conformal predictors (ICPs)
-        if self.hmd['icp']['active'] and not self.lmd['quick_predict']:
+        if self.hmd['icp']['__mdb_active'] and not self.lmd['quick_predict']:
 
             icp_X = deepcopy(self.input_data.cached_pred_df)
 
@@ -386,73 +383,61 @@ class PredictTransaction(Transaction):
                 if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
 
                     # reorder DF index
-                    if not isinstance(self.hmd['icp'][predicted_col], dict):
-                        index = self.hmd['icp'][predicted_col].index.values
-                        index = np.append(index, predicted_col) if predicted_col not in index else index
-                        icp_X = icp_X.reindex(columns=index)  # important, else bounds can be invalid
+                    index = self.hmd['icp'][predicted_col]['__default'].index.values
+                    index = np.append(index, predicted_col) if predicted_col not in index else index
+                    icp_X = icp_X.reindex(columns=index)  # important, else bounds can be invalid
 
-                        normalizer = self.hmd['icp'][predicted_col].nc_function.normalizer
-                        if normalizer:
-                            normalizer.prediction_cache = self.hmd['predictions'].get(
-                                f'{predicted_col}_selfaware_scores', None)
-                    else:
-                        icps = self.hmd['icp'][predicted_col]
-                        for group in icps['__groups']:
-                            icp = icps[frozenset(group)]
-                            index = icp.index.values
-                            index = np.append(index, predicted_col) if predicted_col not in index else index
-                            icp_X = icp_X.reindex(columns=index)
-
-                            normalizer = icp.nc_function.normalizer
-                            if normalizer:
-                                icp_X['__mdb_selfaware_scores'] = self.hmd['predictions'][f'{predicted_col}_selfaware_scores']
-                            break  # only need to setup df once
+                    # only one normalizer, even if it's a grouped time series task
+                    normalizer = self.hmd['icp'][predicted_col]['__default'].nc_function.normalizer
+                    if normalizer:
+                        normalizer.prediction_cache = self.hmd['predictions'].get(f'{predicted_col}_selfaware_scores',
+                                                                                  None)
+                        icp_X['__mdb_selfaware_scores'] = normalizer.prediction_cache
 
                     # get ICP predictions
                     result = pd.DataFrame(index=icp_X.index, columns=['lower', 'upper', 'significance'])
 
-                    # single ICP case
-                    if not isinstance(self.hmd['icp'][predicted_col], dict):
-                        X = deepcopy(icp_X)
+                    # base ICP
+                    X = deepcopy(icp_X)
 
-                        # get all possible ranges
-                        if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1 and is_numerical:
+                    # get all possible ranges
+                    if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1 and is_numerical:
 
-                            # bounds in time series are only given for the first forecast
-                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
-                                [p[0] for p in output_data[predicted_col]]
-                            all_confs = self.hmd['icp'][predicted_col].predict(X.values)
+                        # bounds in time series are only given for the first forecast
+                        self.hmd['icp'][predicted_col]['__default'].nc_function.model.prediction_cache = \
+                            [p[0] for p in output_data[predicted_col]]
+                        all_confs = self.hmd['icp'][predicted_col]['__default'].predict(X.values)
 
-                        elif is_numerical:
-                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
-                                output_data[predicted_col]
-                            all_confs = self.hmd['icp'][predicted_col].predict(X.values)
+                    elif is_numerical:
+                        self.hmd['icp'][predicted_col]['__default'].nc_function.model.prediction_cache = \
+                            output_data[predicted_col]
+                        all_confs = self.hmd['icp'][predicted_col]['__default'].predict(X.values)
 
-                        # categorical
-                        else:
-                            self.hmd['icp'][predicted_col].nc_function.model.prediction_cache = \
-                                output_data[f'{predicted_col}_class_distribution']
-
-                            conf_candidates = list(range(20)) + list(range(20, 100, 10))
-                            all_ranges = np.array(
-                                [self.hmd['icp'][predicted_col].predict(X.values, significance=s / 100)
-                                 for s in conf_candidates])
-                            all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
-
-                        # convert (B, 2, 99) into (B, 2) given width or error rate constraints
-                        if is_numerical:
-                            significances, confs = get_numerical_conf_range(all_confs, predicted_col,
-                                                                            self.lmd['stats_v2'])
-                            result.loc[X.index, 'lower'] = confs[:, 0]
-                            result.loc[X.index, 'upper'] = confs[:, 1]
-                        else:
-                            conf_candidates = list(range(20)) + list(range(20, 100, 10))
-                            significances = get_categorical_conf(all_confs, conf_candidates)
-
-                        result.loc[X.index, 'significance'] = significances
-
+                    # categorical
                     else:
-                        # grouped time series
+                        self.hmd['icp'][predicted_col]['__default'].nc_function.model.prediction_cache = \
+                            output_data[f'{predicted_col}_class_distribution']
+
+                        conf_candidates = list(range(20)) + list(range(20, 100, 10))
+                        all_ranges = np.array(
+                            [self.hmd['icp'][predicted_col]['__default'].predict(X.values, significance=s / 100)
+                             for s in conf_candidates])
+                        all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+
+                    # convert (B, 2, 99) into (B, 2) given width or error rate constraints
+                    if is_numerical:
+                        significances, confs = get_numerical_conf_range(all_confs, predicted_col,
+                                                                        self.lmd['stats_v2'])
+                        result.loc[X.index, 'lower'] = confs[:, 0]
+                        result.loc[X.index, 'upper'] = confs[:, 1]
+                    else:
+                        conf_candidates = list(range(20)) + list(range(20, 100, 10))
+                        significances = get_categorical_conf(all_confs, conf_candidates)
+
+                    result.loc[X.index, 'significance'] = significances
+
+                    # grouped time series, we replace bounds in rows that have a trained ICP
+                    if self.hmd['icp'][predicted_col].get('__mdb_groups', False):
                         icps = self.hmd['icp'][predicted_col]
                         group_keys = icps['__group_keys']
 
