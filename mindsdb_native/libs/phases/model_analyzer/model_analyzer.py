@@ -151,7 +151,7 @@ class ModelAnalyzer(BaseModule):
                                              columns=['lower', 'upper'])
 
                     # add all predictions to the cached DF
-                    icps_df = self.transaction.input_data.cached_val_df
+                    icps_df = deepcopy(self.transaction.input_data.cached_val_df)
                     if is_multi_ts:
                         icps_df[f'__predicted_{target}'] = [p[0] for p in normal_predictions[target]]
                     else:
@@ -196,7 +196,7 @@ class ModelAnalyzer(BaseModule):
 
                 # calibrate single ICP
                 else:
-                    icp_df = self.transaction.input_data.cached_val_df
+                    icp_df = deepcopy(self.transaction.input_data.cached_val_df)
                     icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
                     self.transaction.hmd['icp'][target].index = icp_df.columns
                     self.transaction.hmd['icp'][target].calibrate(icp_df.values, y)
