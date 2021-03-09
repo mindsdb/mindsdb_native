@@ -144,10 +144,11 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp'][target]['__default'].calibrate(icp_df.values, y)
 
                 # get confidence estimation for validation dataset
-                result_df = pd.DataFrame(index=self.transaction.input_data.cached_val_df.index, columns=['lower', 'upper'])
                 _, ranges = set_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
-                result_df['lower'][icp_df.index] = ranges[:, 0]
-                result_df['upper'][icp_df.index] = ranges[:, 1]
+                if not is_classification:
+                    result_df = pd.DataFrame(index=self.transaction.input_data.cached_val_df.index, columns=['lower', 'upper'])
+                    result_df.loc[icp_df.index, 'lower'] = ranges[:, 0]
+                    result_df.loc[icp_df.index, 'upper'] = ranges[:, 1]
 
                 # calibrate additional grouped ICPs
                 if self.transaction.lmd['tss']['is_timeseries'] and self.transaction.lmd['tss']['group_by']:
@@ -181,7 +182,7 @@ class ModelAnalyzer(BaseModule):
                         icps[frozenset(group)].index = icp_df.columns      # important at inference time
                         icps[frozenset(group)].calibrate(icp_df.values, y)
 
-                        # save group training std() for bounds width selection
+                        # save training std() for bounds width selection
                         if not is_classification:
                             icp_train_df = train_df
                             for key, val in zip(group_keys, group):
@@ -191,13 +192,15 @@ class ModelAnalyzer(BaseModule):
 
                         # get bounds for relevant rows in validation dataset
                         _, group_ranges = set_conf_range(icp_df, icps[frozenset(group)], target, typing_info,
-                                                                  self.transaction.lmd, group=frozenset(group))
-                        result_df['lower'][icp_df.index] = group_ranges[:, 0]
-                        result_df['upper'][icp_df.index] = group_ranges[:, 1]
+                                                         self.transaction.lmd, group=frozenset(group))
+                        # save group bounds
+                        if not is_classification:
+                            result_df.loc[icp_df.index, 'lower'] = group_ranges[:, 0]
+                            result_df.loc[icp_df.index, 'upper'] = group_ranges[:, 1]
 
                 # consolidate all groups here
-                ranges = result_df.values
                 if not is_classification:
+                    ranges = result_df.values
                     normal_predictions[f'{target}_confidence_range'] = ranges
 
                 self.transaction.hmd['icp']['__mdb_active'] = True
