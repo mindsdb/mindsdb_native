@@ -472,4 +472,4 @@ class TestPredictor(unittest.TestCase):
         probs = results._data['target_class_distribution']
         assert np.isclose(np.sum(probs), 1)
         for dist in probs:
-            assert len(dist) == data.target_names.size + 1  # account for unknown class
+            assert len(dist) == data.target_names.size + 1 # account for unknown class

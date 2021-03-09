@@ -134,7 +134,11 @@ class LightwoodBackend:
             df_arr = [original_df]
 
         if len(original_df) > 500:
-            pool = mp.Pool(processes=get_nr_procs())
+            nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
+                                    self.transaction.lmd.get('max_per_proc_usage', None),
+                                    original_df)
+            self.transaction.log.info(f'Using {nr_procs} processes to reshape.')
+            pool = mp.Pool(processes=nr_procs)
             # Make type `object` so that dataframe cells can be python lists
             df_arr = pool.map(partial(_ts_to_obj, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
             df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
@@ -150,7 +154,6 @@ class LightwoodBackend:
                 df_arr[i] = _ts_add_previous_rows(df_arr[i], historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'], window=window)
                 if self.transaction.lmd['tss']['use_previous_target']:
                     df_arr[i] = _ts_add_previous_target(df_arr[i], predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window)
-
 
         combined_df = pd.concat(df_arr)
 
@@ -238,8 +241,9 @@ class LightwoodBackend:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
 
             else:
-                self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
-                raise Exception('Failed to build data definition for Lightwood model backend')
+                err = f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !'
+                self.transaction.log.error(err)
+                raise Exception(err)
 
             if self.transaction.lmd['tss']['is_timeseries'] and col_name in self.transaction.lmd['tss']['order_by']:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
@@ -334,8 +338,10 @@ class LightwoodBackend:
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
+
             train_df, secondary_type_dict, _, train_df_gb_map = self._ts_reshape(self.transaction.input_data.train_df)
             test_df, _, _, test_df_gb_map = self._ts_reshape(self.transaction.input_data.test_df)
+
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
             # @TODO: Make sampling work for timeseries
