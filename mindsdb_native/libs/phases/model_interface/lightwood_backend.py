@@ -354,6 +354,9 @@ class LightwoodBackend:
             train_df_gb_map = {'': train_df}
             test_df_gb_map = {'': test_df}
 
+        self.transaction.input_data.cached_train_df = train_df
+        self.transaction.input_data.cached_test_df = test_df
+
         for gb_val in train_df_gb_map:
             train_df = train_df_gb_map[gb_val]
             test_df = test_df_gb_map[gb_val]
@@ -462,7 +465,7 @@ class LightwoodBackend:
 
                 validation_accuracy = evaluate_accuracy(
                     validation_predictions,
-                    self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df,
+                    validation_df,
                     self.transaction.lmd['stats_v2'],
                     self.transaction.lmd['predict_columns'],
                     backend=self
@@ -542,13 +545,9 @@ class LightwoodBackend:
 
             predictions = self.predictor.predict(when_data=run_df)
 
-            # cache run_df to avoid duplicate reshaping in analysis and predict transactions
-            if mode == 'predict_on_train_data':
-                self.transaction.input_data.cached_train_df = run_df
-            elif mode == 'validate':
+            # cache run_df to avoid duplicate reshaping in analysis phase
+            if mode == 'validate':
                 self.transaction.input_data.cached_val_df = run_df
-            elif mode == 'test':
-                self.transaction.input_data.cached_test_df = run_df
             elif mode == 'predict':
                 self.transaction.input_data.cached_pred_df = run_df
 
