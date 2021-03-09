@@ -137,7 +137,7 @@ class Transaction:
                         if key != '__mdb_active':
                             mdb_predictors[key] = {}
                             for group, icp in self.hmd['icp'][key].items():
-                                if group not in ['__groups', '__group_keys']:
+                                if group not in ['__mdb_groups', '__mdb_group_keys']:
                                     mdb_predictors[key][group] = icp.nc_function.model.model
                                     clear_icp_state(icp.nc_function)
 
@@ -147,7 +147,7 @@ class Transaction:
                     for key in self.hmd['icp'].keys():
                         if key != '__mdb_active':
                             for group, icp in self.hmd['icp'][key].items():
-                                if group not in ['__groups', '__group_keys']:
+                                if group not in ['__mdb_groups', '__mdb_group_keys']:
                                     icp.nc_function.model.model = mdb_predictors[key][group]
 
             except Exception as e:
@@ -440,9 +440,9 @@ class PredictTransaction(Transaction):
                     # grouped time series, we replace bounds in rows that have a trained ICP
                     if self.hmd['icp'][predicted_col].get('__mdb_groups', False):
                         icps = self.hmd['icp'][predicted_col]
-                        group_keys = icps['__group_keys']
+                        group_keys = icps['__mdb_group_keys']
 
-                        for group in icps['__groups']:
+                        for group in icps['__mdb_groups']:
 
                             # filter rows by group
                             X = deepcopy(icp_X)
