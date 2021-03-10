@@ -483,7 +483,10 @@ class PredictTransaction(Transaction):
                         anomalies = []
                         for (l, u), t in zip(output_data[f'{predicted_col}_confidence_range'],
                                              output_data[f'__observed_{predicted_col}']):
-                            anomalies.append(not l <= t <= u)
+                            if t is not None:
+                                anomalies.append(not l <= t <= u)
+                            else:
+                                anomalies.append(None)
                         output_data[f'{predicted_col}_anomaly'] = anomalies
 
         else:
