@@ -478,6 +478,14 @@ class PredictTransaction(Transaction):
                     confs = [[a, b] for a, b in zip(result['lower'], result['upper'])]
                     output_data[f'{predicted_col}_confidence_range'] = confs
 
+                    # anomaly detection
+                    if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['anomaly_detection']:
+                        anomalies = []
+                        for (l, u), t in zip(output_data[f'{predicted_col}_confidence_range'],
+                                             output_data[f'__observed_{predicted_col}']):
+                            anomalies.append(not l <= t <= u)
+                        output_data[f'{predicted_col}_anomaly'] = anomalies
+
         else:
             for predicted_col in self.lmd['predict_columns']:
                 output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])

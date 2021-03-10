@@ -61,6 +61,7 @@ def _prepare_timeseries_settings(user_provided_settings):
         ,use_previous_target=True
         ,nr_predictions=1
         ,historical_columns=[]
+        ,anomaly_detection=True
     )
 
     if len(user_provided_settings) > 0:
