@@ -22,16 +22,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip==20.2.4
-        pip install -r optional_requirements_extra_data_sources.txt
         pip install --no-cache-dir -e .
-      env:
-        CHECK_FOR_UPDATES: False
-    - name: Install dependencies Linux
-      run: |
-        if [ "$RUNNER_OS" == "Linux" ]; then
-          pip install -r optional_requirements_snowflake.txt;
-        fi
-      shell: bash
       env:
         CHECK_FOR_UPDATES: False
     - name: Install dependencies Windows

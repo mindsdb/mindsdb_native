@@ -23,4 +23,4 @@ nonconformist >= 2.1.0
 dill >= 0.3.1.1
 dnspython
 certifi
-mindsdb_datasources > 1.0.0
+mindsdb_datasources > 1.0.1
