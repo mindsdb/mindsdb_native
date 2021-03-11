@@ -1,4 +1,4 @@
-from integration_tests.data_sources import ClickhouseTest, break_dataset
+from integration_tests.helpers import ClickhouseTest, break_dataset
 from mindsdb_native import Predictor, ClickhouseDS
 
 
