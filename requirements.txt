@@ -27,3 +27,4 @@ pg8000 >= 1.15.3
 pymongo[tsl, srv] >= 3.10.1
 dnspython
 certifi
+mindsdb_datasources > 1.0.0
