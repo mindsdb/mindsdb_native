@@ -17,7 +17,7 @@ from sklearn.datasets import load_iris
 from lightwood.config.config import CONFIG as LIGHTWOOD_CONFIG
 
 from mindsdb_native import F
-from mindsdb_native.libs.data_sources.file_ds import FileDS
+from mindsdb_datasources import FileDS
 from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
