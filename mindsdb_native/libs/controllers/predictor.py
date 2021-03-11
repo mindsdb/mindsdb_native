@@ -189,11 +189,6 @@ class Predictor:
 
             from_ds = getDS(from_data)
 
-            # Set user-provided subtypes
-            from_ds.set_subtypes(
-                advanced_args.get('subtypes', {})
-            )
-
             transaction_type = TRANSACTION_LEARN
 
             sample_for_analysis, disable_lightwood_transform_cache = _get_memory_optimizations(from_ds.df)
@@ -250,7 +245,6 @@ class Predictor:
                 confusion_matrices = {},
                 empty_columns = [],
                 data_types = {},
-                data_subtypes = {},
                 equal_accuracy_for_all_output_categories = equal_accuracy_for_all_output_categories,
                 output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
                 report_uuid = self.report_uuid,
