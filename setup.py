@@ -26,16 +26,6 @@ with open('requirements.txt', 'r') as req_file:
 with open('requirements_test.txt', 'r') as req_file:
     test_requirements = [req.strip() for req in req_file.read().splitlines()]
 
-snowflake_requirements = []
-with open('optional_requirements_snowflake.txt', 'r') as fp:
-    for line in fp:
-        snowflake_requirements.append(line.rstrip('\n'))
-
-extra_data_sources_requirements = []
-with open('optional_requirements_extra_data_sources.txt', 'r') as fp:
-    for line in fp:
-        extra_data_sources_requirements.append(line.rstrip('\n'))
-
 dependency_links = []
 
 setuptools.setup(
@@ -51,10 +41,6 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
     install_requires=requirements,
-    extras_require = {
-        'extra_data_sources': extra_data_sources_requirements
-        ,'snowflake': snowflake_requirements
-    },
     tests_require = test_requirements,
     dependency_links=dependency_links,
     classifiers=(
