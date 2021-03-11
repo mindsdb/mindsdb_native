@@ -17,7 +17,7 @@ from sklearn.datasets import load_iris
 from lightwood.config.config import CONFIG as LIGHTWOOD_CONFIG
 
 from mindsdb_native import F
-from mindsdb_native.libs.data_sources.file_ds import FileDS
+from mindsdb_datasources import FileDS
 from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
@@ -64,49 +64,6 @@ class TestPredictor(unittest.TestCase):
         assert isinstance(explanation_new['prediction_quality'], str)
 
         assert len(str(result[0])) > 20
-
-    def test_data_source_setting(self):
-        data_url = 'https://raw.githubusercontent.com/mindsdb/mindsdb-examples/master/classics/german_credit_data/processed_data/test.csv'
-        data_source = FileDS(data_url)
-        data_source.set_subtypes({})
-
-        data_source_mod = FileDS(data_url)
-        data_source_mod.set_subtypes({
-            'credit_usage': 'Int',
-            'Average_Credit_Balance': 'Short Text',
-            'existing_credits': 'Binary Category'
-        })
-
-        analysis = F.analyse_dataset(data_source)
-        analysis_mod = F.analyse_dataset(data_source_mod)
-
-        a1 = analysis['data_analysis_v2']
-        a2 = analysis_mod['data_analysis_v2']
-        assert (len(a1) == len(a2))
-        assert (a1['over_draft']['typing']['data_type'] ==
-                a2['over_draft']['typing']['data_type'])
-
-        assert (a1['credit_usage']['typing']['data_type'] ==
-                a2['credit_usage']['typing']['data_type'])
-        assert (a1['credit_usage']['typing']['data_subtype'] !=
-                a2['credit_usage']['typing']['data_subtype'])
-        assert (a2['credit_usage']['typing']['data_subtype'] == DATA_SUBTYPES.INT)
-
-        assert (a1['Average_Credit_Balance']['typing']['data_type'] !=
-                a2['Average_Credit_Balance']['typing']['data_type'])
-        assert (a1['Average_Credit_Balance']['typing']['data_subtype'] !=
-                a2['Average_Credit_Balance']['typing']['data_subtype'])
-        assert (a2['Average_Credit_Balance']['typing'][
-                    'data_subtype'] == DATA_SUBTYPES.SHORT)
-        assert (a2['Average_Credit_Balance']['typing'][
-                    'data_type'] == DATA_TYPES.TEXT)
-
-        assert (a1['existing_credits']['typing']['data_type'] ==
-                a2['existing_credits']['typing']['data_type'])
-        assert (a1['existing_credits']['typing']['data_subtype'] !=
-                a2['existing_credits']['typing']['data_subtype'])
-        assert (a2['existing_credits']['typing'][
-                    'data_subtype'] == DATA_SUBTYPES.SINGLE)
 
     def test_multilabel_prediction(self):
         train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
@@ -472,4 +429,4 @@ class TestPredictor(unittest.TestCase):
         probs = results._data['target_class_distribution']
         assert np.isclose(np.sum(probs), 1)
         for dist in probs:
-            assert len(dist) == data.target_names.size + 1 # account for unknown class
+            assert len(dist) <= data.target_names.size + 1 # account for unknown class

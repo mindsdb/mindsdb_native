@@ -17,7 +17,7 @@ from sklearn.metrics import r2_score, f1_score, accuracy_score
 from mindsdb_native.libs.controllers.predictor import Predictor
 from mindsdb_native import F
 
-from mindsdb_native.libs.data_sources.file_ds import FileDS
+from mindsdb_datasources import FileDS
 from mindsdb_native.libs.constants.mindsdb import DATA_TYPES, DATA_SUBTYPES
 
 from unit_tests.utils import (
