@@ -245,6 +245,7 @@ class Predictor:
                 confusion_matrices = {},
                 empty_columns = [],
                 data_types = {},
+                data_subtypes = {},
                 equal_accuracy_for_all_output_categories = equal_accuracy_for_all_output_categories,
                 output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
                 report_uuid = self.report_uuid,
