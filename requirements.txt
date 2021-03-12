@@ -17,13 +17,10 @@ ImageHash == 4.0
 imageio == 2.5.0
 python-dateutil<2.8.1,>=2.1
 pillow<7
-mysql-connector-python >= 8.0.20
 portalocker >= 1.7.0
 flair >= 0.5,<=0.6.1
 nonconformist >= 2.1.0
 dill >= 0.3.1.1
-moz_sql_parser >= 3.0.0, < 4.1.20329
-pg8000 >= 1.15.3
-pymongo[tsl, srv] >= 3.10.1
 dnspython
 certifi
+mindsdb_datasources >= 1.0.2

@@ -1,7 +1,6 @@
 import os
 
-from mindsdb_native.libs.data_types.data_source import DataSource
-from mindsdb_native.libs.data_sources.file_ds import FileDS
+from mindsdb_datasources import DataSource, FileDS
 from pandas import DataFrame
 
 from mindsdb_native.libs.data_types.mindsdb_logger import log
