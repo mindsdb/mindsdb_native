@@ -1,5 +1,5 @@
 from mindsdb_native.libs.helpers.general_helpers import *
-from mindsdb_native.libs.helpers.confidence_helpers import get_numerical_conf_range, get_categorical_conf
+from mindsdb_native.libs.helpers.confidence_helpers import get_numerical_conf_range, get_categorical_conf, get_anomalies
 from mindsdb_native.libs.helpers.conformal_helpers import restore_icp_state, clear_icp_state
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
 from mindsdb_native.libs.data_types.transaction_output_data import (
@@ -485,13 +485,9 @@ class PredictTransaction(Transaction):
 
                     # anomaly detection
                     if is_anomaly_task:
-                        anomalies = []
-                        for (l, u), t in zip(output_data[f'{predicted_col}_confidence_range'],
-                                             output_data[f'__observed_{predicted_col}']):
-                            if t is not None:
-                                anomalies.append(not l <= t <= u)
-                            else:
-                                anomalies.append(None)
+                        anomalies = get_anomalies(output_data[f'{predicted_col}_confidence_range'],
+                                                  output_data[f'__observed_{predicted_col}'],
+                                                  cooldown=self.lmd['tss']['anomaly_cooldown'])
                         output_data[f'{predicted_col}_anomaly'] = anomalies
 
         else:

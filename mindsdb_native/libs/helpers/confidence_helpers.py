@@ -124,3 +124,27 @@ def get_categorical_conf(all_confs, conf_candidates):
         else:
             significances.append(0.005)  # default: not confident label is the predicted one
     return significances
+
+
+def get_anomalies(bounds, observed_series, cooldown=1):
+    anomalies = []
+    counter = 0
+
+    for (l, u), t in zip(bounds, observed_series):
+        if t is not None:
+            anomaly = not (l <= t <= u)
+
+            if anomaly and (counter == 0 or counter >= cooldown):
+                anomalies.append(anomaly)  # new anomaly event triggers, reset counter
+                counter = 1
+            elif anomaly and counter < cooldown:
+                anomalies.append(False)  # overwrite as not anomalous if still in cooldown
+                counter += 1
+            else:
+                anomalies.append(anomaly)
+                counter = 0
+        else:
+            anomalies.append(None)
+            counter += 1
+
+    return anomalies
