@@ -381,6 +381,8 @@ class PredictTransaction(Transaction):
                                   DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())) and \
                                   typing_info['data_subtype'] != DATA_SUBTYPES.TAGS
 
+                is_anomaly_task = self.lmd['tss']['is_timeseries'] and self.lmd['tss']['anomaly_detection']
+
                 if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
 
                     # reorder DF index
@@ -427,8 +429,11 @@ class PredictTransaction(Transaction):
 
                     # convert (B, 2, 99) into (B, 2) given width or error rate constraints
                     if is_numerical:
-                        significances, confs = get_numerical_conf_range(all_confs, predicted_col,
-                                                                        self.lmd['stats_v2'])
+                        conf = self.lmd['tss']['anomaly_error_rate'] if is_anomaly_task else None
+                        significances, confs = get_numerical_conf_range(all_confs,
+                                                                        predicted_col,
+                                                                        self.lmd['stats_v2'],
+                                                                        conf=conf)
                         result.loc[X.index, 'lower'] = confs[:, 0]
                         result.loc[X.index, 'upper'] = confs[:, 1]
                     else:
@@ -479,7 +484,7 @@ class PredictTransaction(Transaction):
                     output_data[f'{predicted_col}_confidence_range'] = confs
 
                     # anomaly detection
-                    if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['anomaly_detection']:
+                    if is_anomaly_task:
                         anomalies = []
                         for (l, u), t in zip(output_data[f'{predicted_col}_confidence_range'],
                                              output_data[f'__observed_{predicted_col}']):

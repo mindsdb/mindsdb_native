@@ -66,39 +66,48 @@ def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group='__default
     return 0.005, np.zeros((X.shape[0], 2))
 
 
-def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group='__default'):
-    """ Gets prediction bounds for numerical targets, based on ICP estimation and width tolerance """
-    significances = []
-    conf_ranges = []
-    std_dev = stats[predicted_col]['train_std_dev'][group]
+def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group='__default', conf=None):
+    """ Gets prediction bounds for numerical targets, based on ICP estimation and width tolerance
+        conf: pre-determined error rate for the ICP, used in anomaly detection tasks to adjust the
+        threshold sensitivity
+    """
+    if not isinstance(conf, float):
+        conf = None
 
-    tolerance = std_dev * std_tol
+    if conf is None:
+        significances = []
+        conf_ranges = []
+        std_dev = stats[predicted_col]['train_std_dev'][group]
 
-    for sample_idx in range(all_confs.shape[0]):
-        sample = all_confs[sample_idx, :, :]
-        for idx in range(sample.shape[1]):
-            significance = (99 - idx) / 100
-            diff = sample[1, idx] - sample[0, idx]
-            if diff <= tolerance:
-                conf_range = list(sample[:, idx])
-                if stats[predicted_col].get('positive_domain', False):
-                    conf_range[0] = max(0.0, conf_range[0])
+        tolerance = std_dev * std_tol
 
-                significances.append(significance)
+        for sample_idx in range(all_confs.shape[0]):
+            sample = all_confs[sample_idx, :, :]
+            for idx in range(sample.shape[1]):
+                significance = (99 - idx) / 100
+                diff = sample[1, idx] - sample[0, idx]
+                if diff <= tolerance:
+                    conf_range = list(sample[:, idx])
+                    significances.append(significance)
+                    conf_ranges.append(conf_range)
+                    break
+            else:
+                significances.append(0.9991)  # default: confident that value falls inside big bounds
+                bounds = sample[:, 0]
+                sigma = (bounds[1] - bounds[0]) / 4
+                conf_range = [bounds[0] - sigma, bounds[1] + sigma]
                 conf_ranges.append(conf_range)
-                break
-        else:
-            significances.append(0.9991)  # default: confident that value falls inside big bounds
-            bounds = sample[:, 0]
-            sigma = (bounds[1] - bounds[0]) / 4
-            conf_range = [bounds[0] - sigma, bounds[1] + sigma]
 
-            if stats[predicted_col].get('positive_domain', False):
-                conf_range[0] = max(0.0, conf_range[0])
+        conf_ranges = np.array(conf_ranges)
+    else:
+        # fixed error rate
+        idx = int(conf*100)
+        conf_ranges = all_confs[:, :, idx]
+        significances = [conf for _ in range(conf_ranges.shape[0])]
 
-            conf_ranges.append(conf_range)
-
-    return significances, np.array(conf_ranges)
+    if stats[predicted_col].get('positive_domain', False):
+        conf_ranges[conf_ranges < 0] = 0
+    return significances, conf_ranges
 
 
 def get_categorical_conf(all_confs, conf_candidates):

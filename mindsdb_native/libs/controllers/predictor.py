@@ -54,14 +54,16 @@ def _prepare_sample_settings(user_provided_settings,
 
 def _prepare_timeseries_settings(user_provided_settings):
     timeseries_settings = dict(
-        is_timeseries=False
-        ,group_by=None
-        ,order_by=None
-        ,window=None
-        ,use_previous_target=True
-        ,nr_predictions=1
-        ,historical_columns=[]
-        ,anomaly_detection=True
+        is_timeseries=False,
+        group_by=None,
+        order_by=None,
+        window=None,
+        use_previous_target=True,
+        nr_predictions=1,
+        historical_columns=[],
+        anomaly_detection=True,
+        anomaly_error_rate=None,  # (None or float) forces specific confidence level in ICP
+        anomaly_cooldown=1,  # (Int) in time steps; implicitly assumes series are regularly spaced
     )
 
     if len(user_provided_settings) > 0:
@@ -71,7 +73,6 @@ def _prepare_timeseries_settings(user_provided_settings):
             raise Exception(f'Invalid timeseries settings, you must specify a window size')
         else:
             timeseries_settings['is_timeseries'] = True
-
 
     for k in user_provided_settings:
         if k in timeseries_settings:
