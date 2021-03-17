@@ -66,15 +66,15 @@ def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group='__default
     return 0.005, np.zeros((X.shape[0], 2))
 
 
-def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group='__default', conf=None):
+def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group='__default', error_rate=None):
     """ Gets prediction bounds for numerical targets, based on ICP estimation and width tolerance
-        conf: pre-determined error rate for the ICP, used in anomaly detection tasks to adjust the
+        error_rate: pre-determined error rate for the ICP, used in anomaly detection tasks to adjust the
         threshold sensitivity
     """
-    if not isinstance(conf, float):
-        conf = None
+    if not isinstance(error_rate, float):
+        error_rate = None
 
-    if conf is None:
+    if error_rate is None:
         significances = []
         conf_ranges = []
         std_dev = stats[predicted_col]['train_std_dev'][group]
@@ -101,8 +101,9 @@ def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group='
         conf_ranges = np.array(conf_ranges)
     else:
         # fixed error rate
-        idx = int(conf*100)
-        conf_ranges = all_confs[:, :, idx]
+        conf = 1 - error_rate
+        conf_idx = int(100*error_rate) - 1
+        conf_ranges = all_confs[:, :, conf_idx]
         significances = [conf for _ in range(conf_ranges.shape[0])]
 
     if stats[predicted_col].get('positive_domain', False):

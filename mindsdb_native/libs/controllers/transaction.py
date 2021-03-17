@@ -383,7 +383,7 @@ class PredictTransaction(Transaction):
 
                 is_anomaly_task = is_numerical and \
                                   self.lmd['tss']['is_timeseries'] and \
-                                  self.lmd['tss']['anomaly_detection']
+                                  self.lmd['anomaly_detection']
 
                 if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
 
@@ -431,11 +431,11 @@ class PredictTransaction(Transaction):
 
                     # convert (B, 2, 99) into (B, 2) given width or error rate constraints
                     if is_numerical:
-                        conf = self.lmd['tss']['anomaly_error_rate'] if is_anomaly_task else None
+                        error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
                         significances, confs = get_numerical_conf_range(all_confs,
                                                                         predicted_col,
                                                                         self.lmd['stats_v2'],
-                                                                        conf=conf)
+                                                                        error_rate=error_rate)
                         result.loc[X.index, 'lower'] = confs[:, 0]
                         result.loc[X.index, 'upper'] = confs[:, 1]
                     else:
@@ -465,9 +465,11 @@ class PredictTransaction(Transaction):
                                 # predict and get confidence level given width or error rate constraints
                                 if is_numerical:
                                     all_confs = icps[frozenset(group)].predict(X.values)
+                                    error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
                                     significances, confs = get_numerical_conf_range(all_confs, predicted_col,
                                                                                     self.lmd['stats_v2'],
-                                                                                    group=frozenset(group))
+                                                                                    group=frozenset(group),
+                                                                                    error_rate=error_rate)
                                     result.loc[X.index, 'lower'] = confs[:, 0]
                                     result.loc[X.index, 'upper'] = confs[:, 1]
 
@@ -489,7 +491,7 @@ class PredictTransaction(Transaction):
                     if is_anomaly_task:
                         anomalies = get_anomalies(output_data[f'{predicted_col}_confidence_range'],
                                                   output_data[f'__observed_{predicted_col}'],
-                                                  cooldown=self.lmd['tss']['anomaly_cooldown'])
+                                                  cooldown=self.lmd['anomaly_cooldown'])
                         output_data[f'{predicted_col}_anomaly'] = anomalies
 
         else:

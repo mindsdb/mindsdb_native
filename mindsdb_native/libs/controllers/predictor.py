@@ -61,9 +61,6 @@ def _prepare_timeseries_settings(user_provided_settings):
         use_previous_target=True,
         nr_predictions=1,
         historical_columns=[],
-        anomaly_detection=True,
-        anomaly_error_rate=None,  # (None or float) forces specific confidence level in ICP
-        anomaly_cooldown=1,  # (Int) in time steps; implicitly assumes series are regularly spaced
     )
 
     if len(user_provided_settings) > 0:
@@ -431,7 +428,12 @@ class Predictor:
                 use_database_history = advanced_args.get('use_database_history', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
                 quick_predict = advanced_args.get('quick_predict', False),
-                return_raw_predictions = advanced_args.get('return_raw_predictions', False)
+                return_raw_predictions = advanced_args.get('return_raw_predictions', False),
+                anomaly_detection = advanced_args.get('anomaly_detection', True),
+                # (None or float) forces specific confidence level in ICP
+                anomaly_error_rate = advanced_args.get('anomaly_error_rate', None),
+                # (Int) in time steps; implicitly assumes series are regularly spaced
+                anomaly_cooldown = advanced_args.get('anomaly_cooldown', 1),
             )
 
             self.transaction = PredictTransaction(
