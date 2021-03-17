@@ -381,7 +381,9 @@ class PredictTransaction(Transaction):
                                   DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())) and \
                                   typing_info['data_subtype'] != DATA_SUBTYPES.TAGS
 
-                is_anomaly_task = self.lmd['tss']['is_timeseries'] and self.lmd['tss']['anomaly_detection']
+                is_anomaly_task = is_numerical and \
+                                  self.lmd['tss']['is_timeseries'] and \
+                                  self.lmd['tss']['anomaly_detection']
 
                 if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
 
