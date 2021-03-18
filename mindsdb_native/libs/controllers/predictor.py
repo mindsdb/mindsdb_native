@@ -54,13 +54,13 @@ def _prepare_sample_settings(user_provided_settings,
 
 def _prepare_timeseries_settings(user_provided_settings):
     timeseries_settings = dict(
-        is_timeseries=False
-        ,group_by=None
-        ,order_by=None
-        ,window=None
-        ,use_previous_target=True
-        ,nr_predictions=1
-        ,historical_columns=[]
+        is_timeseries=False,
+        group_by=None,
+        order_by=None,
+        window=None,
+        use_previous_target=True,  # adds target previous values to the TS encoder input data
+        nr_predictions=1,          # forecasting window, instances nr_predictions columns by displacing each target
+        historical_columns=[],     # each of these gets encoded by its own TS encoder
     )
 
     if len(user_provided_settings) > 0:
@@ -70,7 +70,6 @@ def _prepare_timeseries_settings(user_provided_settings):
             raise Exception(f'Invalid timeseries settings, you must specify a window size')
         else:
             timeseries_settings['is_timeseries'] = True
-
 
     for k in user_provided_settings:
         if k in timeseries_settings:
@@ -424,7 +423,16 @@ class Predictor:
                 use_database_history = advanced_args.get('use_database_history', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
                 quick_predict = advanced_args.get('quick_predict', False),
-                return_raw_predictions = advanced_args.get('return_raw_predictions', False)
+                return_raw_predictions = advanced_args.get('return_raw_predictions', False),
+                anomaly_detection = advanced_args.get('anomaly_detection', True),
+
+                # (None or float) forces specific confidence level in ICP
+                anomaly_error_rate = advanced_args.get('anomaly_error_rate', None),
+
+                # (Int) ignores anomaly detection for N steps after an
+                # initial anomaly triggers the cooldown period;
+                # implicitly assumes series are regularly spaced
+                anomaly_cooldown = advanced_args.get('anomaly_cooldown', 1),
             )
 
             self.transaction = PredictTransaction(

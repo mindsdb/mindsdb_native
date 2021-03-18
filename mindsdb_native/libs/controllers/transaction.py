@@ -1,5 +1,5 @@
 from mindsdb_native.libs.helpers.general_helpers import *
-from mindsdb_native.libs.helpers.confidence_helpers import get_numerical_conf_range, get_categorical_conf
+from mindsdb_native.libs.helpers.confidence_helpers import get_numerical_conf_range, get_categorical_conf, get_anomalies
 from mindsdb_native.libs.helpers.conformal_helpers import restore_icp_state, clear_icp_state
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
 from mindsdb_native.libs.data_types.transaction_output_data import (
@@ -381,6 +381,10 @@ class PredictTransaction(Transaction):
                                   DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())) and \
                                   typing_info['data_subtype'] != DATA_SUBTYPES.TAGS
 
+                is_anomaly_task = is_numerical and \
+                                  self.lmd['tss']['is_timeseries'] and \
+                                  self.lmd['anomaly_detection']
+
                 if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
 
                     # reorder DF index
@@ -427,8 +431,11 @@ class PredictTransaction(Transaction):
 
                     # convert (B, 2, 99) into (B, 2) given width or error rate constraints
                     if is_numerical:
-                        significances, confs = get_numerical_conf_range(all_confs, predicted_col,
-                                                                        self.lmd['stats_v2'])
+                        error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
+                        significances, confs = get_numerical_conf_range(all_confs,
+                                                                        predicted_col,
+                                                                        self.lmd['stats_v2'],
+                                                                        error_rate=error_rate)
                         result.loc[X.index, 'lower'] = confs[:, 0]
                         result.loc[X.index, 'upper'] = confs[:, 1]
                     else:
@@ -458,9 +465,11 @@ class PredictTransaction(Transaction):
                                 # predict and get confidence level given width or error rate constraints
                                 if is_numerical:
                                     all_confs = icps[frozenset(group)].predict(X.values)
+                                    error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
                                     significances, confs = get_numerical_conf_range(all_confs, predicted_col,
                                                                                     self.lmd['stats_v2'],
-                                                                                    group=frozenset(group))
+                                                                                    group=frozenset(group),
+                                                                                    error_rate=error_rate)
                                     result.loc[X.index, 'lower'] = confs[:, 0]
                                     result.loc[X.index, 'upper'] = confs[:, 1]
 
@@ -477,6 +486,13 @@ class PredictTransaction(Transaction):
                     output_data[f'{predicted_col}_confidence'] = result['significance'].tolist()
                     confs = [[a, b] for a, b in zip(result['lower'], result['upper'])]
                     output_data[f'{predicted_col}_confidence_range'] = confs
+
+                    # anomaly detection
+                    if is_anomaly_task:
+                        anomalies = get_anomalies(output_data[f'{predicted_col}_confidence_range'],
+                                                  output_data[f'__observed_{predicted_col}'],
+                                                  cooldown=self.lmd['anomaly_cooldown'])
+                        output_data[f'{predicted_col}_anomaly'] = anomalies
 
         else:
             for predicted_col in self.lmd['predict_columns']:
