@@ -104,7 +104,7 @@ def check_for_updates(run_env=None):
         ret = requests.get(
             'https://public.api.mindsdb.com/updates/mindsdb_native/{token}'.format(token=token),
             headers={'referer': 'http://check.mindsdb.com/?token={token}'.format(token=token)},
-            timeout=5
+            timeout=1
         )
         ret = ret.json()
     except requests.exceptions.ConnectTimeout:
