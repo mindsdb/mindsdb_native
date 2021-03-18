@@ -58,9 +58,9 @@ def _prepare_timeseries_settings(user_provided_settings):
         group_by=None,
         order_by=None,
         window=None,
-        use_previous_target=True,
-        nr_predictions=1,
-        historical_columns=[],
+        use_previous_target=True,  # adds target previous values to the TS encoder input data
+        nr_predictions=1,          # forecasting window, instances nr_predictions columns by displacing each target
+        historical_columns=[],     # each of these gets encoded by its own TS encoder
     )
 
     if len(user_provided_settings) > 0:
@@ -430,9 +430,13 @@ class Predictor:
                 quick_predict = advanced_args.get('quick_predict', False),
                 return_raw_predictions = advanced_args.get('return_raw_predictions', False),
                 anomaly_detection = advanced_args.get('anomaly_detection', True),
+
                 # (None or float) forces specific confidence level in ICP
                 anomaly_error_rate = advanced_args.get('anomaly_error_rate', None),
-                # (Int) in time steps; implicitly assumes series are regularly spaced
+
+                # (Int) ignores anomaly detection for N steps after an
+                # initial anomaly triggers the cooldown period;
+                # implicitly assumes series are regularly spaced
                 anomaly_cooldown = advanced_args.get('anomaly_cooldown', 1),
             )
 

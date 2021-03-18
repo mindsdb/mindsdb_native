@@ -69,7 +69,14 @@ def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group='__default
 def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group='__default', error_rate=None):
     """ Gets prediction bounds for numerical targets, based on ICP estimation and width tolerance
         error_rate: pre-determined error rate for the ICP, used in anomaly detection tasks to adjust the
-        threshold sensitivity
+        threshold sensitivity.
+
+        :param all_confs: numpy.ndarray, all possible bounds depending on confidence level
+        :param predicted_col: str
+        :param stats: dict
+        :param std_tol: int
+        :param group: str
+        :param error_rate: float (1 >= , can be specified to bypass automatic confidence/bound detection
     """
     if not isinstance(error_rate, float):
         error_rate = None
@@ -101,6 +108,7 @@ def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group='
         conf_ranges = np.array(conf_ranges)
     else:
         # fixed error rate
+        error_rate = max(0.01, min(1.0, error_rate))
         conf = 1 - error_rate
         conf_idx = int(100*error_rate) - 1
         conf_ranges = all_confs[:, :, conf_idx]
@@ -113,7 +121,10 @@ def get_numerical_conf_range(all_confs, predicted_col, stats, std_tol=1, group='
 
 def get_categorical_conf(all_confs, conf_candidates):
     """ Gets ICP confidence estimation for categorical targets.
-    Prediction set is always unitary and includes only the predicted label. """
+    Prediction set is always unitary and includes only the predicted label.
+    :param all_confs: numpy.ndarray, all possible label sets depending on confidence level
+    :param conf_candidates: list, includes preset confidence levels to check
+    """
     significances = []
     for sample_idx in range(all_confs.shape[0]):
         sample = all_confs[sample_idx, :, :]
