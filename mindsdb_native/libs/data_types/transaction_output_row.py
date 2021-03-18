@@ -69,7 +69,8 @@ class TransactionOutputRow:
             else:
                 answers[pred_col]['predicted_value'] = prediction_row[pred_col]
 
-            if self._transaction_output._transaction.lmd.get('anomaly_detection', False):
+            if prediction_row.get(f'{pred_col}_anomaly', None) is not None and \
+                    self._transaction_output._transaction.lmd.get('anomaly_detection', False):
                 answers[pred_col]['anomaly'] = prediction_row[f'{pred_col}_anomaly']
 
             if prediction_row.get(f'{pred_col}_confidence') is not None:
