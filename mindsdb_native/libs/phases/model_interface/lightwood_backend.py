@@ -483,7 +483,7 @@ class LightwoodBackend:
 
             # Find predictor with NnMixer
             for predictor, accuracy in predictors_and_accuracies:
-                if isinstance(predictor._mixer, lightwood.mixers.NnMixer):
+                if lightwood.mixers.NnMixer is not None and isinstance(predictor._mixer, lightwood.mixers.NnMixer):
                     nn_mixer_predictor, nn_mixer_predictor_accuracy = predictor, accuracy
                     break
             else:
