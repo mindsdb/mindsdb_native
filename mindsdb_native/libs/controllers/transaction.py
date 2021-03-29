@@ -450,38 +450,42 @@ class PredictTransaction(Transaction):
                         group_keys = icps['__mdb_group_keys']
 
                         for group in icps['__mdb_groups']:
+                            icp = icps[frozenset(group)]
 
-                            # filter rows by group
-                            X = deepcopy(icp_X)
-                            for key, val in zip(group_keys, group):
-                                X = X[X[key] == val]
+                            # check ICP has calibration scores
+                            if icp.cal_scores[0].shape[0] > 0:
 
-                            if X.size > 0:
-                                # set ICP caches
-                                icps[frozenset(group)].nc_function.model.prediction_cache = X.pop(predicted_col).values
-                                if icps[frozenset(group)].nc_function.normalizer:
-                                    icps[frozenset(group)].nc_function.normalizer.prediction_cache = X.pop('__mdb_selfaware_scores').values
+                                # filter rows by group
+                                X = deepcopy(icp_X)
+                                for key, val in zip(group_keys, group):
+                                    X = X[X[key] == val]
 
-                                # predict and get confidence level given width or error rate constraints
-                                if is_numerical:
-                                    all_confs = icps[frozenset(group)].predict(X.values)
-                                    error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
-                                    significances, confs = get_numerical_conf_range(all_confs, predicted_col,
-                                                                                    self.lmd['stats_v2'],
-                                                                                    group=frozenset(group),
-                                                                                    error_rate=error_rate)
-                                    result.loc[X.index, 'lower'] = confs[:, 0]
-                                    result.loc[X.index, 'upper'] = confs[:, 1]
+                                if X.size > 0:
+                                    # set ICP caches
+                                    icp.nc_function.model.prediction_cache = X.pop(predicted_col).values
+                                    if icp.nc_function.normalizer:
+                                        icp.nc_function.normalizer.prediction_cache = X.pop('__mdb_selfaware_scores').values
 
-                                else:
-                                    conf_candidates = list(range(20)) + list(range(20, 100, 10))
-                                    all_ranges = np.array(
-                                        [icps[frozenset(group)].predict(X.values, significance=s / 100)
-                                         for s in conf_candidates])
-                                    all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
-                                    significances = get_categorical_conf(all_confs, conf_candidates)
+                                    # predict and get confidence level given width or error rate constraints
+                                    if is_numerical:
+                                        all_confs = icp.predict(X.values)
+                                        error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
+                                        significances, confs = get_numerical_conf_range(all_confs, predicted_col,
+                                                                                        self.lmd['stats_v2'],
+                                                                                        group=frozenset(group),
+                                                                                        error_rate=error_rate)
+                                        result.loc[X.index, 'lower'] = confs[:, 0]
+                                        result.loc[X.index, 'upper'] = confs[:, 1]
 
-                                result.loc[X.index, 'significance'] = significances
+                                    else:
+                                        conf_candidates = list(range(20)) + list(range(20, 100, 10))
+                                        all_ranges = np.array(
+                                            [icp.predict(X.values, significance=s / 100)
+                                             for s in conf_candidates])
+                                        all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
+                                        significances = get_categorical_conf(all_confs, conf_candidates)
+
+                                    result.loc[X.index, 'significance'] = significances
 
                     output_data[f'{predicted_col}_confidence'] = result['significance'].tolist()
                     confs = [[a, b] for a, b in zip(result['lower'], result['upper'])]
