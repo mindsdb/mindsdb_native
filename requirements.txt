@@ -7,6 +7,7 @@ wheel >= 0.32.2
 attrs >= 18.2.0
 pytz >= 2018.5
 scipy >= 1.1.0, <= 1.4.1
+scikit-learn >= 0.22.1, <= 0.23.2
 colorlog >= 4.0.2
 ImageHash == 4.0
 imageio == 2.5.0
