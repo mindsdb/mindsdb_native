@@ -133,8 +133,8 @@ class ModelAnalyzer(BaseModule):
                     self.transaction.hmd['icp'][target]['__mdb_group_keys'] = [x for x in group_info.keys()]
 
                     for combination in all_group_combinations:
-                        self.transaction.hmd['icp'][target][tuple(combination)] = deepcopy(icp)
-                        self.transaction.hmd['icp'][target][tuple(combination)].fit(None, None)
+                        self.transaction.hmd['icp'][target]['_'.join(combination)] = deepcopy(icp)
+                        self.transaction.hmd['icp'][target]['_'.join(combination)].fit(None, None)
 
                 # calibrate ICP
                 icp_df = deepcopy(self.transaction.input_data.cached_val_df)
@@ -165,7 +165,7 @@ class ModelAnalyzer(BaseModule):
                         icp_df = icps_df
 
                         if is_selfaware:
-                            icp_df[f'__selfaware_{target}'] = icps[tuple(group)].nc_function.normalizer.prediction_cache
+                            icp_df[f'__selfaware_{target}'] = icps['_'.join(group)].nc_function.normalizer.prediction_cache
 
                         # filter irrelevant rows for each group combination
                         for key, val in zip(group_keys, group):
@@ -173,13 +173,13 @@ class ModelAnalyzer(BaseModule):
 
                         # save relevant predictions in the caches, then calibrate the ICP
                         pred_cache = icp_df.pop(f'__predicted_{target}').values
-                        icps[tuple(group)].nc_function.model.prediction_cache = pred_cache
+                        icps['_'.join(group)].nc_function.model.prediction_cache = pred_cache
                         icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
-                        if icps[tuple(group)].nc_function.normalizer is not None:
-                            icps[tuple(group)].nc_function.normalizer.prediction_cache = icp_df.pop(f'__selfaware_{target}').values
+                        if icps['_'.join(group)].nc_function.normalizer is not None:
+                            icps['_'.join(group)].nc_function.normalizer.prediction_cache = icp_df.pop(f'__selfaware_{target}').values
 
-                        icps[tuple(group)].index = icp_df.columns      # important at inference time
-                        icps[tuple(group)].calibrate(icp_df.values, y)
+                        icps['_'.join(group)].index = icp_df.columns      # important at inference time
+                        icps['_'.join(group)].calibrate(icp_df.values, y)
 
                         # save training std() for bounds width selection
                         if not is_classification:
@@ -187,11 +187,11 @@ class ModelAnalyzer(BaseModule):
                             for key, val in zip(group_keys, group):
                                 icp_train_df = icp_train_df[icp_train_df[key] == val]
                             y_train = icp_train_df[target].values
-                            self.transaction.lmd['stats_v2'][target]['train_std_dev'][tuple(group)] = y_train.std()
+                            self.transaction.lmd['stats_v2'][target]['train_std_dev']['_'.join(group)] = y_train.std()
 
                         # get bounds for relevant rows in validation dataset
-                        _, group_ranges = set_conf_range(icp_df, icps[tuple(group)], target, typing_info,
-                                                         self.transaction.lmd, group=tuple(group))
+                        _, group_ranges = set_conf_range(icp_df, icps['_'.join(group)], target, typing_info,
+                                                         self.transaction.lmd, group='_'.join(group))
                         # save group bounds
                         if not is_classification:
                             result_df.loc[icp_df.index, 'lower'] = group_ranges[:, 0]

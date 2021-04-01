@@ -450,7 +450,7 @@ class PredictTransaction(Transaction):
                         group_keys = icps['__mdb_group_keys']
 
                         for group in icps['__mdb_groups']:
-                            icp = icps[tuple(group)]
+                            icp = icps['_'.join(group)]
 
                             # check ICP has calibration scores
                             if icp.cal_scores[0].shape[0] > 0:
@@ -472,7 +472,7 @@ class PredictTransaction(Transaction):
                                         error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
                                         significances, confs = get_numerical_conf_range(all_confs, predicted_col,
                                                                                         self.lmd['stats_v2'],
-                                                                                        group=tuple(group),
+                                                                                        group='_'.join(group),
                                                                                         error_rate=error_rate)
                                         result.loc[X.index, 'lower'] = confs[:, 0]
                                         result.loc[X.index, 'upper'] = confs[:, 1]
