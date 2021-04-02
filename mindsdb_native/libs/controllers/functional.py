@@ -6,6 +6,7 @@ import zipfile
 import traceback
 import uuid
 import tempfile
+from copy import deepcopy
 
 from mindsdb_native.config import CONFIG
 from mindsdb_native.__about__ import __version__
@@ -256,7 +257,13 @@ def get_model_data(model_name=None, lmd=None):
             amd['timeseries']['user_settings'] = lmd['tss']
 
 
-    amd['data_analysis_v2'] = lmd.get('stats_v2')
+    amd['data_analysis_v2'] = deepcopy(lmd.get('stats_v2'))
+    # Remove keys that arent relevant to the GUI and JSON serializable:
+    for target in amd['data_analysis_v2']:
+        if 'train_std_dev' in amd['data_analysis_v2'][target]:
+            del amd['data_analysis_v2'][target]['train_std_dev']
+    # @TODO: Remove in the future
+
     amd['setup_args'] = lmd.get('setup_args')
     amd['test_data_plot'] = lmd.get('test_data_plot')
     amd['columns_to_ignore'] = lmd.get('columns_to_ignore')
@@ -299,17 +306,6 @@ def get_model_data(model_name=None, lmd=None):
 
         amd['force_vectors'] = {}
         if col in lmd['predict_columns']:
-            # Histograms for plotting the force vectors
-            if 'all_columns_prediction_distribution' in lmd and lmd['all_columns_prediction_distribution'] is not None:
-                amd['force_vectors'][col] = {}
-                amd['force_vectors'][col]['normal_data_distribution'] = lmd['all_columns_prediction_distribution'][col]
-                amd['force_vectors'][col]['normal_data_distribution']['type'] = 'categorical'
-
-                amd['force_vectors'][col]['missing_data_distribution'] = {}
-                for missing_column in lmd['columnless_prediction_distribution'][col]:
-                    amd['force_vectors'][col]['missing_data_distribution'][missing_column] = lmd['columnless_prediction_distribution'][col][missing_column]
-                    amd['force_vectors'][col]['missing_data_distribution'][missing_column]['type'] = 'categorical'
-
             if 'confusion_matrices' in lmd and col in lmd['confusion_matrices']:
                 confusion_matrix = lmd['confusion_matrices'][col]
             else:

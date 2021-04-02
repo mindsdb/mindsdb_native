@@ -234,8 +234,6 @@ class Predictor:
                 model_accuracy = {'train': {}, 'test': {}},
                 column_importances = None,
                 columns_buckets_importances = None,
-                columnless_prediction_distribution = None,
-                all_columns_prediction_distribution = None,
                 use_gpu = use_gpu,
                 columns_to_ignore = ignore_columns,
                 validation_set_accuracy = None,
