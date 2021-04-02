@@ -432,10 +432,13 @@ class PredictTransaction(Transaction):
                     # convert (B, 2, 99) into (B, 2) given width or error rate constraints
                     if is_numerical:
                         error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
+                        # significances = 0.8
+                        # confs = all_confs[:, :, int(100*(1-significances))-1]
                         significances, confs = get_numerical_conf_range(all_confs,
                                                                         predicted_col,
                                                                         self.lmd['stats_v2'],
                                                                         error_rate=error_rate)
+                        print(f"SIGNIFICANCE AT {significances}")
                         result.loc[X.index, 'lower'] = confs[:, 0]
                         result.loc[X.index, 'upper'] = confs[:, 1]
                     else:
