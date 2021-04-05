@@ -6,6 +6,7 @@ from copy import deepcopy
 from collections import Counter, defaultdict
 import multiprocessing as mp
 from functools import partial
+import datetime
 
 import six
 from dateutil.parser import parse as parse_datetime
@@ -29,6 +30,13 @@ from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.helpers.mp_helpers import get_nr_procs
 
 import flair
+
+
+DATE_FMTS = [
+        '%Y-%m-%d',
+        '%Y/%m/%d',
+        '%d.%m.%Y',
+    ]
 
 
 def get_file_subtype_if_exists(path):
@@ -57,7 +65,7 @@ def get_number_subtype(string):
         return None
 
 
-def count_data_types_in_column(data):
+def count_data_types_in_column(data, col_name):
     type_counts = Counter()
     subtype_counts = Counter()
     additional_info = {}
@@ -68,23 +76,6 @@ def count_data_types_in_column(data):
         if subtype is not None:
             type_guess = DATA_TYPES.NUMERIC
             subtype_guess = subtype
-        return type_guess, subtype_guess
-
-    def type_check_date(element):
-        type_guess, subtype_guess = None, None
-        try:
-            dt = parse_datetime(element)
-
-            # Not accurate 100% for a single datetime str,
-            # but should work in aggregate
-            if dt.hour == 0 and dt.minute == 0 and \
-                dt.second == 0 and len(element) <= 16:
-                subtype_guess = DATA_SUBTYPES.DATE
-            else:
-                subtype_guess = DATA_SUBTYPES.TIMESTAMP
-            type_guess = DATA_TYPES.DATE
-        except Exception:
-            pass
         return type_guess, subtype_guess
 
     def type_check_sequence(element):
@@ -118,20 +109,72 @@ def count_data_types_in_column(data):
         return type_guess, subtype_guess
 
     type_checkers = [type_check_numeric,
-                     type_check_date,
                      type_check_sequence,
                      type_check_file]
     for element in [str(x) for x in data]:
+        data_type_guess, subtype_guess = 'Unknown', 'Unknown'
         for type_checker in type_checkers:
             data_type_guess, subtype_guess = type_checker(element)
-            if data_type_guess:
-                break
-        else:
-            data_type_guess = 'Unknown'
-            subtype_guess = 'Unknown'
+            if data_type_guess is None:
+                type_counts[data_type_guess] += 1
+                subtype_counts[subtype_guess] += 1
+            else:
+                type_counts['Unknown'] += 1
+                subtype_counts['Unknown'] += 1
 
-        type_counts[data_type_guess] += 1
-        subtype_counts[subtype_guess] += 1
+    additional_info['datetime_formats'] = {}
+
+    # timestamp?
+    timestamp_fmt_matches = {}
+    for fmt in DATE_FMTS:
+        parsed = []
+        for x in data:
+            try:
+                parsed.append(datetime.datetime.strptime(x, '{} %H:%M:%S'.format(fmt)))
+            except Exception:
+                parsed.append(None)
+        
+        timestamp_fmt_matches[fmt] = len([date for date in parsed if date is not None])
+
+    best_match_timestamp_fmt = max(timestamp_fmt_matches, key=lambda kv: kv[1])
+
+    additional_info['datetime_formats']['timestamp_fmt'] = best_match_timestamp_fmt
+    additional_info['datetime_formats']['ambiguous_timestamp_fmts'] = []
+    for fmt, nr_matches in timestamp_fmt_matches.items():
+        if timestamp_fmt_matches[best_match_timestamp_fmt] == nr_matches and fmt != timestamp_fmt_matches:
+            additional_info['datetime_formats']['ambiguous_timestamp_fmts'].append(fmt)
+    if len(additional_info['datetime_formats']['ambiguous_timestamp_fmts']):
+        additional_info['datetime_formats']['ambiguous_timestamp_fmts'].append(best_match_timestamp_fmt)
+
+    # date?
+    date_fmt_matches = {}
+    for fmt in DATE_FMTS:
+        parsed = []
+        for x in data:
+            try:
+                parsed.append(datetime.datetime.strptime(x, fmt))
+            except Exception:
+                parsed.append(None)
+        
+        date_fmt_matches[fmt] = len([date for date in parsed if date is not None])
+
+    best_match_date_fmt = max(date_fmt_matches, key=lambda kv: kv[1])
+
+    additional_info['datetime_formats']['date_fmt'] = best_match_date_fmt
+    additional_info['datetime_formats']['ambiguous_date_fmts'] = []
+    for fmt, nr_matches in date_fmt_matches.items():
+        if date_fmt_matches[best_match_date_fmt] == nr_matches and fmt != date_fmt_matches:
+            additional_info['datetime_formats']['ambiguous_date_fmts'].append(fmt)
+    if len(additional_info['datetime_formats']['ambiguous_date_fmts']):
+        additional_info['datetime_formats']['ambiguous_date_fmts'].append(best_match_date_fmt)
+    
+    #
+    type_counts[DATA_TYPES.DATE] = max(
+        date_fmt_matches[best_match_date_fmt],
+        timestamp_fmt_matches[best_match_timestamp_fmt]
+    )
+    subtype_counts[DATA_SUBTYPES.DATE] += date_fmt_matches[best_match_date_fmt]
+    subtype_counts[DATA_SUBTYPES.TIMESTAMP] += timestamp_fmt_matches[best_match_timestamp_fmt]
 
     return type_counts, subtype_counts, additional_info
 
@@ -174,7 +217,8 @@ def get_column_data_type(arg_tup, lmd):
         subtype_dist[DATA_SUBTYPES.MULTIPLE] = len(data)
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
-    type_dist, subtype_dist, new_additional_info = count_data_types_in_column(data)
+    type_dist, subtype_dist, new_additional_info = count_data_types_in_column(data, col_name)
+    lmd['stats_v2'][col_name] = new_additional_info
 
     if new_additional_info:
         additional_info.update(new_additional_info)
@@ -185,7 +229,7 @@ def get_column_data_type(arg_tup, lmd):
     if known_type_dist:
         max_known_dtype, max_known_dtype_count = max(
             known_type_dist.items(),
-            key=lambda kv: kv[0]
+            key=lambda kv: kv[1]
         )
     else:
         max_known_dtype, max_known_dtype_count = None, None
@@ -275,6 +319,7 @@ def get_column_data_type(arg_tup, lmd):
 
     return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
+
 class TypeDeductor(BaseModule):
     """
     The type deduction phase is responsible for inferring data types
@@ -282,7 +327,7 @@ class TypeDeductor(BaseModule):
     """
     def run(self, input_data):
         stats_v2 = defaultdict(dict)
-
+        self.transaction.lmd['stats_v2'] = stats_v2
 
         sample_settings = self.transaction.lmd['sample_settings']
         if sample_settings['sample_for_analysis']:
@@ -323,6 +368,16 @@ class TypeDeductor(BaseModule):
 
         for i, col_name in enumerate(sample_df.columns.values):
             (data_type, data_subtype, data_type_dist, data_subtype_dist, additional_info, warn, info) = answer_arr[i]
+
+            try:            
+                print('Column {} is an ambigious date format ({}), assuming {}'.format(
+                    col_name,
+                    ' | '.join(additional_info['datetime_formats']['ambiguous_date_fmts']),
+                    additional_info['datetime_formats']['date_fmt']
+                ))
+            except KeyError:
+                pass
+
             for msg in warn:
                 self.log.warning(msg)
             for msg in info:
@@ -405,5 +460,3 @@ class TypeDeductor(BaseModule):
         for col_name in self.transaction.lmd['columns']:
             if col_name not in self.transaction.lmd['columns_to_ignore'] and col_name not in self.transaction.lmd['predict_columns'] and stats_v2[col_name]['broken'] is None and stats_v2[col_name]['identifier'] is None:
                     self.transaction.lmd['useable_input_columns'].append(col_name)
-
-        self.transaction.lmd['stats_v2'] = stats_v2
