@@ -100,12 +100,10 @@ class ModelAnalyzer(BaseModule):
                     norm_params = {'output_column': target}
                     normalizer = SelfawareNormalizer(fit_params=norm_params)
                     # normalizer.prediction_cache = normal_predictions.get(f'{target}_selfaware_scores', None)
-                    print(normalizer.prediction_cache)
                 else:
                     normalizer = None
 
-                print(f"Normalizer: {normalizer is not None}")
-                fixed_significance = 0.99
+                fixed_significance = self.transaction.lmd.get('fixed_confidenece', None)
 
                 # instance the ICP
                 nc = nc_class(model, nc_function, normalizer=normalizer)

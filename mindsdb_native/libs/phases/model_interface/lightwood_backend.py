@@ -13,7 +13,6 @@ from lightwood.constants.lightwood import ColumnDataTypes
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
-from mindsdb_native.libs.helpers.conformal_helpers import t_softmax
 from mindsdb_native.libs.helpers.mp_helpers import get_nr_procs
 
 
@@ -580,7 +579,8 @@ class LightwoodBackend:
                             formated_predictions[k][i].append(predictions[f'{k}_timestep_{timestep_index}']['predictions'][i])
 
                 model_confidence_dict = {}
-                for confidence_name in ['selfaware_confidences','loss_confidences']:
+                for confidence_name in ['selfaware_confidences', 'loss_confidences']:
+                    # caveat: self-aware output is a score rather than a confidence
                     if confidence_name in predictions[k]:
                         if k not in model_confidence_dict:
                             model_confidence_dict[k] = []
@@ -589,11 +589,6 @@ class LightwoodBackend:
                             if len(model_confidence_dict[k]) <= i:
                                 model_confidence_dict[k].append([])
                             conf = predictions[k][confidence_name][i]
-                            # @TODO We should make sure lightwood never returns confidences above or bellow 0 and 1
-                            # if conf < 0:
-                            #     conf = 0
-                            # if conf > 1:
-                            #     conf = 1
                             model_confidence_dict[k][i].append(conf)
 
                 if 'selfaware_confidences' in predictions[k]:

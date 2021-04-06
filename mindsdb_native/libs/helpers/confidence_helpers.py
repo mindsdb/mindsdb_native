@@ -38,7 +38,6 @@ def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group='__default
 
         # iterate over confidence levels until spread >= a multiplier of the dataset stddev
         if significance is not None:
-            print(f'using fixed significance {significance}')
             conf = int(100*(1-significance))
             return significance, all_ranges[:, :, conf]
         else:

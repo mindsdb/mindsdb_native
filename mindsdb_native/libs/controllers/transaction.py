@@ -398,9 +398,6 @@ class PredictTransaction(Transaction):
                         normalizer.prediction_cache = self.hmd['predictions'].get(f'{predicted_col}_selfaware_scores',
                                                                                   None)
                         icp_X['__mdb_selfaware_scores'] = normalizer.prediction_cache
-                        print(icp_X['__mdb_selfaware_scores'])
-
-                    print(f"Normalizer @ inference: {normalizer is not None}")
 
                     # get ICP predictions
                     result = pd.DataFrame(index=icp_X.index, columns=['lower', 'upper', 'significance'])
@@ -434,14 +431,15 @@ class PredictTransaction(Transaction):
 
                     # convert (B, 2, 99) into (B, 2) given width or error rate constraints
                     if is_numerical:
-                        error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
-                        significances = 0.99
-                        confs = all_confs[:, :, int(100*(1-significances))-1]
-                        # significances, confs = get_numerical_conf_range(all_confs,
-                        #                                                 predicted_col,
-                        #                                                 self.lmd['stats_v2'],
-                        #                                                 error_rate=error_rate)
-                        print(f"SIGNIFICANCE AT {significances}")
+                        significances = self.lmd.get('fixed_confidence', None)
+                        if significances is not None:
+                            confs = all_confs[:, :, int(100*(1-significances))-1]
+                        else:
+                            error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
+                            significances, confs = get_numerical_conf_range(all_confs,
+                                                                            predicted_col,
+                                                                            self.lmd['stats_v2'],
+                                                                            error_rate=error_rate)
                         result.loc[X.index, 'lower'] = confs[:, 0]
                         result.loc[X.index, 'upper'] = confs[:, 1]
                     else:
