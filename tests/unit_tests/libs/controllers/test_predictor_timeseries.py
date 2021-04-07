@@ -40,8 +40,9 @@ class TestPredictorTimeseries(unittest.TestCase):
         train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
         test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
 
-        features = generate_value_cols(['date', 'int', 'int'], data_len, ts_hours * 3600)
-        labels = [generate_timeseries_labels(features)]
+        features = generate_value_cols(['date', 'int', 'int', 'true'], data_len, ts_hours * 3600)
+        features[-1][0] = 'make_predictions'
+        labels = [generate_timeseries_labels(features[:-1])]
 
         feature_headers = list(map(lambda col: col[0], features))
         label_headers = list(map(lambda col: col[0], labels))
@@ -55,6 +56,8 @@ class TestPredictorTimeseries(unittest.TestCase):
             headers=[*feature_headers, *label_headers]
         )
         # Create the testing dataset and save it to a file
+        features[-1] = generate_value_cols(['false'], data_len, ts_hours * 3600)[0]
+        features[-1][0] = 'make_predictions'
         columns_test = list(map(lambda col: col[int(len(col) * 3 / 4):], features))
         columns_to_file(
             columns_test,
@@ -69,7 +72,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             to_predict=label_headers,
             timeseries_settings={
                 'order_by': [feature_headers[0]],
-                'historical_columns': [feature_headers[-1]],
+                'historical_columns': [feature_headers[-2]],
                 'window': 3
             },
             stop_training_in_x_seconds=10,
@@ -80,7 +83,7 @@ class TestPredictorTimeseries(unittest.TestCase):
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
 
         # Results should only be given for the rows with full history
-        assert len(results) == len(columns_test[-1])
+        assert len(results) == len(columns_test[-2])
         for row in results:
             expect_columns = [label_headers[0], label_headers[0] + '_confidence']
             for col in expect_columns:

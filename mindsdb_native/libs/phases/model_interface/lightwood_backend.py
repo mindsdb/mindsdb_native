@@ -77,6 +77,18 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
     return df
 
 
+def _ts_infer_next_row(df, ob):
+    last_row = df.iloc[[-1]]
+    if df.shape[0] > 1:
+        butlast_row = df.iloc[[-2]]
+        delta = (last_row[ob].values - butlast_row[ob].values).flatten()[0]
+    else:
+        delta = 1
+    last_row[ob] += delta
+    df = df.append(last_row)
+    return df
+
+
 class LightwoodBackend:
     def __init__(self, transaction):
         self.transaction = transaction
@@ -85,7 +97,7 @@ class LightwoodBackend:
         # Ideally this will go away soon but still a necessity for now
         self.nn_mixer_only = False
 
-    def _ts_reshape(self, original_df):
+    def _ts_reshape(self, original_df, mode='learn'):
         original_df = copy.deepcopy(original_df)
         gb_arr = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
         ob_arr = self.transaction.lmd['tss']['order_by']
@@ -132,6 +144,16 @@ class LightwoodBackend:
                 df_arr.append(df.sort_values(by=ob_arr))
         else:
             df_arr = [original_df]
+
+        # TODO: add next row if stream usecase
+        for i, subdf in enumerate(df_arr):
+            if 'make_predictions' in subdf.columns:
+                index = subdf[subdf['make_predictions'].map({'True': True, 'False': False,
+                                                                         True: True, False: False}) == True]
+                if mode == 'predict':
+                    infer = index.shape[0] == 0
+                    if infer:
+                        df_arr[i] = _ts_infer_next_row(subdf, ob_arr)
 
         if len(original_df) > 500:
             nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
@@ -185,7 +207,6 @@ class LightwoodBackend:
                     idx += 1
 
         del combined_df['original_index']
-
 
         return combined_df, secondary_type_dict, timeseries_row_mapping, df_gb_map
 
@@ -521,7 +542,7 @@ class LightwoodBackend:
 
         df_gb_map = None
         if self.transaction.lmd['tss']['is_timeseries']:
-            df, _, timeseries_row_mapping, df_gb_map = self._ts_reshape(df)
+            df, _, timeseries_row_mapping, df_gb_map = self._ts_reshape(df, mode='predict')
 
         if df_gb_map is None:
             df_gb_map = {'': df}
