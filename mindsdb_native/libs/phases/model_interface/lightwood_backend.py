@@ -117,17 +117,14 @@ class LightwoodBackend:
                 if row[col] is None or pd.isna(row[col]):
                     row[col] = 0.0
                 else:
-                    if self.transaction.lmd['stats_v2'][col]['typing']['data_subtype'] == DATA_SUBTYPES.DATE:
-                        row[col] = datetime.datetime.strptime(
-                            row[col],
-                            self.transaction.lmd['stats_v2'][col]['additional_info']['date_fmt']
-                        )
-
-                    if self.transaction.lmd['stats_v2'][col]['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP:
-                        row[col] = datetime.datetime.strptime(
-                            row[col],
-                            self.transaction.lmd['stats_v2'][col]['additional_info']['date_fmt']
-                        )
+                    if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
+                        try:
+                            row[col] = datetime.datetime.strptime(
+                                row[col],
+                                self.transaction.lmd['stats_v2'][col]['additional_info']['date_fmt']
+                            )
+                        except (TypeError, ValueError):
+                            pass
 
                     if isinstance(row[col], datetime.datetime):
                         row[col] = row[col].timestamp()
