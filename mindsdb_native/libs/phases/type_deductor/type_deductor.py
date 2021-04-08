@@ -31,19 +31,6 @@ from mindsdb_native.libs.helpers.mp_helpers import get_nr_procs
 
 import flair
 
-DATE_FMTS = [
-    '%Y-%m-%d',
-    '%Y/%m/%d',
-    '%d.%m.%Y',
-    '%Y/%m'
-]
-
-DATETIME_FMTS = [
-    '%Y-%m-%d %H:%M:%S',
-    '%Y/%m/%d %H:%M:%S',
-    '%d.%m.%Y %H:%M:%S',
-]
-
 
 def get_file_subtype_if_exists(path):
     try:
@@ -71,7 +58,7 @@ def get_number_subtype(string):
         return None
 
 
-def count_data_types_in_column(data):
+def count_data_types_in_column(data, date_fmts, datetime_fmts):
     type_counts = Counter()
     subtype_counts = Counter()
     additional_info = {}
@@ -193,7 +180,11 @@ def get_column_data_type(arg_tup, lmd):
         subtype_dist[DATA_SUBTYPES.MULTIPLE] = len(data)
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
-    type_dist, subtype_dist, new_additional_info = count_data_types_in_column(data)
+    type_dist, subtype_dist, new_additional_info = count_data_types_in_column(
+        data,
+        date_fmts=lmd['date_fmts'],
+        datetime_fmts=lmd['datetime_fmts']
+    )
 
     if new_additional_info:
         additional_info.update(new_additional_info)
