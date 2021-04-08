@@ -246,6 +246,7 @@ class Predictor:
                 equal_accuracy_for_all_output_categories = equal_accuracy_for_all_output_categories,
                 output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
                 report_uuid = self.report_uuid,
+
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
                 force_column_usage = advanced_args.get('force_column_usage', []),

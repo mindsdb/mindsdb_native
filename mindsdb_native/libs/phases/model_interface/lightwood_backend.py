@@ -122,18 +122,15 @@ class LightwoodBackend:
                             row[col],
                             self.transaction.lmd['stats_v2'][col]['additional_info']['date_fmt']
                         )
-                        assert False, '1'
 
                     if self.transaction.lmd['stats_v2'][col]['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP:
                         row[col] = datetime.datetime.strptime(
                             row[col],
                             self.transaction.lmd['stats_v2'][col]['additional_info']['date_fmt']
                         )
-                        assert False, '2'
 
                     if isinstance(row[col], datetime.datetime):
                         row[col] = row[col].timestamp()
-                        assert False, '3'
                     
                     try:
                         row[col] = float(row[col])
