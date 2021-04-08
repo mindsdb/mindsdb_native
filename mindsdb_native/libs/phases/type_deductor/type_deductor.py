@@ -103,7 +103,7 @@ def count_data_types_in_column(data, date_fmts, datetime_fmts):
 
     def type_check_date(element):
         # date?
-        for fmt in DATE_FMTS:
+        for fmt in date_fmts:
             try:
                 datetime.datetime.strptime(element, fmt)
             except Exception:
@@ -113,7 +113,7 @@ def count_data_types_in_column(data, date_fmts, datetime_fmts):
                 return DATA_TYPES.DATE, DATA_SUBTYPES.DATE
 
         # date + time?
-        for fmt in DATETIME_FMTS:
+        for fmt in datetime_fmts:
             try:
                 datetime.datetime.strptime(element, fmt)
             except Exception:
