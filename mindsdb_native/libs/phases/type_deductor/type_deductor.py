@@ -180,9 +180,6 @@ def get_column_data_type(arg_tup, lmd):
         subtype_dist[DATA_SUBTYPES.MULTIPLE] = len(data)
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
-    date_fmts = advanced_args.get('date_fmts', ['%Y-%m-%d', '%Y/%m/%d', '%d.%m.%Y', '%Y/%m']),
-     
-
     type_dist, subtype_dist, new_additional_info = count_data_types_in_column(
         data,
         date_fmts=lmd.get('date_fmts') or ['%Y-%m-%d', '%Y/%m/%d', '%d.%m.%Y', '%Y/%m'],
