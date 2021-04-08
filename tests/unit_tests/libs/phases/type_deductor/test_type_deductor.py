@@ -67,7 +67,7 @@ class TestTypeDeductor(unittest.TestCase):
             expected_type = test_column_types[col_name][0]
             expected_subtype = test_column_types[col_name][1]
             assert stats_v2[col_name]['typing']['data_type'] == expected_type, 'col_name, {} != {}'.format(expected_type, stats_v2[col_name]['typing']['data_type'])
-            assert stats_v2[col_name]['typing']['data_subtype'] == expected_subtype 'col_name, {} != {}'.format(expected_subtype, stats_v2[col_name]['typing']['data_subtype'])
+            assert stats_v2[col_name]['typing']['data_subtype'] == expected_subtype, 'col_name, {} != {}'.format(expected_subtype, stats_v2[col_name]['typing']['data_subtype'])
             assert stats_v2[col_name]['typing']['data_type_dist'][expected_type] == 100
             assert stats_v2[col_name]['typing']['data_subtype_dist'][expected_subtype] == 100
 
