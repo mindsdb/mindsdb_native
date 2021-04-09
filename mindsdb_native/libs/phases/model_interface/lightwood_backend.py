@@ -30,7 +30,10 @@ def _ts_order_col_to_cell_lists(df, historical_columns):
     for order_col in historical_columns:
         for ii in range(len(df)):
             label = df.index.values[ii]
-            df.at[label, order_col] = [df.at[label, order_col]]
+            try:
+                df.at[label, order_col] = [df.at[label, order_col]]
+            except:
+                pass
     return df
 
 
@@ -85,6 +88,7 @@ def _ts_infer_next_row(df, ob):
     else:
         delta = 1
     last_row[ob] += delta
+    last_row.index += 1
     df = df.append(last_row)
     return df
 
