@@ -30,10 +30,7 @@ def _ts_order_col_to_cell_lists(df, historical_columns):
     for order_col in historical_columns:
         for ii in range(len(df)):
             label = df.index.values[ii]
-            try:
-                df.at[label, order_col] = [df.at[label, order_col]]
-            except:
-                pass
+            df.at[label, order_col] = [df.at[label, order_col]]
     return df
 
 
