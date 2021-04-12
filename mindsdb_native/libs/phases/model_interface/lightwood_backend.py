@@ -84,11 +84,10 @@ def _ts_infer_next_row(df, ob):
         delta = (last_row[ob].values - butlast_row[ob].values).flatten()[0]
     else:
         delta = 1
-    last_row[ob] += delta
-    last_row.index += 1
     last_row.original_index += 1
-    df = df.append(last_row)
-    return df
+    last_row.index += 1
+    last_row[ob] += delta
+    return df.append(last_row)
 
 
 class LightwoodBackend:
@@ -147,15 +146,13 @@ class LightwoodBackend:
         else:
             df_arr = [original_df]
 
-        # TODO: add next row if stream usecase
         for i, subdf in enumerate(df_arr):
-            if 'make_predictions' in subdf.columns:
+            if 'make_predictions' in subdf.columns and mode == 'predict':
                 index = subdf[subdf['make_predictions'].map({'True': True, 'False': False,
-                                                                         True: True, False: False}) == True]
-                if mode == 'predict':
-                    infer = index.shape[0] == 0
-                    if infer:
-                        df_arr[i] = _ts_infer_next_row(subdf, ob_arr)
+                                                             True: True, False: False}) == True]
+                infer = index.shape[0] == 0  # condition to trigger: make_predictions is set to False everywhere
+                if infer:
+                    df_arr[i] = _ts_infer_next_row(subdf, ob_arr)
 
         if len(original_df) > 500:
             nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
