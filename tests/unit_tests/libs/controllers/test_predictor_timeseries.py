@@ -320,15 +320,13 @@ class TestPredictorTimeseries(unittest.TestCase):
             assert str(row['5_valued_group_by']) == str(columns_test[4][i])
 
     def test_infer(self):
-        assert True
-        """
         ts_hours = 12
         data_len = 120
         train_file_name = os.path.join(self.tmp_dir, 'train_data.csv')
         test_file_name = os.path.join(self.tmp_dir, 'test_data.csv')
 
         features = generate_value_cols(['date', 'int', 'int', 'true'], data_len, ts_hours * 3600)
-        features[-1][0] = 'make_predictions'
+        features[-1][0] = 'make_predictions'  # add make_predictions column as mindsdb would
         labels = [generate_timeseries_labels(features[:-1])]
 
         feature_headers = list(map(lambda col: col[0], features))
@@ -342,9 +340,12 @@ class TestPredictorTimeseries(unittest.TestCase):
             train_file_name,
             headers=[*feature_headers, *label_headers]
         )
-        # Create the testing dataset and save it to a file
+
+        # force make_predictions column to be false, thus triggering inference for stream use cases
         features[-1] = generate_value_cols(['false'], data_len, ts_hours * 3600)[0]
         features[-1][0] = 'make_predictions'
+
+        # Create the testing dataset and save it to a file
         columns_test = list(map(lambda col: col[int(len(col) * 3 / 4):], features))
         columns_to_file(
             columns_test,
@@ -352,7 +353,7 @@ class TestPredictorTimeseries(unittest.TestCase):
             headers=feature_headers
         )
 
-        mdb = Predictor(name='test_timeseries')
+        mdb = Predictor(name='test_timeseries_infer')
 
         mdb.learn(
             from_data=train_file_name,
@@ -369,8 +370,8 @@ class TestPredictorTimeseries(unittest.TestCase):
 
         results = mdb.predict(when_data=test_file_name, use_gpu=False)
 
-        # Results should only be given for the rows with full history
-        assert len(results) == len(columns_test[-2])
+        # Check there is an additional row, which we inferred and then predicted for
+        assert len(results._data[label_headers[0]]) == len(columns_test[-2]) + 1
         for row in results:
             expect_columns = [label_headers[0], label_headers[0] + '_confidence']
             for col in expect_columns:
@@ -379,6 +380,5 @@ class TestPredictorTimeseries(unittest.TestCase):
         for row in [x.explanation[label_headers[0]] for x in results]:
             assert row['confidence_interval'][0] <= row['predicted_value'] <= row['confidence_interval'][1]
 
-        model_data = F.get_model_data('test_timeseries')
+        model_data = F.get_model_data('test_timeseries_infer')
         assert model_data
-        """

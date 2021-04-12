@@ -89,6 +89,7 @@ def _ts_infer_next_row(df, ob):
         delta = 1
     last_row[ob] += delta
     last_row.index += 1
+    last_row.original_index += 1
     df = df.append(last_row)
     return df
 
