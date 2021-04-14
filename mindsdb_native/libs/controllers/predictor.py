@@ -246,6 +246,7 @@ class Predictor:
                 equal_accuracy_for_all_output_categories = equal_accuracy_for_all_output_categories,
                 output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
                 report_uuid = self.report_uuid,
+
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
                 force_column_usage = advanced_args.get('force_column_usage', []),
@@ -269,6 +270,9 @@ class Predictor:
                 remove_columns_with_missing_targets = advanced_args.get('remove_columns_with_missing_targets', True),
                 max_processes = advanced_args.get('max_processes', None),
                 max_per_proc_usage = advanced_args.get('max_per_proc_usage', None),
+                date_fmts = advanced_args.get('date_fmts', None),
+                datetime_fmts = advanced_args.get('datetime_fmts', None),
+
                 learn_started_at = time.time(),
             )
 

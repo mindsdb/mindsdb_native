@@ -34,11 +34,9 @@ class DataExtractor(BaseModule):
 
     def _apply_sort_conditions_to_df(self, df):
         """
-
         :param df:
         :return:
         """
-
         # apply order by (group_by, order_by)
         if self.transaction.lmd['tss']['is_timeseries']:
             asc_values = [True for _ in self.transaction.lmd['tss']['order_by']]
