@@ -589,6 +589,11 @@ class LightwoodBackend:
                             if len(model_confidence_dict[k]) <= i:
                                 model_confidence_dict[k].append([])
                             conf = predictions[k][confidence_name][i]
+                            # @TODO We should make sure lightwood never returns confidences above or bellow 0 and 1
+                            if conf < 0:
+                                conf = 0
+                            if conf > 1:
+                                conf = 1
                             model_confidence_dict[k][i].append(conf)
 
                 if 'selfaware_confidences' in predictions[k]:
