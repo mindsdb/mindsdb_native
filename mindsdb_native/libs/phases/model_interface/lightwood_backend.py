@@ -104,9 +104,11 @@ class LightwoodBackend:
         ob_arr = self.transaction.lmd['tss']['order_by']
         window = self.transaction.lmd['tss']['window']
 
-
-        index = original_df[original_df['make_predictions'].map({'True': True, 'False': False, True: True, False: False}) == True]
-        infer_mode = index.shape[0] == 0  # condition to trigger: make_predictions is set to False everywhere
+        if 'make_predictions' in original_df.columns:
+            index = original_df[original_df['make_predictions'].map({'True': True, 'False': False, True: True, False: False}) == True]
+            infer_mode = index.shape[0] == 0  # condition to trigger: make_predictions is set to False everywhere
+        else:
+            infer_mode = False
         original_index_list = []
         idx = 0
         for row in original_df.itertuples():
