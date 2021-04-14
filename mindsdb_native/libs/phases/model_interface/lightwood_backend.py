@@ -580,7 +580,6 @@ class LightwoodBackend:
 
                 model_confidence_dict = {}
                 for confidence_name in ['selfaware_confidences', 'loss_confidences']:
-                    # caveat: self-aware output is a score rather than a confidence
                     if confidence_name in predictions[k]:
                         if k not in model_confidence_dict:
                             model_confidence_dict[k] = []
