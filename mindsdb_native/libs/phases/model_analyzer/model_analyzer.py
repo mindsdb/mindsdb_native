@@ -99,7 +99,7 @@ class ModelAnalyzer(BaseModule):
                 if is_selfaware:
                     norm_params = {'output_column': target}
                     normalizer = SelfawareNormalizer(fit_params=norm_params)
-                    # normalizer.prediction_cache = normal_predictions.get(f'{target}_selfaware_scores', None)
+                    normalizer.prediction_cache = normal_predictions.get(f'{target}_selfaware_scores', None)
                 else:
                     normalizer = None
 
