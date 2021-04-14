@@ -9,7 +9,6 @@ from functools import partial
 import datetime
 
 import six
-from dateutil.parser import parse as parse_datetime
 from mindsdb_native.libs.helpers.text_helpers import (
     analyze_sentences,
     get_language_dist

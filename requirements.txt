@@ -1,5 +1,4 @@
 colorama >= 0.4.3
-psutil >= 5.7.0
 lightwood >= 0.63.0, < 0.64.0
 cython >= 0.29.2
 setuptools >= 21.2.1
