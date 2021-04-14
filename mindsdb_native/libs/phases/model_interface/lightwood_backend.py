@@ -104,10 +104,13 @@ class LightwoodBackend:
         ob_arr = self.transaction.lmd['tss']['order_by']
         window = self.transaction.lmd['tss']['window']
 
+
+        index = original_df[original_df['make_predictions'].map({'True': True, 'False': False, True: True, False: False}) == True]
+        infer_mode = index.shape[0] == 0  # condition to trigger: make_predictions is set to False everywhere
         original_index_list = []
         idx = 0
         for row in original_df.itertuples():
-            if _make_pred(row):
+            if _make_pred(row) or infer_mode:
                 original_index_list.append(idx)
                 idx += 1
             else:
@@ -148,10 +151,7 @@ class LightwoodBackend:
 
         for i, subdf in enumerate(df_arr):
             if 'make_predictions' in subdf.columns and mode == 'predict':
-                index = subdf[subdf['make_predictions'].map({'True': True, 'False': False,
-                                                             True: True, False: False}) == True]
-                infer = index.shape[0] == 0  # condition to trigger: make_predictions is set to False everywhere
-                if infer:
+                if infer_mode:
                     df_arr[i] = _ts_infer_next_row(subdf, ob_arr)
 
         if len(original_df) > 500:
@@ -178,8 +178,10 @@ class LightwoodBackend:
 
         combined_df = pd.concat(df_arr)
 
-        if 'make_predictions' in combined_df.columns:
+        if 'make_predictions' in combined_df.columns and not infer_mode:
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
+            del combined_df['make_predictions']
+        elif 'make_predictions' in combined_df.columns:
             del combined_df['make_predictions']
 
         if len(combined_df) == 0:
