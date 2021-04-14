@@ -48,7 +48,7 @@ def clean_int_and_date_data(col_data, log, stats_v2, col_name):
                 try:
                     fmt = stats_v2[col_name]['additional_info']['date_fmt']
                     cleaned_data.append(
-                        datetime.datetime.strptime(str(date_str), fmt).timestamp()
+                        datetime.datetime.strptime(str(ele), fmt).timestamp()
                     )
                 except Exception as e2:
                     log.warning(f'Failed to parser numerical value with error chain:\n {e1} -> {e2}\n')
