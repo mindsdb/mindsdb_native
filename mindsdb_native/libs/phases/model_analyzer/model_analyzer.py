@@ -103,6 +103,8 @@ class ModelAnalyzer(BaseModule):
                 else:
                     normalizer = None
 
+                fixed_significance = self.transaction.lmd.get('fixed_confidenece', None)
+
                 # instance the ICP
                 nc = nc_class(model, nc_function, normalizer=normalizer)
                 icp = icp_class(nc)
@@ -144,7 +146,8 @@ class ModelAnalyzer(BaseModule):
                 self.transaction.hmd['icp'][target]['__default'].calibrate(icp_df.values, y)
 
                 # get confidence estimation for validation dataset
-                _, ranges = set_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd)
+                _, ranges = set_conf_range(icp_df, icp, target, typing_info, self.transaction.lmd,
+                                           significance=fixed_significance)
                 if not is_classification:
                     result_df = pd.DataFrame(index=self.transaction.input_data.cached_val_df.index, columns=['lower', 'upper'])
                     result_df.loc[icp_df.index, 'lower'] = ranges[:, 0]
@@ -192,7 +195,8 @@ class ModelAnalyzer(BaseModule):
 
                         # get bounds for relevant rows in validation dataset
                         _, group_ranges = set_conf_range(icp_df, icps[frozenset(group)], target, typing_info,
-                                                         self.transaction.lmd, group=frozenset(group))
+                                                         self.transaction.lmd, group=frozenset(group),
+                                                         significance=fixed_significance)
                         # save group bounds
                         if not is_classification:
                             result_df.loc[icp_df.index, 'lower'] = group_ranges[:, 0]

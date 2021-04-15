@@ -253,6 +253,7 @@ class Predictor:
                 output_class_distribution = advanced_args.get('output_class_distribution', True),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
+                fixed_confidence = advanced_args.get('fixed_confidence', None),
                 null_values = advanced_args.get('null_values', {}),
                 data_split_indexes = advanced_args.get('data_split_indexes', None),
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
@@ -426,6 +427,7 @@ class Predictor:
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
                 quick_predict = advanced_args.get('quick_predict', False),
                 return_raw_predictions = advanced_args.get('return_raw_predictions', False),
+                fixed_confidence = advanced_args.get('fixed_confidence', None),
                 anomaly_detection = advanced_args.get('anomaly_detection', True),
 
                 # (None or float) forces specific confidence level in ICP

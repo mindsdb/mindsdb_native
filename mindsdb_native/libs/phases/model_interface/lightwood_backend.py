@@ -587,7 +587,7 @@ class LightwoodBackend:
                             formated_predictions[k][i].append(predictions[f'{k}_timestep_{timestep_index}']['predictions'][i])
 
                 model_confidence_dict = {}
-                for confidence_name in ['selfaware_confidences','loss_confidences']:
+                for confidence_name in ['selfaware_confidences', 'loss_confidences']:
                     if confidence_name in predictions[k]:
                         if k not in model_confidence_dict:
                             model_confidence_dict[k] = []
