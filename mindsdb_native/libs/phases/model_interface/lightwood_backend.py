@@ -1,4 +1,5 @@
 import copy
+import datetime
 import traceback
 from pathlib import Path
 import multiprocessing as mp
@@ -115,16 +116,23 @@ class LightwoodBackend:
                 # @TODO: Remove if the TS encoder can handle `None`
                 if row[col] is None or pd.isna(row[col]):
                     row[col] = 0.0
+                else:
+                    if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
+                        try:
+                            row[col] = datetime.datetime.strptime(
+                                row[col],
+                                self.transaction.lmd['stats_v2'][col]['additional_info']['date_fmt']
+                            )
+                        except (TypeError, ValueError):
+                            pass
 
-                try:
-                    row[col] = row[col].timestamp()
-                except Exception:
-                    pass
-
-                try:
-                    row[col] = float(row[col])
-                except Exception:
-                    raise ValueError(f'Failed to order based on column: "{col}" due to faulty value: {row[col]}')
+                    if isinstance(row[col], datetime.datetime):
+                        row[col] = row[col].timestamp()
+                    
+                    try:
+                        row[col] = float(row[col])
+                    except ValueError:
+                        raise ValueError(f'Failed to order based on column: "{col}" due to faulty value: {row[col]}')
 
         if len(gb_arr) > 0:
             df_arr = []
@@ -579,7 +587,7 @@ class LightwoodBackend:
                             formated_predictions[k][i].append(predictions[f'{k}_timestep_{timestep_index}']['predictions'][i])
 
                 model_confidence_dict = {}
-                for confidence_name in ['selfaware_confidences','loss_confidences']:
+                for confidence_name in ['selfaware_confidences', 'loss_confidences']:
                     if confidence_name in predictions[k]:
                         if k not in model_confidence_dict:
                             model_confidence_dict[k] = []

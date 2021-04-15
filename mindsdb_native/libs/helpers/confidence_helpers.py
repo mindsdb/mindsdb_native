@@ -26,8 +26,10 @@ def clean_df(df, target, transaction, is_classification, extra_params):
     return df, y
 
 
-def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group='__default'):
-    """ Sets confidence level and returns it plus predictions regions """
+def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group='__default', significance=None):
+    """ Sets confidence level and returns it plus predictions regions
+    significance: desired confidence level. can be preset 0 < x <= 0.99
+    """
     # numerical
     if typing_info['data_type'] == DATA_TYPES.NUMERIC or (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
                                                           DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys()):
@@ -35,22 +37,26 @@ def set_conf_range(X, icp, target, typing_info, lmd, std_tol=1, group='__default
         all_ranges = icp.predict(X.values)
 
         # iterate over confidence levels until spread >= a multiplier of the dataset stddev
-        for tol in [std_tol, std_tol + 1, std_tol + 2]:
-            for significance in range(99):
-                ranges = all_ranges[:, :, significance]
-                spread = np.mean(ranges[:, 1] - ranges[:, 0])
-                tolerance = lmd['stats_v2'][target]['train_std_dev'][group] * tol
-
-                if spread <= tolerance:
-                    confidence = (99 - significance) / 100
-                    if lmd['stats_v2'][target].get('positive_domain', False):
-                        ranges[ranges < 0] = 0
-                    return confidence, ranges
+        if significance is not None:
+            conf = int(100*(1-significance))
+            return significance, all_ranges[:, :, conf]
         else:
-            ranges = all_ranges[:, :, 0]
-            if lmd['stats_v2'][target].get('positive_domain', False):
-                ranges[ranges < 0] = 0
-            return 0.9901, ranges
+            for tol in [std_tol, std_tol + 1, std_tol + 2]:
+                for significance in range(99):
+                    ranges = all_ranges[:, :, significance]
+                    spread = np.mean(ranges[:, 1] - ranges[:, 0])
+                    tolerance = lmd['stats_v2'][target]['train_std_dev'][group] * tol
+
+                    if spread <= tolerance:
+                        confidence = (99 - significance) / 100
+                        if lmd['stats_v2'][target].get('positive_domain', False):
+                            ranges[ranges < 0] = 0
+                        return confidence, ranges
+            else:
+                ranges = all_ranges[:, :, 0]
+                if lmd['stats_v2'][target].get('positive_domain', False):
+                    ranges[ranges < 0] = 0
+                return 0.9901, ranges
 
     # categorical
     elif (typing_info['data_type'] == DATA_TYPES.CATEGORICAL or  # categorical
