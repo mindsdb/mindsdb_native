@@ -9,7 +9,6 @@ from functools import partial
 import datetime
 
 import six
-from dateutil.parser import parse as parse_datetime
 from mindsdb_native.libs.helpers.text_helpers import (
     analyze_sentences,
     get_language_dist
@@ -182,7 +181,7 @@ def get_column_data_type(arg_tup, lmd):
 
     type_dist, subtype_dist, new_additional_info = count_data_types_in_column(
         data,
-        date_fmts=lmd.get('date_fmts') or ['%Y-%m-%d', '%Y/%m/%d', '%d.%m.%Y', '%Y/%m'],
+        date_fmts=lmd.get('date_fmts') or ['%Y-%m-%d', '%Y/%m/%d', '%d.%m.%Y', '%Y/%m', '%Y-%m'],
         datetime_fmts=lmd.get('datetime_fmts') or ['%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M:%S', '%d.%m.%Y %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%f%Z', '%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S.%f']
     )
 

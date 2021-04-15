@@ -3,7 +3,6 @@ from collections import Counter, defaultdict
 
 import numpy as np
 from scipy.stats import entropy
-from dateutil.parser import parse as parse_datetime
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import MiniBatchKMeans
 import imagehash
@@ -38,7 +37,7 @@ def lof_outliers(col_subtype, col_data):
     return outliers
 
 
-def clean_int_and_date_data(col_data, log):
+def clean_int_and_date_data(col_data, log, stats_v2, col_name):
     cleaned_data = []
 
     for ele in col_data:
@@ -47,7 +46,10 @@ def clean_int_and_date_data(col_data, log):
                 cleaned_data.append(clean_float(ele))
             except Exception as e1:
                 try:
-                    cleaned_data.append(parse_datetime(str(ele)).timestamp())
+                    fmt = stats_v2[col_name]['additional_info']['date_fmt']
+                    cleaned_data.append(
+                        datetime.datetime.strptime(str(ele), fmt).timestamp()
+                    )
                 except Exception as e2:
                     log.warning(f'Failed to parser numerical value with error chain:\n {e1} -> {e2}\n')
                     cleaned_data.append(0)
@@ -268,7 +270,7 @@ class DataAnalyzer(BaseModule):
 
             col_data = sample_df[col_name].dropna()
             if data_type == DATA_TYPES.NUMERIC or data_subtype == DATA_SUBTYPES.TIMESTAMP:
-                col_data = clean_int_and_date_data(col_data, self.log)
+                col_data = clean_int_and_date_data(col_data, self.log, stats_v2, col_name)
 
             stats_v2[col_name]['empty'] = get_column_empty_values_report(input_data.data_frame[col_name])
 
