@@ -71,7 +71,7 @@ class TestDataAnalyzer(unittest.TestCase):
             assert not stats[col_name]['empty']['is_empty']
             assert stats[col_name]['histogram']
             assert 'percentage_buckets' in stats[col_name]
-            assert stats[col_name]['bias']['entropy']
+            assert stats[col_name]['bias']['entropy'] is not None
 
         assert stats['categorical_str']['unique']['unique_values']
         assert stats['categorical_str']['unique']['unique_percentage'] == 4.0
