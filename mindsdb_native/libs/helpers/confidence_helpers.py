@@ -152,7 +152,7 @@ def get_anomalies(bounds, observed_series, cooldown=1):
     try:
         observed_series = [float(value) for value in observed_series]
     except (TypeError, ValueError):
-        return anomalies
+        return [None for _ in observed_series]
 
     for (l, u), t in zip(bounds, observed_series):
         if t is not None:
