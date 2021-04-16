@@ -71,7 +71,7 @@ class TestTypeDeductor(unittest.TestCase):
             assert stats_v2[col_name]['typing']['data_type_dist'][expected_type] == 100
             assert stats_v2[col_name]['typing']['data_subtype_dist'][expected_subtype] == 100
 
-        for col_name in stats_v2['columns']:
+        for col_name in predictor.transaction.lmd['columns']:
             if col_name in predictor.transaction.lmd['columns_to_ignore']:
                 continue
             assert stats_v2[col_name]['identifier'] is None
@@ -83,7 +83,7 @@ class TestTypeDeductor(unittest.TestCase):
         except Exception:
             raise AssertionError
 
-        assert set(predictor.transaction.lmd['stats_v2']['columns']) == set(df.columns)
+        assert set(predictor.transaction.lmd['columns']) == set(df.columns)
 
     def test_deduce_foreign_key(self):
         """Tests that basic cases of type deduction work correctly"""
@@ -271,3 +271,38 @@ class TestTypeDeductor(unittest.TestCase):
         # This ensures that no sampling was applied
         assert stats_v2['numeric_int_1']['typing']['data_type_dist'][DATA_TYPES.NUMERIC] == n_points
         assert stats_v2['numeric_int_1']['typing']['data_subtype_dist'][DATA_SUBTYPES.INT] == n_points
+
+    def test_date_formats(self):
+        n_points = 50
+        df = pd.DataFrame({
+            'date_1': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
+            'date_2': [(datetime.now() - timedelta(days=i)).strftime('%Y/%m/%d') for i in range(n_points)],
+            'datetime_1': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%dT%H:%M:%S.%f') for i in range(n_points)],
+            'datetime_2': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d %H:%M:%S') for i in range(n_points)],
+        })
+
+        predictor = Predictor(name='test_date_formats')
+        predictor.breakpoint = 'TypeDeductor'
+
+        try:
+            predictor.learn(
+                from_data=df,
+                to_predict='datetime_2',
+                advanced_args={'force_column_usage': list(df.columns)}
+            )
+        except BreakpointException:
+            pass
+        else:
+            raise AssertionError
+
+        assert predictor.transaction.lmd['stats_v2']['date_1']['typing']['data_type'] == DATA_TYPES.DATE
+        assert predictor.transaction.lmd['stats_v2']['date_1']['typing']['data_subtype'] == DATA_SUBTYPES.DATE
+
+        assert predictor.transaction.lmd['stats_v2']['date_2']['typing']['data_type'] == DATA_TYPES.DATE
+        assert predictor.transaction.lmd['stats_v2']['date_2']['typing']['data_subtype'] == DATA_SUBTYPES.DATE
+
+        assert predictor.transaction.lmd['stats_v2']['datetime_1']['typing']['data_type'] == DATA_TYPES.DATE
+        assert predictor.transaction.lmd['stats_v2']['datetime_1']['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP
+
+        assert predictor.transaction.lmd['stats_v2']['datetime_2']['typing']['data_type'] == DATA_TYPES.DATE
+        assert predictor.transaction.lmd['stats_v2']['datetime_2']['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP

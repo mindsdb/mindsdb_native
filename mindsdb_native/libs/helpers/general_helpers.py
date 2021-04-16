@@ -101,8 +101,15 @@ def check_for_updates(run_env=None):
     token = '{system}|{version}|{uid}|{notebook}|{mindsdb_status}'.format(
         system=platform.system(), version=__version__, uid=uuid_str, notebook=_get_notebook(),mindsdb_status=mdb_status)
     try:
-        ret = requests.get('https://public.api.mindsdb.com/updates/mindsdb_native/{token}'.format(token=token), headers={'referer': 'http://check.mindsdb.com/?token={token}'.format(token=token)})
+        ret = requests.get(
+            'https://public.api.mindsdb.com/updates/mindsdb_native/{token}'.format(token=token),
+            headers={'referer': 'http://check.mindsdb.com/?token={token}'.format(token=token)},
+            timeout=1
+        )
         ret = ret.json()
+    except requests.exceptions.ConnectTimeout:
+        log.warning(f'Could not check for updates, got timeout excetpion.')
+        return uuid_str
     except Exception as e:
         try:
             log.warning(f'Got reponse: {ret} from update check server!')

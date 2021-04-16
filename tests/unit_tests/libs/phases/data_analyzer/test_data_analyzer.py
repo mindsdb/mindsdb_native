@@ -35,8 +35,6 @@ class TestDataAnalyzer(unittest.TestCase):
 
         model_data = analyse_dataset(from_data=df)
         for col, col_data in model_data['data_analysis_v2'].items():
-            if col in ['columns','useable_input_columns']:
-                continue
             expected_type = test_column_types[col][0]
             expected_subtype = test_column_types[col][1]
             assert col_data['typing']['data_type'] == expected_type
@@ -73,7 +71,7 @@ class TestDataAnalyzer(unittest.TestCase):
             assert not stats[col_name]['empty']['is_empty']
             assert stats[col_name]['histogram']
             assert 'percentage_buckets' in stats[col_name]
-            assert stats[col_name]['bias']['entropy']
+            assert stats[col_name]['bias']['entropy'] is not None
 
         assert stats['categorical_str']['unique']['unique_values']
         assert stats['categorical_str']['unique']['unique_percentage'] == 4.0
@@ -152,8 +150,6 @@ class TestDataAnalyzer(unittest.TestCase):
             assert mock_function.called
 
         for col, col_data in model_data['data_analysis_v2'].items():
-            if col in ['columns','useable_input_columns']:
-                continue
             expected_type = test_column_types[col][0]
             expected_subtype = test_column_types[col][1]
             assert col_data['typing']['data_type'] == expected_type

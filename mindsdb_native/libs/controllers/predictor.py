@@ -25,7 +25,7 @@ def _get_memory_optimizations(df):
 
     mem_usage_ratio = df_memory / total_memory
 
-    sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > (3 * pow(10, 4))
+    sample_for_analysis = mem_usage_ratio >= 0.1 or (df.shape[0] * df.shape[1]) > pow(10, 4)
     disable_lightwood_transform_cache = mem_usage_ratio >= 0.2
 
     return sample_for_analysis, disable_lightwood_transform_cache
@@ -35,7 +35,7 @@ def _prepare_sample_settings(user_provided_settings,
                              sample_for_analysis):
     default_sample_settings = dict(
         sample_for_analysis=sample_for_analysis,
-        sample_margin_of_error=0.005,
+        sample_margin_of_error=0.01,
         sample_confidence_level=1 - 0.005,
         sample_percentage=None,
         sample_function=sample_data
@@ -54,13 +54,13 @@ def _prepare_sample_settings(user_provided_settings,
 
 def _prepare_timeseries_settings(user_provided_settings):
     timeseries_settings = dict(
-        is_timeseries=False
-        ,group_by=None
-        ,order_by=None
-        ,window=None
-        ,use_previous_target=True
-        ,nr_predictions=1
-        ,historical_columns=[]
+        is_timeseries=False,
+        group_by=None,
+        order_by=None,
+        window=None,
+        use_previous_target=True,  # adds target previous values to the TS encoder input data
+        nr_predictions=1,          # forecasting window, instances nr_predictions columns by displacing each target
+        historical_columns=[],     # each of these gets encoded by its own TS encoder
     )
 
     if len(user_provided_settings) > 0:
@@ -70,7 +70,6 @@ def _prepare_timeseries_settings(user_provided_settings):
             raise Exception(f'Invalid timeseries settings, you must specify a window size')
         else:
             timeseries_settings['is_timeseries'] = True
-
 
     for k in user_provided_settings:
         if k in timeseries_settings:
@@ -189,11 +188,6 @@ class Predictor:
 
             from_ds = getDS(from_data)
 
-            # Set user-provided subtypes
-            from_ds.set_subtypes(
-                advanced_args.get('subtypes', {})
-            )
-
             transaction_type = TRANSACTION_LEARN
 
             sample_for_analysis, disable_lightwood_transform_cache = _get_memory_optimizations(from_ds.df)
@@ -240,8 +234,6 @@ class Predictor:
                 model_accuracy = {'train': {}, 'test': {}},
                 column_importances = None,
                 columns_buckets_importances = None,
-                columnless_prediction_distribution = None,
-                all_columns_prediction_distribution = None,
                 use_gpu = use_gpu,
                 columns_to_ignore = ignore_columns,
                 validation_set_accuracy = None,
@@ -254,17 +246,19 @@ class Predictor:
                 equal_accuracy_for_all_output_categories = equal_accuracy_for_all_output_categories,
                 output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
                 report_uuid = self.report_uuid,
+
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
                 force_column_usage = advanced_args.get('force_column_usage', []),
                 output_class_distribution = advanced_args.get('output_class_distribution', True),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
+                fixed_confidence = advanced_args.get('fixed_confidence', None),
                 null_values = advanced_args.get('null_values', {}),
                 data_split_indexes = advanced_args.get('data_split_indexes', None),
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
                 force_predict = advanced_args.get('force_predict', False),
-                use_mixers = advanced_args.get('use_mixers', None),
+                use_mixers = advanced_args.get('use_mixers', None) if advanced_args.get('models', None) is None else advanced_args['models'],
                 setup_args = from_data.setup_args if hasattr(from_data, 'setup_args') else None,
                 debug = advanced_args.get('debug', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
@@ -274,8 +268,12 @@ class Predictor:
                 disable_column_importance = advanced_args.get('disable_column_importance', False),
                 split_models_on = advanced_args.get('split_models_on', []),
                 remove_target_outliers = advanced_args.get('remove_target_outliers', 0),
-                unnest_constant = advanced_args.get('unnest_constant', 0.99),
-                unnested_fields = advanced_args.get('unnested_fields', {}),
+                remove_columns_with_missing_targets = advanced_args.get('remove_columns_with_missing_targets', True),
+                max_processes = advanced_args.get('max_processes', None),
+                max_per_proc_usage = advanced_args.get('max_per_proc_usage', None),
+                date_fmts = advanced_args.get('date_fmts', None),
+                datetime_fmts = advanced_args.get('datetime_fmts', None),
+
                 learn_started_at = time.time(),
             )
 
@@ -428,7 +426,17 @@ class Predictor:
                 use_database_history = advanced_args.get('use_database_history', False),
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
                 quick_predict = advanced_args.get('quick_predict', False),
-                return_raw_predictions = advanced_args.get('return_raw_predictions', False)
+                return_raw_predictions = advanced_args.get('return_raw_predictions', False),
+                fixed_confidence = advanced_args.get('fixed_confidence', None),
+                anomaly_detection = advanced_args.get('anomaly_detection', True),
+
+                # (None or float) forces specific confidence level in ICP
+                anomaly_error_rate = advanced_args.get('anomaly_error_rate', None),
+
+                # (Int) ignores anomaly detection for N steps after an
+                # initial anomaly triggers the cooldown period;
+                # implicitly assumes series are regularly spaced
+                anomaly_cooldown = advanced_args.get('anomaly_cooldown', 1),
             )
 
             self.transaction = PredictTransaction(

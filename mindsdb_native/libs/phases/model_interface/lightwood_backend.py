@@ -1,4 +1,5 @@
 import copy
+import datetime
 import traceback
 from pathlib import Path
 import multiprocessing as mp
@@ -13,6 +14,7 @@ from lightwood.constants.lightwood import ColumnDataTypes
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
 from mindsdb_native.libs.helpers.general_helpers import evaluate_accuracy
+from mindsdb_native.libs.helpers.mp_helpers import get_nr_procs
 
 
 def _make_pred(row):
@@ -114,27 +116,37 @@ class LightwoodBackend:
                 # @TODO: Remove if the TS encoder can handle `None`
                 if row[col] is None or pd.isna(row[col]):
                     row[col] = 0.0
+                else:
+                    if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
+                        try:
+                            row[col] = datetime.datetime.strptime(
+                                row[col],
+                                self.transaction.lmd['stats_v2'][col]['additional_info']['date_fmt']
+                            )
+                        except (TypeError, ValueError):
+                            pass
 
-                try:
-                    row[col] = row[col].timestamp()
-                except Exception:
-                    pass
-
-                try:
-                    row[col] = float(row[col])
-                except Exception:
-                    raise ValueError(f'Failed to order based on column: "{col}" due to faulty value: {row[col]}')
+                    if isinstance(row[col], datetime.datetime):
+                        row[col] = row[col].timestamp()
+                    
+                    try:
+                        row[col] = float(row[col])
+                    except ValueError:
+                        raise ValueError(f'Failed to order based on column: "{col}" due to faulty value: {row[col]}')
 
         if len(gb_arr) > 0:
             df_arr = []
             for _, df in original_df.groupby(gb_arr):
-                df.sort_values(by=ob_arr, inplace=True)
-                df_arr.append(df)
+                df_arr.append(df.sort_values(by=ob_arr))
         else:
             df_arr = [original_df]
 
         if len(original_df) > 500:
-            pool = mp.Pool(processes = (mp.cpu_count() - 1))
+            nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
+                                    self.transaction.lmd.get('max_per_proc_usage', None),
+                                    original_df)
+            self.transaction.log.info(f'Using {nr_procs} processes to reshape.')
+            pool = mp.Pool(processes=nr_procs)
             # Make type `object` so that dataframe cells can be python lists
             df_arr = pool.map(partial(_ts_to_obj, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
             df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
@@ -150,7 +162,6 @@ class LightwoodBackend:
                 df_arr[i] = _ts_add_previous_rows(df_arr[i], historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'], window=window)
                 if self.transaction.lmd['tss']['use_previous_target']:
                     df_arr[i] = _ts_add_previous_target(df_arr[i], predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window)
-
 
         combined_df = pd.concat(df_arr)
 
@@ -192,7 +203,7 @@ class LightwoodBackend:
         config['input_features'] = []
         config['output_features'] = []
 
-        for col_name in self.transaction.input_data.columns:
+        for col_name in self.transaction.lmd['columns']:
             if col_name in self.transaction.lmd['columns_to_ignore'] or col_name not in self.transaction.lmd['stats_v2']:
                 continue
 
@@ -236,24 +247,24 @@ class LightwoodBackend:
 
             elif data_subtype == DATA_SUBTYPES.ARRAY:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
-                self.nn_mixer_only = True
 
             else:
-                self.transaction.log.error(f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !')
-                raise Exception('Failed to build data definition for Lightwood model backend')
+                err = f'The lightwood model backend is unable to handle data of type {data_type} and subtype {data_subtype} !'
+                self.transaction.log.error(err)
+                raise Exception(err)
 
             if self.transaction.lmd['tss']['is_timeseries'] and col_name in self.transaction.lmd['tss']['order_by']:
                 lightwood_data_type = ColumnDataTypes.TIME_SERIES
-                self.nn_mixer_only = True
 
+            grouped_by = self.transaction.lmd['tss'].get('group_by', [])
             col_config = {
                 'name': col_name,
-                'type': lightwood_data_type
+                'type': lightwood_data_type,
+                'grouped_by': col_name in grouped_by if grouped_by else False
             }
 
             if data_subtype == DATA_SUBTYPES.SHORT:
                 col_config['encoder_class'] = lightwood.encoders.text.short.ShortTextEncoder
-
 
             if col_name in self.transaction.lmd['weight_map']:
                 col_config['weights'] = self.transaction.lmd['weight_map'][col_name]
@@ -269,7 +280,8 @@ class LightwoodBackend:
 
                 if self.transaction.lmd['tss']['is_timeseries']:
                     col_config['additional_info'] = {
-                        'nr_predictions': self.transaction.lmd['tss']['nr_predictions']
+                        'nr_predictions': self.transaction.lmd['tss']['nr_predictions'],
+                        'time_series_target': True,
                     }
                 config['output_features'].append(col_config)
 
@@ -334,8 +346,10 @@ class LightwoodBackend:
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
             self.transaction.log.debug('Reshaping data into timeseries format, this may take a while !')
+
             train_df, secondary_type_dict, _, train_df_gb_map = self._ts_reshape(self.transaction.input_data.train_df)
             test_df, _, _, test_df_gb_map = self._ts_reshape(self.transaction.input_data.test_df)
+
             self.transaction.log.debug('Done reshaping data into timeseries format !')
         else:
             # @TODO: Make sampling work for timeseries
@@ -347,6 +361,9 @@ class LightwoodBackend:
         if train_df_gb_map is None:
             train_df_gb_map = {'': train_df}
             test_df_gb_map = {'': test_df}
+
+        self.transaction.input_data.cached_train_df = train_df
+        self.transaction.input_data.cached_test_df = test_df
 
         for gb_val in train_df_gb_map:
             train_df = train_df_gb_map[gb_val]
@@ -456,7 +473,7 @@ class LightwoodBackend:
 
                 validation_accuracy = evaluate_accuracy(
                     validation_predictions,
-                    self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'].astype(bool) == True] if self.transaction.lmd['tss']['is_timeseries'] else self.transaction.input_data.validation_df,
+                    validation_df,
                     self.transaction.lmd['stats_v2'],
                     self.transaction.lmd['predict_columns'],
                     backend=self
@@ -474,7 +491,7 @@ class LightwoodBackend:
 
             # Find predictor with NnMixer
             for predictor, accuracy in predictors_and_accuracies:
-                if isinstance(predictor._mixer, lightwood.mixers.NnMixer):
+                if lightwood.mixers.NnMixer is not None and isinstance(predictor._mixer, lightwood.mixers.NnMixer):
                     nn_mixer_predictor, nn_mixer_predictor_accuracy = predictor, accuracy
                     break
             else:
@@ -536,6 +553,12 @@ class LightwoodBackend:
 
             predictions = self.predictor.predict(when_data=run_df)
 
+            # cache run_df to avoid duplicate reshaping in analysis phase
+            if mode == 'validate':
+                self.transaction.input_data.cached_val_df = run_df
+            elif mode == 'predict':
+                self.transaction.input_data.cached_pred_df = run_df
+
             if self.transaction.lmd['quick_predict']:
                 for k in predictions:
                     formated_predictions[k] = predictions[k]['predictions']
@@ -564,7 +587,7 @@ class LightwoodBackend:
                             formated_predictions[k][i].append(predictions[f'{k}_timestep_{timestep_index}']['predictions'][i])
 
                 model_confidence_dict = {}
-                for confidence_name in ['selfaware_confidences','loss_confidences', 'quantile_confidences']:
+                for confidence_name in ['selfaware_confidences', 'loss_confidences']:
                     if confidence_name in predictions[k]:
                         if k not in model_confidence_dict:
                             model_confidence_dict[k] = []

@@ -6,6 +6,7 @@ import zipfile
 import traceback
 import uuid
 import tempfile
+from copy import deepcopy
 
 from mindsdb_native.config import CONFIG
 from mindsdb_native.__about__ import __version__
@@ -88,7 +89,7 @@ def analyse_dataset(from_data, sample_settings=None):
         force_column_usage = [],
         force_categorical_encoding = [],
         data_types = {},
-        data_subtypes = {},
+        data_subtypes = {}
     )
 
     tx = AnalyseTransaction(
@@ -236,27 +237,39 @@ def get_model_data(model_name=None, lmd=None):
         pass
     elif model_name is not None:
         with MDBLock('shared', 'get_data_' + model_name):
-            lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name, 'light_model_metadata.pickle'))
+            lmd = load_lmd(os.path.join(
+                CONFIG.MINDSDB_STORAGE_PATH,
+                model_name,
+                'light_model_metadata.pickle'
+            ))
 
     # ADAPTOR CODE
     amd = {}
 
-    amd['data_source'] = lmd['data_source_name']
+    amd['data_source'] = lmd.get('data_source_name')
+    amd['useable_input_columns'] = lmd.get('useable_input_columns', [])
 
-    amd['timeseries'] = {
-        'is_timeseries': False
-    }
+    amd['timeseries'] = {'is_timeseries': False}
     if 'tss' in lmd:
         if lmd['tss']['is_timeseries']:
+            amd['timeseries']['is_timeseries'] = True
             amd['timeseries'] = {}
             amd['timeseries']['user_settings'] = lmd['tss']
 
 
-    amd['data_analysis_v2'] = lmd.get('stats_v2',None)
-    amd['setup_args'] = lmd.get('setup_args',None)
-    amd['test_data_plot'] = lmd.get('test_data_plot',None)
+    amd['data_analysis_v2'] = deepcopy(lmd.get('stats_v2'))
+    # Remove keys that arent relevant to the GUI and JSON serializable:
+    for target in amd['data_analysis_v2']:
+        if 'train_std_dev' in amd['data_analysis_v2'][target]:
+            del amd['data_analysis_v2'][target]['train_std_dev']
+    # @TODO: Remove in the future
 
-    amd['output_class_distribution'] = lmd.get('output_class_distribution', None)
+    amd['setup_args'] = lmd.get('setup_args')
+    amd['test_data_plot'] = lmd.get('test_data_plot')
+    amd['columns_to_ignore'] = lmd.get('columns_to_ignore')
+    amd['columns'] = lmd.get('columns')
+    amd['predict_columns'] = lmd.get('predict_columns')
+    amd['output_class_distribution'] = lmd.get('output_class_distribution')
 
     if lmd['current_phase'] == MODEL_STATUS_TRAINED:
         amd['status'] = 'complete'
@@ -293,17 +306,6 @@ def get_model_data(model_name=None, lmd=None):
 
         amd['force_vectors'] = {}
         if col in lmd['predict_columns']:
-            # Histograms for plotting the force vectors
-            if 'all_columns_prediction_distribution' in lmd and lmd['all_columns_prediction_distribution'] is not None:
-                amd['force_vectors'][col] = {}
-                amd['force_vectors'][col]['normal_data_distribution'] = lmd['all_columns_prediction_distribution'][col]
-                amd['force_vectors'][col]['normal_data_distribution']['type'] = 'categorical'
-
-                amd['force_vectors'][col]['missing_data_distribution'] = {}
-                for missing_column in lmd['columnless_prediction_distribution'][col]:
-                    amd['force_vectors'][col]['missing_data_distribution'][missing_column] = lmd['columnless_prediction_distribution'][col][missing_column]
-                    amd['force_vectors'][col]['missing_data_distribution'][missing_column]['type'] = 'categorical'
-
             if 'confusion_matrices' in lmd and col in lmd['confusion_matrices']:
                 confusion_matrix = lmd['confusion_matrices'][col]
             else:
