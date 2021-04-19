@@ -1,4 +1,3 @@
-from dateutil.parser import parse as parse_datetime
 import datetime
 import math
 
@@ -24,29 +23,30 @@ def _try_round(x):
         return None
 
 
-def _standardize_date(date_str):
+def _standardize_date(date_str, fmt):
     try:
         # will return a datetime object
-        date = parse_datetime(date_str)
+        date = datetime.datetime.strptime(date_str, fmt)
     except Exception:
         try:
             date = datetime.datetime.utcfromtimestamp(date_str)
         except Exception:
             return None
+
     return date.strftime('%Y-%m-%d')
 
 
-def _standardize_datetime(date_str):
+def _standardize_datetime(date_str, fmt):
     try:
         # will return a datetime object
-        dt = parse_datetime(str(date_str))
+        date = datetime.datetime.strptime(date_str, fmt)
     except Exception:
         try:
-            dt = datetime.datetime.utcfromtimestamp(date_str)
+            date = datetime.datetime.utcfromtimestamp(date_str)
         except Exception:
             return None
 
-    return dt.strftime('%Y-%m-%d %H:%M:%S')
+    return date.strftime('%Y-%m-%d %H:%M:%S')
 
 
 def _tags_to_tuples(tags_str):
@@ -85,18 +85,18 @@ def _clean_float_or_none(val):
 
 
 class DataTransformer(BaseModule):
-    def _apply_to_all_data(self, input_data, column, func, transaction_type):
+    def _apply_to_all_data(self, input_data, column, func, transaction_type, **kwargs):
         if transaction_type == TRANSACTION_LEARN:
-            input_data.train_df[column] = input_data.train_df[column].apply(func)
-            input_data.validation_df[column] = input_data.validation_df[column].apply(func)
-            input_data.test_df[column] = input_data.test_df[column].apply(func)
+            input_data.train_df[column] = input_data.train_df[column].apply(func, **kwargs)
+            input_data.validation_df[column] = input_data.validation_df[column].apply(func, **kwargs)
+            input_data.test_df[column] = input_data.test_df[column].apply(func, **kwargs)
 
-            self.transaction.lmd['stats_v2'][column]['histogram']['x'] = [func(x) for x in self.transaction.lmd['stats_v2'][column]['histogram']['x']]
+            self.transaction.lmd['stats_v2'][column]['histogram']['x'] = [func(x, **kwargs) for x in self.transaction.lmd['stats_v2'][column]['histogram']['x']]
 
             if 'percentage_buckets' in self.transaction.lmd['stats_v2'][column] and self.transaction.lmd['stats_v2'][column]['percentage_buckets'] is not None:
-                self.transaction.lmd['stats_v2'][column]['percentage_buckets'] = [func(x) for x in self.transaction.lmd['stats_v2'][column]['percentage_buckets']]
+                self.transaction.lmd['stats_v2'][column]['percentage_buckets'] = [func(x, **kwargs) for x in self.transaction.lmd['stats_v2'][column]['percentage_buckets']]
         else:
-            input_data.data_frame[column] = input_data.data_frame[column].apply(func)
+            input_data.data_frame[column] = input_data.data_frame[column].apply(func, **kwargs)
 
     def run(self, input_data):
         transaction_type = self.transaction.lmd['type']
@@ -116,10 +116,22 @@ class DataTransformer(BaseModule):
 
             if data_type == DATA_TYPES.DATE:
                 if data_subtype == DATA_SUBTYPES.DATE:
-                    self._apply_to_all_data(input_data, column, _standardize_date, transaction_type)
+                    self._apply_to_all_data(
+                        input_data,
+                        column,
+                        _standardize_date,
+                        transaction_type,
+                        fmt=self.transaction.lmd['stats_v2'][column]['additional_info']['date_fmt']
+                    )
 
                 elif data_subtype == DATA_SUBTYPES.TIMESTAMP:
-                    self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type)
+                    self._apply_to_all_data(
+                        input_data,
+                        column,
+                        _standardize_datetime,
+                        transaction_type,
+                        fmt=self.transaction.lmd['stats_v2'][column]['additional_info']['date_fmt']
+                    )
 
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
@@ -136,7 +148,7 @@ class DataTransformer(BaseModule):
 
             if self.transaction.hmd['model_backend'] == 'lightwood':
                 if data_type == DATA_TYPES.DATE:
-                    self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type)
+                    self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type, fmt=self.transaction.lmd['stats_v2'][column]['additional_info']['date_fmt'])
                     self._apply_to_all_data(input_data, column, _lightwood_datetime_processing, transaction_type)
                     self._apply_to_all_data(input_data, column, _handle_nan, transaction_type)
 

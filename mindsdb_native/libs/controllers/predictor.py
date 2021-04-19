@@ -246,12 +246,14 @@ class Predictor:
                 equal_accuracy_for_all_output_categories = equal_accuracy_for_all_output_categories,
                 output_categories_importance_dictionary = output_categories_importance_dictionary if output_categories_importance_dictionary is not None else {},
                 report_uuid = self.report_uuid,
+
                 force_disable_cache = advanced_args.get('force_disable_cache', disable_lightwood_transform_cache),
                 force_categorical_encoding = advanced_args.get('force_categorical_encoding', []),
                 force_column_usage = advanced_args.get('force_column_usage', []),
                 output_class_distribution = advanced_args.get('output_class_distribution', True),
                 use_selfaware_model = advanced_args.get('use_selfaware_model', True),
                 deduplicate_data = advanced_args.get('deduplicate_data', True),
+                fixed_confidence = advanced_args.get('fixed_confidence', None),
                 null_values = advanced_args.get('null_values', {}),
                 data_split_indexes = advanced_args.get('data_split_indexes', None),
                 tags_delimiter = advanced_args.get('tags_delimiter', ','),
@@ -269,6 +271,9 @@ class Predictor:
                 remove_columns_with_missing_targets = advanced_args.get('remove_columns_with_missing_targets', True),
                 max_processes = advanced_args.get('max_processes', None),
                 max_per_proc_usage = advanced_args.get('max_per_proc_usage', None),
+                date_fmts = advanced_args.get('date_fmts', None),
+                datetime_fmts = advanced_args.get('datetime_fmts', None),
+
                 learn_started_at = time.time(),
             )
 
@@ -422,6 +427,7 @@ class Predictor:
                 allow_incomplete_history = advanced_args.get('allow_incomplete_history', False),
                 quick_predict = advanced_args.get('quick_predict', False),
                 return_raw_predictions = advanced_args.get('return_raw_predictions', False),
+                fixed_confidence = advanced_args.get('fixed_confidence', None),
                 anomaly_detection = advanced_args.get('anomaly_detection', True),
 
                 # (None or float) forces specific confidence level in ICP

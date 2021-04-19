@@ -6,9 +6,9 @@ from copy import deepcopy
 from collections import Counter, defaultdict
 import multiprocessing as mp
 from functools import partial
+import datetime
 
 import six
-from dateutil.parser import parse as parse_datetime
 from mindsdb_native.libs.helpers.text_helpers import (
     analyze_sentences,
     get_language_dist
@@ -57,7 +57,7 @@ def get_number_subtype(string):
         return None
 
 
-def count_data_types_in_column(data):
+def count_data_types_in_column(data, date_fmts, datetime_fmts):
     type_counts = Counter()
     subtype_counts = Counter()
     additional_info = {}
@@ -68,23 +68,6 @@ def count_data_types_in_column(data):
         if subtype is not None:
             type_guess = DATA_TYPES.NUMERIC
             subtype_guess = subtype
-        return type_guess, subtype_guess
-
-    def type_check_date(element):
-        type_guess, subtype_guess = None, None
-        try:
-            dt = parse_datetime(element)
-
-            # Not accurate 100% for a single datetime str,
-            # but should work in aggregate
-            if dt.hour == 0 and dt.minute == 0 and \
-                dt.second == 0 and len(element) <= 16:
-                subtype_guess = DATA_SUBTYPES.DATE
-            else:
-                subtype_guess = DATA_SUBTYPES.TIMESTAMP
-            type_guess = DATA_TYPES.DATE
-        except Exception:
-            pass
         return type_guess, subtype_guess
 
     def type_check_sequence(element):
@@ -117,20 +100,42 @@ def count_data_types_in_column(data):
             subtype_guess = subtype
         return type_guess, subtype_guess
 
+    def type_check_date(element):
+        # date?
+        for fmt in date_fmts:
+            try:
+                datetime.datetime.strptime(element, fmt)
+            except Exception:
+                pass
+            else:
+                additional_info['date_fmt'] = fmt
+                return DATA_TYPES.DATE, DATA_SUBTYPES.DATE
+
+        # date + time?
+        for fmt in datetime_fmts:
+            try:
+                datetime.datetime.strptime(element, fmt)
+            except Exception:
+                pass
+            else:
+                additional_info['date_fmt'] = fmt
+                return DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP
+
+        return None, None
+
     type_checkers = [type_check_numeric,
-                     type_check_date,
                      type_check_sequence,
-                     type_check_file]
+                     type_check_file,
+                     type_check_date]
     for element in [str(x) for x in data]:
         for type_checker in type_checkers:
-            data_type_guess, subtype_guess = type_checker(element)
-            if data_type_guess:
+            type_guess, subtype_guess = type_checker(element)
+            if type_guess is not None:
                 break
         else:
-            data_type_guess = 'Unknown'
-            subtype_guess = 'Unknown'
-
-        type_counts[data_type_guess] += 1
+            type_guess, subtype_guess = 'Unknown', 'Unknown'
+                
+        type_counts[type_guess] += 1
         subtype_counts[subtype_guess] += 1
 
     return type_counts, subtype_counts, additional_info
@@ -174,7 +179,11 @@ def get_column_data_type(arg_tup, lmd):
         subtype_dist[DATA_SUBTYPES.MULTIPLE] = len(data)
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
-    type_dist, subtype_dist, new_additional_info = count_data_types_in_column(data)
+    type_dist, subtype_dist, new_additional_info = count_data_types_in_column(
+        data,
+        date_fmts=lmd.get('date_fmts') or ['%Y-%m-%d', '%Y/%m/%d', '%d.%m.%Y', '%Y/%m', '%Y-%m'],
+        datetime_fmts=lmd.get('datetime_fmts') or ['%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M:%S', '%d.%m.%Y %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%f%Z', '%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S.%f']
+    )
 
     if new_additional_info:
         additional_info.update(new_additional_info)
@@ -185,7 +194,7 @@ def get_column_data_type(arg_tup, lmd):
     if known_type_dist:
         max_known_dtype, max_known_dtype_count = max(
             known_type_dist.items(),
-            key=lambda kv: kv[0]
+            key=lambda kv: kv[1]
         )
     else:
         max_known_dtype, max_known_dtype_count = None, None
@@ -275,6 +284,7 @@ def get_column_data_type(arg_tup, lmd):
 
     return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
+
 class TypeDeductor(BaseModule):
     """
     The type deduction phase is responsible for inferring data types
@@ -282,7 +292,7 @@ class TypeDeductor(BaseModule):
     """
     def run(self, input_data):
         stats_v2 = defaultdict(dict)
-
+        self.transaction.lmd['stats_v2'] = stats_v2
 
         sample_settings = self.transaction.lmd['sample_settings']
         if sample_settings['sample_for_analysis']:
@@ -323,12 +333,13 @@ class TypeDeductor(BaseModule):
 
         for i, col_name in enumerate(sample_df.columns.values):
             (data_type, data_subtype, data_type_dist, data_subtype_dist, additional_info, warn, info) = answer_arr[i]
+
             for msg in warn:
                 self.log.warning(msg)
             for msg in info:
                 self.log.info(msg)
 
-            type_data = {
+            typing = {
                 'data_type': data_type,
                 'data_subtype': data_subtype,
                 'data_type_dist': data_type_dist,
@@ -336,7 +347,8 @@ class TypeDeductor(BaseModule):
                 'description': """A data type, in programming, is a classification that specifies which type of value a variable has and what type of mathematical, relational or logical operations can be applied to it without causing an error. A string, for example, is a data type that is used to classify text and an integer is a data type used to classify whole numbers."""
             }
 
-            stats_v2[col_name]['typing'] = type_data
+            stats_v2[col_name]['typing'] = typing
+
             stats_v2[col_name]['additional_info'] = additional_info
 
         if nr_procs > 1:
@@ -405,5 +417,3 @@ class TypeDeductor(BaseModule):
         for col_name in self.transaction.lmd['columns']:
             if col_name not in self.transaction.lmd['columns_to_ignore'] and col_name not in self.transaction.lmd['predict_columns'] and stats_v2[col_name]['broken'] is None and stats_v2[col_name]['identifier'] is None:
                     self.transaction.lmd['useable_input_columns'].append(col_name)
-
-        self.transaction.lmd['stats_v2'] = stats_v2
