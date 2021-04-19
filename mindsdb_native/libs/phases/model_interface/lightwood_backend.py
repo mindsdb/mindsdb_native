@@ -578,6 +578,7 @@ class LightwoodBackend:
             predictions = self.predictor.predict(when_data=run_df)
 
             # cache run_df to avoid duplicate reshaping in analysis phase
+            # also used in streaming mode to retrieve newly added rows per group
             if mode == 'validate':
                 self.transaction.input_data.cached_val_df = run_df
             elif mode == 'predict':
