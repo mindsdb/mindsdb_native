@@ -78,15 +78,15 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
     return df
 
 
-def _ts_infer_next_row(df, ob):
+def _ts_infer_next_row(df, ob, last_index):
     last_row = df.iloc[[-1]]
     if df.shape[0] > 1:
         butlast_row = df.iloc[[-2]]
         delta = (last_row[ob].values - butlast_row[ob].values).flatten()[0]
     else:
         delta = 1
-    last_row.original_index += 1
-    last_row.index += 1
+    last_row.original_index = last_index + 1
+    last_row.index = [last_index + 1]
     last_row[ob] += delta
     return df.append(last_row)
 
@@ -159,10 +159,12 @@ class LightwoodBackend:
         else:
             df_arr = [original_df]
 
+        last_index = original_df['original_index'].max()
         for i, subdf in enumerate(df_arr):
             if 'make_predictions' in subdf.columns and mode == 'predict':
                 if infer_mode:
-                    df_arr[i] = _ts_infer_next_row(subdf, ob_arr)
+                    df_arr[i] = _ts_infer_next_row(subdf, ob_arr, last_index)
+                    last_index += 1
 
         if len(original_df) > 500:
             nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
