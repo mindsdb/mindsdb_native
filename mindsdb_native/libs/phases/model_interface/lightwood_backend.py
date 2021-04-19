@@ -79,7 +79,7 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
 
 
 def _ts_infer_next_row(df, ob, last_index):
-    last_row = df.iloc[[-1]]
+    last_row = df.iloc[[-1]].copy()
     if df.shape[0] > 1:
         butlast_row = df.iloc[[-2]]
         delta = (last_row[ob].values - butlast_row[ob].values).flatten()[0]
