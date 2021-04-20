@@ -37,7 +37,9 @@ DATE_FMTS = [
     '%d.%m.%Y',
     '%Y/%m',
     '%Y-%m',
-    '%d/%m/%Y'
+    '%d/%m/%Y',
+    '%m/%d/%Y',
+    '%m/%d/%y',
 ]
 
 DATETIME_FMTS = [
@@ -155,7 +157,7 @@ def count_data_types_in_column(data):
             else:
                 subtype, best_fmt = get_date_column_subtype(data)
                 return DATA_TYPES.DATE, subtype, best_fmt
-        return None, None
+        return None, None, None
 
     type_checkers = [type_check_numeric,
                      type_check_sequence,
@@ -165,7 +167,8 @@ def count_data_types_in_column(data):
         for type_checker in type_checkers:
             if type_checker is type_check_date:
                 type_guess, subtype_guess, date_fmt = type_checker(element)
-                additional_info['date_fmt'] = date_fmt
+                if type_guess is not None:
+                    additional_info['date_fmt'] = date_fmt
             else:
                 type_guess, subtype_guess = type_checker(element)
 
