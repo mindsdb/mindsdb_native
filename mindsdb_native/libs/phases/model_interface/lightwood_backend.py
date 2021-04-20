@@ -85,8 +85,9 @@ def _ts_infer_next_row(df, ob, last_index):
         delta = (last_row[ob].values - butlast_row[ob].values).flatten()[0]
     else:
         delta = 1
-    last_row.original_index = last_index + 1
+    last_row.original_index = None
     last_row.index = [last_index + 1]
+    last_row['make_predictions'] = True
     last_row[ob] += delta
     return df.append(last_row)
 
@@ -190,10 +191,8 @@ class LightwoodBackend:
 
         combined_df = pd.concat(df_arr)
 
-        if 'make_predictions' in combined_df.columns and not infer_mode:
+        if 'make_predictions' in combined_df.columns:
             combined_df = pd.DataFrame(combined_df[combined_df['make_predictions'].astype(bool) == True])
-            del combined_df['make_predictions']
-        elif 'make_predictions' in combined_df.columns:
             del combined_df['make_predictions']
 
         if len(combined_df) == 0:
@@ -211,12 +210,19 @@ class LightwoodBackend:
 
         if df_gb_map is None:
             for _, row in combined_df.iterrows():
-                timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+                if not infer_mode:
+                    timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+                else:
+                    timeseries_row_mapping[idx] = idx
                 idx += 1
         else:
             for gb in df_gb_map:
                 for _, row in df_gb_map[gb].iterrows():
-                    timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+                    if not infer_mode:
+                        timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+                    else:
+                        timeseries_row_mapping[idx] = idx
+
                     idx += 1
 
         del combined_df['original_index']
