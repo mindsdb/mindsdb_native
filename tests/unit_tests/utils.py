@@ -69,18 +69,6 @@ def rand_float():
     return random.randrange(-pow(2,18), pow(2,18)) * random.random()
 
 
-def gen_bool():
-    return bool(random.randint(0, 1))
-
-
-def gen_bool_true():
-    return True
-
-
-def gen_bool_false():
-    return False
-
-
 def generate_value_cols(types, length, ts_period=48*3600):
     columns = []
     for t in types:
@@ -97,11 +85,11 @@ def generate_value_cols(types, length, ts_period=48*3600):
                 generate_timeseries(length=length, _type=t, period=ts_period))
             continue
         elif t == 'bool':
-            gen_fun = gen_bool
+            gen_fun = lambda: bool(random.randint(0, 1))
         elif t == 'true':
-            gen_fun = gen_bool_true
+            gen_fun = lambda: True
         elif t == 'false':
-            gen_fun = gen_bool_false
+            gen_fun = lambda: False
         else:
             raise Exception(f'Unexpected type {t}')
 
