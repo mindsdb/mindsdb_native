@@ -31,6 +31,31 @@ from mindsdb_native.libs.helpers.mp_helpers import get_nr_procs
 import flair
 
 
+DATE_FMTS = [
+    '%Y-%m-%d',
+    '%Y/%m/%d',
+    '%d.%m.%Y',
+    '%Y/%m',
+    '%Y-%m',
+    '%d/%m/%Y'
+]
+
+DATETIME_FMTS = [
+    '%Y-%m-%d %H:%M:%S',
+    '%Y-%m-%d %H:%M:%S.%f',
+
+    '%Y/%m/%d %H:%M:%S',
+    '%Y/%m/%d %H:%M:%S.%f',
+
+    '%d.%m.%Y %H:%M:%S',
+    '%d.%m.%Y %H:%M:%S.%f',
+
+    '%Y-%m-%dT%H:%M:%S.%f%Z',
+    '%Y-%m-%dT%H:%M:%S.%f%z',
+    '%Y-%m-%dT%H:%M:%S.%f'
+]
+
+
 def get_file_subtype_if_exists(path):
     try:
         is_img = imghdr.what(path)
@@ -57,7 +82,28 @@ def get_number_subtype(string):
         return None
 
 
-def count_data_types_in_column(data, date_fmts, datetime_fmts):
+def get_date_column_subtype(data):
+    matches = Counter()
+    for element in data:
+        for fmt in [*DATE_FMTS, *DATETIME_FMTS]:
+            try:
+                datetime.datetime.strptime(str(element), fmt)
+                matches[fmt] += 1
+            except ValueError:
+                pass
+    
+    if matches:
+        best_fmt = max(matches.items(), key=lambda kv: kv[1])[0]
+    else:
+        raise Exception('Couldn\'t detect data subtype of column {}'.format(col_name))
+
+    if best_fmt in DATE_FMTS:
+        return DATA_SUBTYPES.DATE, best_fmt
+    else:
+        return DATA_SUBTYPES.TIMESTAMP, best_fmt
+
+
+def count_data_types_in_column(data):
     type_counts = Counter()
     subtype_counts = Counter()
     additional_info = {}
@@ -101,26 +147,14 @@ def count_data_types_in_column(data, date_fmts, datetime_fmts):
         return type_guess, subtype_guess
 
     def type_check_date(element):
-        # date?
-        for fmt in date_fmts:
+        for fmt in [*DATE_FMTS, *DATETIME_FMTS]:
             try:
                 datetime.datetime.strptime(element, fmt)
-            except Exception:
+            except ValueError:
                 pass
             else:
-                additional_info['date_fmt'] = fmt
-                return DATA_TYPES.DATE, DATA_SUBTYPES.DATE
-
-        # date + time?
-        for fmt in datetime_fmts:
-            try:
-                datetime.datetime.strptime(element, fmt)
-            except Exception:
-                pass
-            else:
-                additional_info['date_fmt'] = fmt
-                return DATA_TYPES.DATE, DATA_SUBTYPES.TIMESTAMP
-
+                subtype, best_fmt = get_date_column_subtype(data)
+                return DATA_TYPES.DATE, subtype, best_fmt
         return None, None
 
     type_checkers = [type_check_numeric,
@@ -129,7 +163,12 @@ def count_data_types_in_column(data, date_fmts, datetime_fmts):
                      type_check_date]
     for element in [str(x) for x in data]:
         for type_checker in type_checkers:
-            type_guess, subtype_guess = type_checker(element)
+            if type_checker is type_check_date:
+                type_guess, subtype_guess, date_fmt = type_checker(element)
+                additional_info['date_fmt'] = date_fmt
+            else:
+                type_guess, subtype_guess = type_checker(element)
+
             if type_guess is not None:
                 break
         else:
@@ -139,6 +178,7 @@ def count_data_types_in_column(data, date_fmts, datetime_fmts):
         subtype_counts[subtype_guess] += 1
 
     return type_counts, subtype_counts, additional_info
+
 
 def get_column_data_type(arg_tup, lmd):
     """
@@ -179,11 +219,10 @@ def get_column_data_type(arg_tup, lmd):
         subtype_dist[DATA_SUBTYPES.MULTIPLE] = len(data)
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
-    type_dist, subtype_dist, new_additional_info = count_data_types_in_column(
-        data,
-        date_fmts=lmd.get('date_fmts') or ['%Y-%m-%d', '%Y/%m/%d', '%d.%m.%Y', '%Y/%m', '%Y-%m', '%m/%d/%Y'],
-        datetime_fmts=lmd.get('datetime_fmts') or ['%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M:%S', '%d.%m.%Y %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%f%Z', '%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S.%f']
-    )
+    type_dist, subtype_dist, new_additional_info = count_data_types_in_column(data)
+
+    if 'date_fmt' in new_additional_info:
+        lmd['stats_v2'][col_name]['date_fmt'] = new_additional_info['date_fmt']
 
     if new_additional_info:
         additional_info.update(new_additional_info)

@@ -121,7 +121,7 @@ class LightwoodBackend:
                         try:
                             row[col] = datetime.datetime.strptime(
                                 row[col],
-                                self.transaction.lmd['stats_v2'][col]['additional_info']['date_fmt']
+                                self.transaction.lmd['stats_v2'][col]['date_fmt']
                             )
                         except (TypeError, ValueError):
                             pass
