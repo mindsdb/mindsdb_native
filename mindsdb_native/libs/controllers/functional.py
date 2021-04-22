@@ -187,8 +187,10 @@ def delete_model(model_name):
     :param model_name: name of the model
     :return: bool (True/False) True if model was deleted
     """
-    with MDBLock('exclusive', 'delete_' + model_name):
-        shutil.rmtree(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name))
+    p = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, model_name)
+    if os.path.isdir(p):
+        with MDBLock('exclusive', 'delete_' + model_name):
+            shutil.rmtree(p)
 
 
 def import_model(model_archive_path, new_name=None):
