@@ -1,5 +1,6 @@
 import string
 from collections import Counter, defaultdict
+import datetime
 
 import datetime
 import numpy as np
@@ -47,7 +48,7 @@ def clean_int_and_date_data(col_data, log, stats_v2, col_name):
                 cleaned_data.append(clean_float(ele))
             except Exception as e1:
                 try:
-                    fmt = stats_v2[col_name]['additional_info']['date_fmt']
+                    fmt = stats_v2[col_name]['date_fmt']
                     cleaned_data.append(
                         datetime.datetime.strptime(str(ele), fmt).timestamp()
                     )
