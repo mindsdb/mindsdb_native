@@ -121,7 +121,7 @@ class LightwoodBackend:
                         try:
                             row[col] = datetime.datetime.strptime(
                                 row[col],
-                                self.transaction.lmd['stats_v2'][col]['additional_info']['date_fmt']
+                                self.transaction.lmd['stats_v2'][col]['date_fmt']
                             )
                         except (TypeError, ValueError):
                             pass
@@ -132,6 +132,7 @@ class LightwoodBackend:
                     try:
                         row[col] = float(row[col])
                     except ValueError:
+                        raise Exception(self.transaction.lmd['stats_v2'][col]['date_fmt'])
                         raise ValueError(f'Failed to order based on column: "{col}" due to faulty value: {row[col]}')
 
         if len(gb_arr) > 0:

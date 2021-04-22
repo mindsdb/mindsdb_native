@@ -115,23 +115,13 @@ class DataTransformer(BaseModule):
                     self._apply_to_all_data(input_data, column, _try_round, transaction_type)
 
             if data_type == DATA_TYPES.DATE:
-                if data_subtype == DATA_SUBTYPES.DATE:
-                    self._apply_to_all_data(
-                        input_data,
-                        column,
-                        _standardize_date,
-                        transaction_type,
-                        fmt=self.transaction.lmd['stats_v2'][column]['additional_info']['date_fmt']
-                    )
-
-                elif data_subtype == DATA_SUBTYPES.TIMESTAMP:
-                    self._apply_to_all_data(
-                        input_data,
-                        column,
-                        _standardize_datetime,
-                        transaction_type,
-                        fmt=self.transaction.lmd['stats_v2'][column]['additional_info']['date_fmt']
-                    )
+                self._apply_to_all_data(
+                    input_data,
+                    column,
+                    _standardize_date,
+                    transaction_type,
+                    fmt=self.transaction.lmd['stats_v2'][column]['date_fmt']
+                )
 
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
@@ -148,7 +138,7 @@ class DataTransformer(BaseModule):
 
             if self.transaction.hmd['model_backend'] == 'lightwood':
                 if data_type == DATA_TYPES.DATE:
-                    self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type, fmt=self.transaction.lmd['stats_v2'][column]['additional_info']['date_fmt'])
+                    self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type, fmt=self.transaction.lmd['stats_v2'][column]['date_fmt'])
                     self._apply_to_all_data(input_data, column, _lightwood_datetime_processing, transaction_type)
                     self._apply_to_all_data(input_data, column, _handle_nan, transaction_type)
 
