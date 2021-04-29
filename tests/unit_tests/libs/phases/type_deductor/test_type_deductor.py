@@ -277,8 +277,9 @@ class TestTypeDeductor(unittest.TestCase):
         df = pd.DataFrame({
             'date_1': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
             'date_2': [(datetime.now() - timedelta(days=i)).strftime('%Y/%m/%d') for i in range(n_points)],
-            'datetime_1': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%dT%H:%M:%S.%f') for i in range(n_points)],
-            'datetime_2': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d %H:%M:%S') for i in range(n_points)],
+            'datetime_1': [(datetime.now() - timedelta(days=i, minutes=1)).strftime('%Y-%m-%dT%H:%M') for i in range(n_points)],
+            'datetime_2': [(datetime.now() - timedelta(days=i, seconds=1)).strftime('%Y-%m-%d %H:%M:%S') for i in range(n_points)],
+            'datetime_3': [(datetime.now() - timedelta(days=i, milliseconds=1)).strftime('%Y-%m-%d %H:%M:%S.%f') for i in range(n_points)],
         })
 
         predictor = Predictor(name='test_date_formats')
@@ -306,3 +307,13 @@ class TestTypeDeductor(unittest.TestCase):
 
         assert predictor.transaction.lmd['stats_v2']['datetime_2']['typing']['data_type'] == DATA_TYPES.DATE
         assert predictor.transaction.lmd['stats_v2']['datetime_2']['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP
+
+        assert predictor.transaction.lmd['stats_v2']['datetime_3']['typing']['data_type'] == DATA_TYPES.DATE
+        assert predictor.transaction.lmd['stats_v2']['datetime_3']['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP
+
+        assert predictor.transaction.lmd['stats_v2']['datetime_1']['dateutil_parser_kwargs']['yearfirst'] is True
+        assert predictor.transaction.lmd['stats_v2']['datetime_1']['dateutil_parser_kwargs']['dayfirst'] is False
+        assert predictor.transaction.lmd['stats_v2']['datetime_2']['dateutil_parser_kwargs']['yearfirst'] is True
+        assert predictor.transaction.lmd['stats_v2']['datetime_2']['dateutil_parser_kwargs']['dayfirst'] is False
+        assert predictor.transaction.lmd['stats_v2']['datetime_3']['dateutil_parser_kwargs']['yearfirst'] is True
+        assert predictor.transaction.lmd['stats_v2']['datetime_3']['dateutil_parser_kwargs']['dayfirst'] is False

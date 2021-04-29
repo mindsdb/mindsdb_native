@@ -1,3 +1,4 @@
+import dateutil
 import copy
 import datetime
 import traceback
@@ -119,9 +120,9 @@ class LightwoodBackend:
                 else:
                     if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
                         try:
-                            row[col] = datetime.datetime.strptime(
+                            row[col] = dateutil.parser.parse(
                                 row[col],
-                                self.transaction.lmd['stats_v2'][col]['date_fmt']
+                                **self.transaction.lmd['stats_v2'][col]['dateutil_parser_kwargs']
                             )
                         except (TypeError, ValueError):
                             pass
@@ -132,7 +133,7 @@ class LightwoodBackend:
                     try:
                         row[col] = float(row[col])
                     except ValueError:
-                        raise Exception(self.transaction.lmd['stats_v2'][col]['date_fmt'])
+                        raise Exception(self.transaction.lmd['stats_v2'][col]['dateutil_parser_kwargs'])
                         raise ValueError(f'Failed to order based on column: "{col}" due to faulty value: {row[col]}')
 
         if len(gb_arr) > 0:

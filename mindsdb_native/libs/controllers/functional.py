@@ -13,7 +13,7 @@ from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 from mindsdb_native.libs.controllers.transaction import AnalyseTransaction
 from mindsdb_native.libs.controllers.predictor import _get_memory_optimizations, _prepare_sample_settings, Predictor
-from mindsdb_native.libs.helpers.multi_data_source import getDS
+from mindsdb_native.libs.helpers.multi_data_source import get_ds
 from mindsdb_native.libs.helpers.general_helpers import load_lmd, load_hmd
 from mindsdb_native.libs.constants.mindsdb import (
     MODEL_STATUS_TRAINED,
@@ -58,7 +58,7 @@ def analyse_dataset(from_data, sample_settings=None):
     Analyse the particular dataset being given
     """
 
-    from_ds = getDS(from_data)
+    from_ds = get_ds(from_data)
     transaction_type = TRANSACTION_ANALYSE
 
     sample_for_analysis, _ = _get_memory_optimizations(from_ds.df)

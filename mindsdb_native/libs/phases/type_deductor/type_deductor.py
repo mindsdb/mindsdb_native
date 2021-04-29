@@ -1,3 +1,4 @@
+import dateutil
 import string
 import numpy as np
 import imghdr
@@ -27,35 +28,33 @@ from mindsdb_native.libs.helpers.text_helpers import (
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.stats_helpers import sample_data
 from mindsdb_native.libs.helpers.mp_helpers import get_nr_procs
+from mindsdb_native.libs.helpers.date_helpers import DATE_ORDER_KWARGS
 
-import flair
+# DATE_FMTS = [
+#     '%Y-%m-%d',
+#     '%Y/%m/%d',
+#     '%d.%m.%Y',
+#     '%Y/%m',
+#     '%Y-%m',
+#     '%d/%m/%Y',
+#     '%m/%d/%Y',
+#     '%m/%d/%y',
+# ]
 
+# DATETIME_FMTS = [
+#     '%Y-%m-%d %H:%M:%S',
+#     '%Y-%m-%d %H:%M:%S.%f',
 
-DATE_FMTS = [
-    '%Y-%m-%d',
-    '%Y/%m/%d',
-    '%d.%m.%Y',
-    '%Y/%m',
-    '%Y-%m',
-    '%d/%m/%Y',
-    '%m/%d/%Y',
-    '%m/%d/%y',
-]
+#     '%Y/%m/%d %H:%M:%S',
+#     '%Y/%m/%d %H:%M:%S.%f',
 
-DATETIME_FMTS = [
-    '%Y-%m-%d %H:%M:%S',
-    '%Y-%m-%d %H:%M:%S.%f',
+#     '%d.%m.%Y %H:%M:%S',
+#     '%d.%m.%Y %H:%M:%S.%f',
 
-    '%Y/%m/%d %H:%M:%S',
-    '%Y/%m/%d %H:%M:%S.%f',
-
-    '%d.%m.%Y %H:%M:%S',
-    '%d.%m.%Y %H:%M:%S.%f',
-
-    '%Y-%m-%dT%H:%M:%S.%f%Z',
-    '%Y-%m-%dT%H:%M:%S.%f%z',
-    '%Y-%m-%dT%H:%M:%S.%f'
-]
+#     '%Y-%m-%dT%H:%M:%S.%f%Z',
+#     '%Y-%m-%dT%H:%M:%S.%f%z',
+#     '%Y-%m-%dT%H:%M:%S.%f'
+# ]
 
 
 def get_file_subtype_if_exists(path):
@@ -85,24 +84,34 @@ def get_number_subtype(string):
 
 
 def get_date_column_subtype(data):
-    matches = Counter()
-    for element in data:
-        for fmt in [*DATE_FMTS, *DATETIME_FMTS]:
+    counter = Counter()
+    for order, kwargs in DATE_ORDER_KWARGS.items():
+        for element in data:
             try:
-                datetime.datetime.strptime(str(element), fmt)
-                matches[fmt] += 1
-            except ValueError:
-                pass
-    
-    if matches:
-        best_fmt = max(matches.items(), key=lambda kv: kv[1])[0]
-    else:
-        raise Exception('Couldn\'t detect data subtype of column {}'.format(col_name))
+                dateutil.parser.parse(element, **kwargs)
+            except Exception:
+                counter[order] += 0
+            else:
+                counter[order] += 1
 
-    if best_fmt in DATE_FMTS:
-        return DATA_SUBTYPES.DATE, best_fmt
+    best_order, best_order_count = max(counter.items(), key=lambda kv: kv[1])
+
+    if best_order_count > 0:
+        for element in data:
+            try:
+                datetime = dateutil.parser.parse(element)
+            except Exception:
+                pass
+            else:
+                if datetime.hour == 0 and datetime.minute == 0 and datetime.second == 0 and datetime.millisecond == 0:
+                    pass
+                else:
+                    break
+        else:
+            return DATA_SUBTYPES.DATE, best_order
+        return DATA_SUBTYPES.TIMESTAMP, best_order
     else:
-        return DATA_SUBTYPES.TIMESTAMP, best_fmt
+        return None, None
 
 
 def count_data_types_in_column(data):
@@ -149,30 +158,26 @@ def count_data_types_in_column(data):
         return type_guess, subtype_guess
 
     def type_check_date(element):
-        for fmt in [*DATE_FMTS, *DATETIME_FMTS]:
-            try:
-                datetime.datetime.strptime(element, fmt)
-            except ValueError:
-                pass
-            else:
-                subtype, best_fmt = get_date_column_subtype(data)
-                return DATA_TYPES.DATE, subtype, best_fmt
-        return None, None, None
+        subtype, best_order = get_date_column_subtype(data)
+        if subtype is None:
+            return None, None, None
+        else:
+            return DATA_TYPES.DATE, subtype, best_order
 
     type_checkers = [type_check_numeric,
                      type_check_sequence,
                      type_check_file,
                      type_check_date]
-    for element in [str(x) for x in data]:
+    for element in data:
         for type_checker in type_checkers:
             if type_checker is type_check_date:
-                type_guess, subtype_guess, date_fmt = type_checker(element)
-                if type_guess is not None:
-                    additional_info['date_fmt'] = date_fmt
+                type_guess, subtype_guess, best_order = type_checker(element)
             else:
                 type_guess, subtype_guess = type_checker(element)
 
             if type_guess is not None:
+                if type_guess == DATA_TYPES.DATE:
+                    additional_info['dateutil_parser_kwargs'] = best_order
                 break
         else:
             type_guess, subtype_guess = 'Unknown', 'Unknown'
@@ -224,8 +229,8 @@ def get_column_data_type(arg_tup, lmd):
 
     type_dist, subtype_dist, new_additional_info = count_data_types_in_column(data)
 
-    if 'date_fmt' in new_additional_info:
-        lmd['stats_v2'][col_name]['date_fmt'] = new_additional_info['date_fmt']
+    if 'dateutil_parser_kwargs' in new_additional_info:
+        lmd['stats_v2'][col_name]['dateutil_parser_kwargs'] = new_additional_info['dateutil_parser_kwargs']
 
     if new_additional_info:
         additional_info.update(new_additional_info)

@@ -1,3 +1,4 @@
+import dateutil
 import datetime
 import math
 
@@ -23,10 +24,10 @@ def _try_round(x):
         return None
 
 
-def _standardize_date(date_str, fmt):
+def _standardize_date(date_str, dateutil_kwargs):
     try:
         # will return a datetime object
-        date = datetime.datetime.strptime(date_str, fmt)
+        date = dateutil.parser.parse(date_str, **dateutil_kwargs)
     except Exception:
         try:
             date = datetime.datetime.utcfromtimestamp(date_str)
@@ -36,10 +37,10 @@ def _standardize_date(date_str, fmt):
     return date.strftime('%Y-%m-%d')
 
 
-def _standardize_datetime(date_str, fmt):
+def _standardize_datetime(date_str, dateutil_kwargs):
     try:
         # will return a datetime object
-        date = datetime.datetime.strptime(date_str, fmt)
+        date = dateutil.parser.parse(date_str, **dateutil_kwargs)
     except Exception:
         try:
             date = datetime.datetime.utcfromtimestamp(date_str)
@@ -120,7 +121,7 @@ class DataTransformer(BaseModule):
                     column,
                     _standardize_date,
                     transaction_type,
-                    fmt=self.transaction.lmd['stats_v2'][column]['date_fmt']
+                    dateutil_kwargs=self.transaction.lmd['stats_v2'][column]['dateutil_parser_kwargs']
                 )
 
             if data_type == DATA_TYPES.CATEGORICAL:
@@ -138,7 +139,7 @@ class DataTransformer(BaseModule):
 
             if self.transaction.hmd['model_backend'] == 'lightwood':
                 if data_type == DATA_TYPES.DATE:
-                    self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type, fmt=self.transaction.lmd['stats_v2'][column]['date_fmt'])
+                    self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type, dateutil_kwargs=self.transaction.lmd['stats_v2'][column]['dateutil_parser_kwargs'])
                     self._apply_to_all_data(input_data, column, _lightwood_datetime_processing, transaction_type)
                     self._apply_to_all_data(input_data, column, _handle_nan, transaction_type)
 
