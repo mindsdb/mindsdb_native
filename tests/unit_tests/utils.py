@@ -84,6 +84,12 @@ def generate_value_cols(types, length, ts_period=48*3600):
             columns[-1].extend(
                 generate_timeseries(length=length, _type=t, period=ts_period))
             continue
+        elif t == 'bool':
+            gen_fun = lambda: bool(random.randint(0, 1))
+        elif t == 'true':
+            gen_fun = lambda: True
+        elif t == 'false':
+            gen_fun = lambda: False
         else:
             raise Exception(f'Unexpected type {t}')
 
