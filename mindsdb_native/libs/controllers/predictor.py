@@ -125,7 +125,7 @@ class Predictor:
                     backend='lightwood',
                     rebuild_model=True,
                     use_gpu=None,
-                    equal_accuracy_for_all_output_categories=True,
+                    equal_accuracy_for_all_output_categories=False,
                     output_categories_importance_dictionary=None,
                     advanced_args=None,
                     sample_settings=None):
@@ -146,7 +146,7 @@ class Predictor:
               backend='lightwood',
               rebuild_model=True,
               use_gpu=None,
-              equal_accuracy_for_all_output_categories=True,
+              equal_accuracy_for_all_output_categories=False,
               output_categories_importance_dictionary=None,
               advanced_args=None,
               sample_settings=None):
