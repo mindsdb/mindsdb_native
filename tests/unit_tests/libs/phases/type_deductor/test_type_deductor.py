@@ -310,10 +310,3 @@ class TestTypeDeductor(unittest.TestCase):
 
         assert predictor.transaction.lmd['stats_v2']['datetime_3']['typing']['data_type'] == DATA_TYPES.DATE
         assert predictor.transaction.lmd['stats_v2']['datetime_3']['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP
-
-        assert predictor.transaction.lmd['stats_v2']['datetime_1']['dateutil_parser_kwargs']['yearfirst'] is True
-        assert predictor.transaction.lmd['stats_v2']['datetime_1']['dateutil_parser_kwargs']['dayfirst'] is False
-        assert predictor.transaction.lmd['stats_v2']['datetime_2']['dateutil_parser_kwargs']['yearfirst'] is True
-        assert predictor.transaction.lmd['stats_v2']['datetime_2']['dateutil_parser_kwargs']['dayfirst'] is False
-        assert predictor.transaction.lmd['stats_v2']['datetime_3']['dateutil_parser_kwargs']['yearfirst'] is True
-        assert predictor.transaction.lmd['stats_v2']['datetime_3']['dateutil_parser_kwargs']['dayfirst'] is False
