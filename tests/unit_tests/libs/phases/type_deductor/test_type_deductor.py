@@ -285,7 +285,7 @@ class TestTypeDeductor(unittest.TestCase):
         try:
             predictor.learn(
                 from_data=df,
-                to_predict='datetime_2',
+                to_predict='datetime',
                 advanced_args={'force_column_usage': list(df.columns)}
             )
         except BreakpointException:

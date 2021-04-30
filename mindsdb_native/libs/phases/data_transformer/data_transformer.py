@@ -24,10 +24,10 @@ def _try_round(x):
         return None
 
 
-def _standardize_date(date_str, dateutil_kwargs):
+def _standardize_date(date_str, dateutil_parser_kwargs):
     try:
         # will return a datetime object
-        date = dateutil.parser.parse(date_str, **dateutil_kwargs)
+        date = dateutil.parser.parse(date_str, **dateutil_parser_kwargs)
     except Exception:
         try:
             date = datetime.datetime.utcfromtimestamp(date_str)
@@ -37,10 +37,10 @@ def _standardize_date(date_str, dateutil_kwargs):
     return date.strftime('%Y-%m-%d')
 
 
-def _standardize_datetime(date_str, dateutil_kwargs):
+def _standardize_datetime(date_str, dateutil_parser_kwargs):
     try:
         # will return a datetime object
-        date = dateutil.parser.parse(date_str, **dateutil_kwargs)
+        date = dateutil.parser.parse(date_str, **dateutil_parser_kwargs)
     except Exception:
         try:
             date = datetime.datetime.utcfromtimestamp(date_str)
@@ -121,7 +121,7 @@ class DataTransformer(BaseModule):
                     column,
                     _standardize_date,
                     transaction_type,
-                    dateutil_kwargs=self.transaction.lmd['stats_v2'][column]['dateutil_parser_kwargs']
+                    dateutil_parser_kwargs=self.transaction.lmd['dateutil_parser_kwargs_per_column'].get(column, {})
                 )
 
             if data_type == DATA_TYPES.CATEGORICAL:
@@ -139,7 +139,13 @@ class DataTransformer(BaseModule):
 
             if self.transaction.hmd['model_backend'] == 'lightwood':
                 if data_type == DATA_TYPES.DATE:
-                    self._apply_to_all_data(input_data, column, _standardize_datetime, transaction_type, dateutil_kwargs=self.transaction.lmd['stats_v2'][column]['dateutil_parser_kwargs'])
+                    self._apply_to_all_data(
+                        input_data,
+                        column,
+                        _standardize_datetime,
+                        transaction_type,
+                        dateutil_parser_kwargs=self.transaction.lmd['dateutil_parser_kwargs_per_column'].get(column, {})
+                    )
                     self._apply_to_all_data(input_data, column, _lightwood_datetime_processing, transaction_type)
                     self._apply_to_all_data(input_data, column, _handle_nan, transaction_type)
 

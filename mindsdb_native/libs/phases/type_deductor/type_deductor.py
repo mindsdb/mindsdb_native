@@ -84,40 +84,6 @@ def get_number_subtype(string):
         return None
 
 
-def get_date_column_subtype(data):
-    counter = Counter()
-
-    data_sample = data.sample(min(30, len(data)))
-
-    for order, kwargs in DATE_ORDER_KWARGS.items():
-        for element in data_sample:
-            try:
-                dateutil.parser.parse(element, **kwargs)
-            except Exception:
-                counter[order] += 0
-            else:
-                counter[order] += 1
-
-    best_order, best_order_count = max(counter.items(), key=lambda kv: kv[1])
-
-    if best_order_count > 0:
-        for element in data_sample:
-            try:
-                datetime = dateutil.parser.parse(element, **DATE_ORDER_KWARGS[best_order])
-            except Exception:
-                pass
-            else:
-                if datetime.hour == 0 and datetime.minute == 0 and datetime.second == 0 and len(element) < 16:
-                    pass
-                else:
-                    break
-        else:
-            return DATA_SUBTYPES.DATE, best_order
-        return DATA_SUBTYPES.TIMESTAMP, best_order
-    else:
-        return None, None
-
-
 def count_data_types_in_column(data):
     type_counts = Counter()
     subtype_counts = Counter()
@@ -164,7 +130,7 @@ def count_data_types_in_column(data):
     def type_check_date(element):
         type_guess, subtype_guess = None, None
         try:
-            dt = parse_datetime(element)
+            dt = dateutil.parser.parse(element)
 
             # Not accurate 100% for a single datetime str,
             # but should work in aggregate

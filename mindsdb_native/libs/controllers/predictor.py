@@ -271,7 +271,7 @@ class Predictor:
                 remove_columns_with_missing_targets = advanced_args.get('remove_columns_with_missing_targets', True),
                 max_processes = advanced_args.get('max_processes', None),
                 max_per_proc_usage = advanced_args.get('max_per_proc_usage', None),
-                dateutil_parser_kwargs_per_column = advanced_args.get('dateutil_kwargs_per_column', {}),
+                dateutil_parser_kwargs_per_column = advanced_args.get('dateutil_parser_kwargs_per_column', {}),
 
                 learn_started_at = time.time(),
             )
