@@ -49,11 +49,9 @@ def clean_int_and_date_data(col_data, log, stats_v2, col_name):
                 cleaned_data.append(clean_float(ele))
             except Exception as e1:
                 try:
-                    fmt = stats_v2[col_name]['dateutil_parser_kwargs']
                     cleaned_data.append(
                         dateutil.parser.parse(
-                            str(ele),
-                            **stats_v2[col_name]['dateutil_parser_kwargs']
+                            str(ele)
                         ).timestamp()
                     )
                 except Exception as e2:

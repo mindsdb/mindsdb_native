@@ -275,11 +275,8 @@ class TestTypeDeductor(unittest.TestCase):
     def test_date_formats(self):
         n_points = 50
         df = pd.DataFrame({
-            'date_1': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
-            'date_2': [(datetime.now() - timedelta(days=i)).strftime('%Y/%m/%d') for i in range(n_points)],
-            'datetime_1': [(datetime.now() - timedelta(days=i, minutes=1)).strftime('%Y-%m-%dT%H:%M') for i in range(n_points)],
-            'datetime_2': [(datetime.now() - timedelta(days=i, seconds=1)).strftime('%Y-%m-%d %H:%M:%S') for i in range(n_points)],
-            'datetime_3': [(datetime.now() - timedelta(days=i, milliseconds=1)).strftime('%Y-%m-%d %H:%M:%S.%f') for i in range(n_points)],
+            'date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_points)],
+            'datetime': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%dT%H:%M') for i in range(n_points)],
         })
 
         predictor = Predictor(name='test_date_formats')
@@ -296,17 +293,8 @@ class TestTypeDeductor(unittest.TestCase):
         else:
             raise AssertionError
 
-        assert predictor.transaction.lmd['stats_v2']['date_1']['typing']['data_type'] == DATA_TYPES.DATE
-        assert predictor.transaction.lmd['stats_v2']['date_1']['typing']['data_subtype'] == DATA_SUBTYPES.DATE
+        assert predictor.transaction.lmd['stats_v2']['date']['typing']['data_type'] == DATA_TYPES.DATE
+        assert predictor.transaction.lmd['stats_v2']['date']['typing']['data_subtype'] == DATA_SUBTYPES.DATE
 
-        assert predictor.transaction.lmd['stats_v2']['date_2']['typing']['data_type'] == DATA_TYPES.DATE
-        assert predictor.transaction.lmd['stats_v2']['date_2']['typing']['data_subtype'] == DATA_SUBTYPES.DATE
-
-        assert predictor.transaction.lmd['stats_v2']['datetime_1']['typing']['data_type'] == DATA_TYPES.DATE
-        assert predictor.transaction.lmd['stats_v2']['datetime_1']['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP
-
-        assert predictor.transaction.lmd['stats_v2']['datetime_2']['typing']['data_type'] == DATA_TYPES.DATE
-        assert predictor.transaction.lmd['stats_v2']['datetime_2']['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP
-
-        assert predictor.transaction.lmd['stats_v2']['datetime_3']['typing']['data_type'] == DATA_TYPES.DATE
-        assert predictor.transaction.lmd['stats_v2']['datetime_3']['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP
+        assert predictor.transaction.lmd['stats_v2']['datetime']['typing']['data_type'] == DATA_TYPES.DATE
+        assert predictor.transaction.lmd['stats_v2']['datetime']['typing']['data_subtype'] == DATA_SUBTYPES.TIMESTAMP

@@ -162,11 +162,21 @@ def count_data_types_in_column(data):
         return type_guess, subtype_guess
 
     def type_check_date(element):
-        subtype, best_order = get_date_column_subtype(data)
-        if subtype is None:
-            return None, None, None
-        else:
-            return DATA_TYPES.DATE, subtype, best_order
+        type_guess, subtype_guess = None, None
+        try:
+            dt = parse_datetime(element)
+
+            # Not accurate 100% for a single datetime str,
+            # but should work in aggregate
+            if dt.hour == 0 and dt.minute == 0 and \
+                dt.second == 0 and len(element) <= 16:
+                subtype_guess = DATA_SUBTYPES.DATE
+            else:
+                subtype_guess = DATA_SUBTYPES.TIMESTAMP
+            type_guess = DATA_TYPES.DATE
+        except Exception:
+            pass
+        return type_guess, subtype_guess
 
     type_checkers = [type_check_numeric,
                      type_check_sequence,
@@ -174,14 +184,8 @@ def count_data_types_in_column(data):
                      type_check_date]
     for element in data:
         for type_checker in type_checkers:
-            if type_checker is type_check_date:
-                type_guess, subtype_guess, best_order = type_checker(element)
-            else:
-                type_guess, subtype_guess = type_checker(element)
-
+            type_guess, subtype_guess = type_checker(element)
             if type_guess is not None:
-                if type_guess == DATA_TYPES.DATE:
-                    additional_info['dateutil_parser_kwargs'] = DATE_ORDER_KWARGS[best_order]
                 break
         else:
             type_guess, subtype_guess = 'Unknown', 'Unknown'
@@ -232,9 +236,6 @@ def get_column_data_type(arg_tup, lmd):
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
     type_dist, subtype_dist, new_additional_info = count_data_types_in_column(data)
-
-    if 'dateutil_parser_kwargs' in new_additional_info:
-        lmd['stats_v2'][col_name]['dateutil_parser_kwargs'] = new_additional_info['dateutil_parser_kwargs']
 
     if new_additional_info:
         additional_info.update(new_additional_info)
