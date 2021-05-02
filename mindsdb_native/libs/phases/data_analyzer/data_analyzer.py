@@ -40,7 +40,7 @@ def lof_outliers(col_subtype, col_data):
     return outliers
 
 
-def clean_int_and_date_data(col_data, log, stats_v2, col_name):
+def clean_int_and_date_data(col_data, log, lmd, col_name):
     cleaned_data = []
 
     for ele in col_data:
@@ -51,7 +51,8 @@ def clean_int_and_date_data(col_data, log, stats_v2, col_name):
                 try:
                     cleaned_data.append(
                         dateutil.parser.parse(
-                            str(ele)
+                            str(ele),
+                            **lmd['dateutil_parser_kwargs'].get(col_name, {})
                         ).timestamp()
                     )
                 except Exception as e2:
@@ -274,7 +275,7 @@ class DataAnalyzer(BaseModule):
 
             col_data = sample_df[col_name].dropna()
             if data_type == DATA_TYPES.NUMERIC or data_subtype == DATA_SUBTYPES.TIMESTAMP:
-                col_data = clean_int_and_date_data(col_data, self.log, stats_v2, col_name)
+                col_data = clean_int_and_date_data(col_data, self.log, self.lmd, col_name)
 
             stats_v2[col_name]['empty'] = get_column_empty_values_report(input_data.data_frame[col_name])
 

@@ -121,7 +121,8 @@ class LightwoodBackend:
                     if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
                         try:
                             row[col] = dateutil.parser.parse(
-                                row[col]
+                                row[col],
+                                self.transaction['dateutil_parser_kwargs'].get(col, {})
                             )
                         except (TypeError, ValueError):
                             pass
