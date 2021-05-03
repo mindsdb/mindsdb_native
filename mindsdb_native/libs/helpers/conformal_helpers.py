@@ -28,14 +28,14 @@ def clear_icp_state(icp):
 def restore_icp_state(col, hmd, session):
     icps = hmd['icp'][col]
     try:
-        a = session.transaction.model_backend.predictor
+        predictor = session.transaction.model_backend.predictor
     except AttributeError:
         model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, hmd['name'], 'lightwood_data')
-        session.transaction.model_backend.predictor = Predictor(load_from_path=model_path)
+        predictor = Predictor(load_from_path=model_path)
 
     for group, icp in icps.items():
         if group not in ['__mdb_groups', '__mdb_group_keys']:
-            icp.nc_function.model.model = session.transaction.model_backend.predictor
+            icp.nc_function.model.model = predictor
 
     # restore model in normalizer
     for group, icp in icps.items():
