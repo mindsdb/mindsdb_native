@@ -122,7 +122,7 @@ class LightwoodBackend:
                         try:
                             row[col] = dateutil.parser.parse(
                                 row[col],
-                                **self.transaction['dateutil_parser_kwargs'].get(col, {})
+                                **self.transaction.lmd['dateutil_parser_kwargs'].get(col, {})
                             )
                         except (TypeError, ValueError):
                             pass
