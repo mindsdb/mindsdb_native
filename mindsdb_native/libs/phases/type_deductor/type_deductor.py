@@ -84,7 +84,7 @@ def get_number_subtype(string):
         return None
 
 
-def count_data_types_in_column(data):
+def count_data_types_in_column(data, lmd, col_name):
     type_counts = Counter()
     subtype_counts = Counter()
     additional_info = {}
@@ -130,7 +130,7 @@ def count_data_types_in_column(data):
     def type_check_date(element):
         type_guess, subtype_guess = None, None
         try:
-            dt = dateutil.parser.parse(element)
+            dt = dateutil.parser.parse(element, lmd['dateutil_parser_kwargs_per_column'].get(col_name, {}))
 
             # Not accurate 100% for a single datetime str,
             # but should work in aggregate
@@ -201,7 +201,7 @@ def get_column_data_type(arg_tup, lmd):
         subtype_dist[DATA_SUBTYPES.MULTIPLE] = len(data)
         return curr_data_type, curr_data_subtype, type_dist, subtype_dist, additional_info, warn, info
 
-    type_dist, subtype_dist, new_additional_info = count_data_types_in_column(data)
+    type_dist, subtype_dist, new_additional_info = count_data_types_in_column(data, lmd, col_name)
 
     if new_additional_info:
         additional_info.update(new_additional_info)
