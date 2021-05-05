@@ -121,7 +121,7 @@ class DataTransformer(BaseModule):
                     column,
                     _standardize_date,
                     transaction_type,
-                    dateutil_parser_kwargs=self.transaction.lmd['dateutil_parser_kwargs_per_column'].get(column, {})
+                    dateutil_parser_kwargs=self.transaction.lmd.get('dateutil_parser_kwargs_per_column', {}).get(column, {})
                 )
 
             if data_type == DATA_TYPES.CATEGORICAL:
@@ -144,7 +144,7 @@ class DataTransformer(BaseModule):
                         column,
                         _standardize_datetime,
                         transaction_type,
-                        dateutil_parser_kwargs=self.transaction.lmd['dateutil_parser_kwargs_per_column'].get(column, {})
+                        dateutil_parser_kwargs=self.transaction.lmd.get('dateutil_parser_kwargs_per_column', {}).get(column, {})
                     )
                     self._apply_to_all_data(input_data, column, _lightwood_datetime_processing, transaction_type)
                     self._apply_to_all_data(input_data, column, _handle_nan, transaction_type)

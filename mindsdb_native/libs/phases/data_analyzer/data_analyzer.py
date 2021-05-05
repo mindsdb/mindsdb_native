@@ -52,7 +52,7 @@ def clean_int_and_date_data(col_data, log, lmd, col_name):
                     cleaned_data.append(
                         dateutil.parser.parse(
                             str(ele),
-                            **lmd['dateutil_parser_kwargs_per_column'].get(col_name, {})
+                            **lmd.get('dateutil_parser_kwargs_per_column', {}).get(col_name, {})
                         ).timestamp()
                     )
                 except Exception as e2:

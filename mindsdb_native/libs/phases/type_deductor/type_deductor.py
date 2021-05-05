@@ -130,7 +130,7 @@ def count_data_types_in_column(data, lmd, col_name):
     def type_check_date(element):
         type_guess, subtype_guess = None, None
         try:
-            dt = dateutil.parser.parse(element, **lmd['dateutil_parser_kwargs_per_column'].get(col_name, {}))
+            dt = dateutil.parser.parse(element, **lmd.get('dateutil_parser_kwargs_per_column', {}).get(col_name, {}))
 
             # Not accurate 100% for a single datetime str,
             # but should work in aggregate
@@ -140,7 +140,7 @@ def count_data_types_in_column(data, lmd, col_name):
             else:
                 subtype_guess = DATA_SUBTYPES.TIMESTAMP
             type_guess = DATA_TYPES.DATE
-        except Exception:
+        except ValueError:
             pass
         return type_guess, subtype_guess
 
