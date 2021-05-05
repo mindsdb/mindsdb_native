@@ -6,7 +6,7 @@ from pandas import DataFrame
 from mindsdb_native.libs.data_types.mindsdb_logger import log
 
 
-def getDS(from_data):
+def get_ds(from_data):
     '''
     Get a datasource give the input
 

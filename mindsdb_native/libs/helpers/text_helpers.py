@@ -16,7 +16,6 @@ import json
 import hashlib
 import numpy as np
 import scipy.stats as st
-import flair
 import langdetect
 from lightwood.helpers.text import tokenize_text
 import nltk
