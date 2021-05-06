@@ -1,3 +1,4 @@
+import dateutil
 import copy
 import datetime
 import traceback
@@ -78,6 +79,20 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
     return df
 
 
+def _ts_infer_next_row(df, ob, last_index):
+    last_row = df.iloc[[-1]].copy()
+    if df.shape[0] > 1:
+        butlast_row = df.iloc[[-2]]
+        delta = (last_row[ob].values - butlast_row[ob].values).flatten()[0]
+    else:
+        delta = 1
+    last_row.original_index = None
+    last_row.index = [last_index + 1]
+    last_row['make_predictions'] = True
+    last_row[ob] += delta
+    return df.append(last_row)
+
+
 class LightwoodBackend:
     def __init__(self, transaction):
         self.transaction = transaction
@@ -86,16 +101,21 @@ class LightwoodBackend:
         # Ideally this will go away soon but still a necessity for now
         self.nn_mixer_only = False
 
-    def _ts_reshape(self, original_df):
+    def _ts_reshape(self, original_df, mode='learn'):
         original_df = copy.deepcopy(original_df)
         gb_arr = self.transaction.lmd['tss']['group_by'] if self.transaction.lmd['tss']['group_by'] is not None else []
         ob_arr = self.transaction.lmd['tss']['order_by']
         window = self.transaction.lmd['tss']['window']
 
+        if 'make_predictions' in original_df.columns:
+            index = original_df[original_df['make_predictions'].map({'True': True, 'False': False, True: True, False: False}) == True]
+            infer_mode = index.shape[0] == 0  # condition to trigger: make_predictions is set to False everywhere
+        else:
+            infer_mode = False
         original_index_list = []
         idx = 0
         for row in original_df.itertuples():
-            if _make_pred(row):
+            if _make_pred(row) or infer_mode:
                 original_index_list.append(idx)
                 idx += 1
             else:
@@ -119,9 +139,9 @@ class LightwoodBackend:
                 else:
                     if self.transaction.lmd['stats_v2'][col]['typing']['data_type'] == DATA_TYPES.DATE:
                         try:
-                            row[col] = datetime.datetime.strptime(
+                            row[col] = dateutil.parser.parse(
                                 row[col],
-                                self.transaction.lmd['stats_v2'][col]['date_fmt']
+                                **self.transaction.lmd.get('dateutil_parser_kwargs_per_column', {}).get(col, {})
                             )
                         except (TypeError, ValueError):
                             pass
@@ -132,7 +152,6 @@ class LightwoodBackend:
                     try:
                         row[col] = float(row[col])
                     except ValueError:
-                        raise Exception(self.transaction.lmd['stats_v2'][col]['date_fmt'])
                         raise ValueError(f'Failed to order based on column: "{col}" due to faulty value: {row[col]}')
 
         if len(gb_arr) > 0:
@@ -141,6 +160,13 @@ class LightwoodBackend:
                 df_arr.append(df.sort_values(by=ob_arr))
         else:
             df_arr = [original_df]
+
+        last_index = original_df['original_index'].max()
+        for i, subdf in enumerate(df_arr):
+            if 'make_predictions' in subdf.columns and mode == 'predict':
+                if infer_mode:
+                    df_arr[i] = _ts_infer_next_row(subdf, ob_arr, last_index)
+                    last_index += 1
 
         if len(original_df) > 500:
             nr_procs = get_nr_procs(self.transaction.lmd.get('max_processes', None),
@@ -185,16 +211,22 @@ class LightwoodBackend:
 
         if df_gb_map is None:
             for _, row in combined_df.iterrows():
-                timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+                if not infer_mode:
+                    timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+                else:
+                    timeseries_row_mapping[idx] = idx
                 idx += 1
         else:
             for gb in df_gb_map:
                 for _, row in df_gb_map[gb].iterrows():
-                    timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+                    if not infer_mode:
+                        timeseries_row_mapping[idx] = int(row['original_index']) if row['original_index'] is not None and not np.isnan(row['original_index']) else None
+                    else:
+                        timeseries_row_mapping[idx] = idx
+
                     idx += 1
 
         del combined_df['original_index']
-
 
         return combined_df, secondary_type_dict, timeseries_row_mapping, df_gb_map
 
@@ -530,7 +562,7 @@ class LightwoodBackend:
 
         df_gb_map = None
         if self.transaction.lmd['tss']['is_timeseries']:
-            df, _, timeseries_row_mapping, df_gb_map = self._ts_reshape(df)
+            df, _, timeseries_row_mapping, df_gb_map = self._ts_reshape(df, mode='predict')
 
         if df_gb_map is None:
             df_gb_map = {'': df}
@@ -555,6 +587,7 @@ class LightwoodBackend:
             predictions = self.predictor.predict(when_data=run_df)
 
             # cache run_df to avoid duplicate reshaping in analysis phase
+            # also used in streaming mode to retrieve newly added rows per group
             if mode == 'validate':
                 self.transaction.input_data.cached_val_df = run_df
             elif mode == 'predict':

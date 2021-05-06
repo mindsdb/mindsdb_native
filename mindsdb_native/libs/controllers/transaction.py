@@ -328,12 +328,17 @@ class PredictTransaction(Transaction):
         output_data = {col: [] for col in self.lmd['columns']}
 
         if 'make_predictions' in self.input_data.data_frame.columns:
-            predictions_df = pd.DataFrame(
-                self.input_data.data_frame[
-                    self.input_data.data_frame['make_predictions'] == True
-                ]
-            )
-            del predictions_df['make_predictions']
+            to_predict = self.input_data.data_frame[self.input_data.data_frame['make_predictions'] == True]
+            if to_predict.shape[0] == 0:
+                # assume infer mode, get cached DF with new rows
+                predictions_df = self.input_data.cached_pred_df
+            else:
+                predictions_df = pd.DataFrame(
+                    self.input_data.data_frame[
+                        self.input_data.data_frame['make_predictions'] == True
+                    ]
+                )
+                del predictions_df['make_predictions']
         else:
             predictions_df = self.input_data.data_frame
 

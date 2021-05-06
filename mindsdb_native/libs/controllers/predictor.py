@@ -8,7 +8,7 @@ import time
 
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
-from mindsdb_native.libs.helpers.multi_data_source import getDS
+from mindsdb_native.libs.helpers.multi_data_source import get_ds
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import (
     LearnTransaction, PredictTransaction, MutatingTransaction
@@ -125,7 +125,7 @@ class Predictor:
                     backend='lightwood',
                     rebuild_model=True,
                     use_gpu=None,
-                    equal_accuracy_for_all_output_categories=True,
+                    equal_accuracy_for_all_output_categories=False,
                     output_categories_importance_dictionary=None,
                     advanced_args=None,
                     sample_settings=None):
@@ -146,7 +146,7 @@ class Predictor:
               backend='lightwood',
               rebuild_model=True,
               use_gpu=None,
-              equal_accuracy_for_all_output_categories=True,
+              equal_accuracy_for_all_output_categories=False,
               output_categories_importance_dictionary=None,
               advanced_args=None,
               sample_settings=None):
@@ -186,7 +186,7 @@ class Predictor:
                 self.log.error(error)
                 raise ValueError(error)
 
-            from_ds = getDS(from_data)
+            from_ds = get_ds(from_data)
 
             transaction_type = TRANSACTION_LEARN
 
@@ -271,6 +271,7 @@ class Predictor:
                 remove_columns_with_missing_targets = advanced_args.get('remove_columns_with_missing_targets', True),
                 max_processes = advanced_args.get('max_processes', None),
                 max_per_proc_usage = advanced_args.get('max_per_proc_usage', None),
+                dateutil_parser_kwargs_per_column = advanced_args.get('dateutil_parser_kwargs_per_column', {}),
 
                 learn_started_at = time.time(),
             )
@@ -397,7 +398,7 @@ class Predictor:
             elif isinstance(when_data, list):
                 when = when_data
             else:
-                when_ds = None if when_data is None else getDS(when_data)
+                when_ds = None if when_data is None else get_ds(when_data)
 
             disable_lightwood_transform_cache = False
             heavy_transaction_metadata = {}
