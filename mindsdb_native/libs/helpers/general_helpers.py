@@ -18,6 +18,7 @@ from sklearn.metrics import (
     r2_score
 )
 
+from lightwood.mixers import NnMixer
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.data_types.mindsdb_logger import log
@@ -203,6 +204,11 @@ def evaluate_regression_accuracy(
         backend,
         **kwargs
     ):
+    if kwargs.get('ts_window', None) is not None and backend.predictor and \
+            isinstance(backend.predictor._mixer, NnMixer):
+        # truncate first window values to account for warmup period in NnMixer
+        predictions[column] = predictions[column][min(kwargs['ts_window'], len(predictions[column])):]
+        true_values = true_values[min(kwargs['ts_window'], len(true_values)):]
     if f'{column}_confidence_range' in predictions:
         Y = np.array(true_values)
         ranges = predictions[f'{column}_confidence_range']
