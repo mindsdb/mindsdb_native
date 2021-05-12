@@ -205,10 +205,12 @@ def evaluate_regression_accuracy(
         **kwargs
     ):
     if kwargs.get('ts_window', None) is not None and backend.predictor and \
-            isinstance(backend.predictor._mixer, NnMixer):
-        # truncate first window values to account for warmup period in NnMixer
-        predictions[column] = predictions[column][min(kwargs['ts_window'], len(predictions[column])):]
-        true_values = true_values[min(kwargs['ts_window'], len(true_values)):]
+            isinstance(backend.predictor._mixer, NnMixer) and \
+            kwargs['ts_window'] <= 2*len(predictions[column]):
+        # provided enough rows, truncate first 'window' values to account for warmup period in NnMixer
+        predictions[column] = predictions[column][kwargs['ts_window']:]
+        true_values = true_values[kwargs['ts_window']:]
+
     if f'{column}_confidence_range' in predictions:
         Y = np.array(true_values)
         ranges = predictions[f'{column}_confidence_range']
