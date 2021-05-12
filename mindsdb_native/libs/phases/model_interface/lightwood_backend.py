@@ -503,7 +503,7 @@ class LightwoodBackend:
 
                 if self.transaction.lmd['tss']['is_timeseries']:
                     validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
-                    ts_window = self.transaction.lmd['tss'].get('window', 1)
+                    ts_window = self.transaction.lmd['tss'].get('window', 0)
                 else:
                     ts_window = 0
 
