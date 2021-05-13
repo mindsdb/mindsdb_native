@@ -483,8 +483,15 @@ class PredictTransaction(Transaction):
                                                                                         self.lmd['stats_v2'],
                                                                                         group=frozenset(group),
                                                                                         error_rate=error_rate)
-                                        result.loc[X.index, 'lower'] = confs[:, 0]
-                                        result.loc[X.index, 'upper'] = confs[:, 1]
+
+                                        # only replace where grouped ICP is more informative (i.e. tighter)
+                                        default_icp_widths = result.loc[X.index, 'upper'] - result.loc[X.index, 'lower']
+                                        grouped_widths = np.subtract(confs[:, 1], confs[:, 0])
+                                        insert_index = (default_icp_widths > grouped_widths)[lambda x: x==True].index
+
+                                        result.loc[insert_index, 'lower'] = confs[:, 0]
+                                        result.loc[insert_index, 'upper'] = confs[:, 1]
+                                        result.loc[insert_index, 'significance'] = significances
 
                                     else:
                                         conf_candidates = list(range(20)) + list(range(20, 100, 10))
@@ -493,8 +500,7 @@ class PredictTransaction(Transaction):
                                              for s in conf_candidates])
                                         all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
                                         significances = get_categorical_conf(all_confs, conf_candidates)
-
-                                    result.loc[X.index, 'significance'] = significances
+                                        result.loc[X.index, 'significance'] = significances
 
                     output_data[f'{predicted_col}_confidence'] = result['significance'].tolist()
                     confs = [[a, b] for a, b in zip(result['lower'], result['upper'])]
