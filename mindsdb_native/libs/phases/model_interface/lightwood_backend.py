@@ -73,9 +73,17 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
             next_target_value_arr = list(df[target_column])
             for del_index in range(0, min(timestep_index, len(next_target_value_arr))):
                 del next_target_value_arr[0]
-                next_target_value_arr.append(0)
+                next_target_value_arr.append(None)
             # @TODO: Maybe ignore the rows with `None` next targets for training
             df[f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
+
+    # drop rows with incomplete target info. (last nr_prediction rows per each group in time series tasks)
+    df = df.dropna(axis=0,
+                   how='any',
+                   subset=[f'{target_column}_timestep_{i}'
+                           for target_column in predict_columns
+                           for i in range(1, nr_predictions)])
+
     return df
 
 

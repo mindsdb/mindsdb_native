@@ -41,12 +41,16 @@ class DataSplitter(BaseModule):
                         if group == NO_GROUP: continue
                         length = len(all_indexes[group])
 
+                        # val and test should both have >= 2*nr_predictions rows
+                        train_cutoff = max(length * CONFIG.TEST_TRAIN_RATIO,
+                                       2 * 2 * self.transaction.lmd['tss']['nr_predictions'])
+
                         train_a = 0
-                        train_b = round(length - length * CONFIG.TEST_TRAIN_RATIO)
+                        train_b = round(length - train_cutoff)
                         train_indexes[group] = all_indexes[group][train_a:train_b]
 
                         test_a = train_b
-                        test_b = train_b + round(length * CONFIG.TEST_TRAIN_RATIO / 2)
+                        test_b = train_b + round(train_cutoff / 2)
                         test_indexes[group] = all_indexes[group][test_a:test_b]
 
                         valid_a = test_b
