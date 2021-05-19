@@ -76,18 +76,12 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
                 next_target_value_arr.append(None)
             df[f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
 
-    # drop rows with incomplete target info. (last nr_prediction rows per each group in time series tasks)
-    # df = df.dropna(axis=0,
-    #                how='any',
-    #                subset=[f'{target_column}_timestep_{i}'
-    #                        for target_column in predict_columns
-    #                        for i in range(1, nr_predictions)])
+    # drop rows with incomplete target info.
     for target_column in predict_columns:
         for col in [f'{target_column}_timestep_{i}' for i in range(1, nr_predictions)]:
             if 'make_predictions' not in df.columns:
                 df['make_predictions'] = True
             df['make_predictions'][df[col].isna()] = False
-            # df.loc[df[col].isna(), ['make_predictions']] = False
 
     return df
 
