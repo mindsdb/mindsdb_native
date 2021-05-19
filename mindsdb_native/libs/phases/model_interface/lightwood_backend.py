@@ -81,7 +81,7 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
         for col in [f'{target_column}_timestep_{i}' for i in range(1, nr_predictions)]:
             if 'make_predictions' not in df.columns:
                 df['make_predictions'] = True
-            df['make_predictions'][df[col].isna()] = False
+            df.loc[df[col].isna(), ['make_predictions']] = False
 
     return df
 
