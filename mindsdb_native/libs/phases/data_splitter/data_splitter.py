@@ -36,14 +36,14 @@ class DataSplitter(BaseModule):
                 test_indexes[NO_GROUP] = data_split_indexes['test_indexes']
                 validation_indexes[NO_GROUP] = data_split_indexes['validation_indexes']
             else:
-                # for time series, val and test should both have >= 2*nr_predictions rows
-                train_cutoff = max(length * 2 * CONFIG.TEST_TRAIN_RATIO,
-                                   2 * 2 * self.transaction.lmd['tss'].get('nr_predictions', 0))
 
                 if len(group_by) > 0:
                     for group in all_indexes:
                         if group == NO_GROUP: continue
                         length = len(all_indexes[group])
+                        # for time series, val and test should both have >= 2*nr_predictions rows
+                        train_cutoff = max(length * 2 * CONFIG.TEST_TRAIN_RATIO,
+                                           2 * 2 * self.transaction.lmd['tss'].get('nr_predictions', 0))
 
                         train_a = 0
                         train_b = round(length - train_cutoff)
@@ -62,6 +62,8 @@ class DataSplitter(BaseModule):
                         validation_indexes[NO_GROUP].extend(validation_indexes[group])
                 else:
                     length = len(all_indexes[NO_GROUP])
+                    train_cutoff = max(length * 2 * CONFIG.TEST_TRAIN_RATIO,
+                                       2 * 2 * self.transaction.lmd['tss'].get('nr_predictions', 0))
 
                     # make sure that the last in the time series are also the subset used for test
                     train_a = 0
