@@ -18,7 +18,6 @@ from sklearn.metrics import (
     r2_score
 )
 
-from lightwood.mixers import NnMixer
 from mindsdb_native.__about__ import __version__
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.data_types.mindsdb_logger import log
@@ -205,9 +204,8 @@ def evaluate_regression_accuracy(
         **kwargs
     ):
     if kwargs.get('ts_window', None) is not None and backend.predictor and \
-            isinstance(backend.predictor._mixer, NnMixer) and \
             kwargs['ts_window'] <= 2*len(predictions[column]):
-        # provided enough rows, truncate first 'window' values to account for warmup period in NnMixer
+        # with enough rows, truncate 1st 'window' outputs to account for incomplete historical context
         predictions[column] = predictions[column][kwargs['ts_window']:]
         true_values = true_values[kwargs['ts_window']:]
 
