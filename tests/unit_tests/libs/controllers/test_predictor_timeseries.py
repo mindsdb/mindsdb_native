@@ -255,7 +255,8 @@ class TestPredictorTimeseries(unittest.TestCase):
                     df,
                     ['a'],
                     nr_predictions=nr_predictions,
-                    window=window
+                    window=window,
+                    mode='learn'
                 )
 
                 for x in new_df['__mdb_ts_previous_a']:
