@@ -511,13 +511,17 @@ class LightwoodBackend:
 
                 if self.transaction.lmd['tss']['is_timeseries']:
                     validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
+                    ts_window = self.transaction.lmd['tss'].get('window', 0)
+                else:
+                    ts_window = 0
 
                 validation_accuracy = evaluate_accuracy(
                     validation_predictions,
                     validation_df,
                     self.transaction.lmd['stats_v2'],
                     self.transaction.lmd['predict_columns'],
-                    backend=self
+                    backend=self,
+                    ts_window=ts_window
                 )
 
                 predictors_and_accuracies.append((
