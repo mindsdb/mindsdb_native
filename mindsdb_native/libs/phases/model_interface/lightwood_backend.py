@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import lightwood
 from lightwood.constants.lightwood import ColumnDataTypes
+from lightwood.api.ensemble import LightwoodEnsemble
+from lightwood.api.predictor import Predictor
 
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.config import *
@@ -586,8 +588,16 @@ class LightwoodBackend:
 
             if self.predictor is None:
                 predictor_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'], 'lightwood_data' + gb_val)
-                self.predictor = lightwood.Predictor(load_from_path=predictor_path)
-
+                try:
+                    self.predictor = lightwood.Predictor(load_from_path=predictor_path)
+                except Exception as e:
+                    try:
+                        ensemble_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'])
+                        self.predictor = LightwoodEnsemble(load_from_path=ensemble_path)
+                    except Exception as e:
+                        raise(e)
+                except Exception as e:
+                    raise(e)
             # not the most efficient but least prone to bug and should be fast enough
             if len(ignore_columns) > 0:
                 run_df = df.copy(deep=True)
@@ -674,3 +684,22 @@ class LightwoodBackend:
                 formated_predictions[k] = ordered_values
 
         return formated_predictions
+
+    def finetune(self):
+        try:
+            load_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'])
+            ensemble = LightwoodEnsemble(load_from_path=load_path)
+        except Exception as e:
+            load_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'])
+            ensemble = LightwoodEnsemble(predictor=Predictor(load_from_path=os.path.join(load_path, 'lightwood_data')))
+        except Exception as e:
+            raise("Adjust can only be called on an already trained Predictor!")
+
+        self.train()  # this generates a new predictor object
+
+        # update and save the ensemble
+        ensemble.append(self.predictor)
+        self.predictor = ensemble
+
+        save_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'])
+        self.predictor.save(path_to=save_path)

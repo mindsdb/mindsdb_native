@@ -19,3 +19,6 @@ class ModelInterface(BaseModule):
             self.transaction.lmd['train_end_at'] = str(datetime.datetime.now())
         elif mode == 'predict':
             self.transaction.hmd['predictions'] = self.transaction.model_backend.predict()
+        elif mode == 'finetune':
+            self.transaction.lmd['quick_learn'] = True  # is this needed here?
+            self.transaction.model_backend.finetune()
