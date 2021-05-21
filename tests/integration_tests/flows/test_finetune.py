@@ -41,13 +41,16 @@ class TestFinetune(unittest.TestCase):
 
             result_single = predictor.test(when_data=test, accuracy_score_functions=r2_score)
             print(result_single)
-            # assert result_single['rental_price_accuracy'] >= 0.9
+            assert result_single['rental_price_accuracy'] >= 0.9
             result_all = predictor.test(when_data=all_test, accuracy_score_functions=r2_score)
             print(result_all)
-            # assert result_all['rental_price_accuracy'] >= 0.9
+            assert result_all['rental_price_accuracy'] >= 0.9
 
             results_single_test.append(result_single[f'{target}_accuracy'])
             results_all_test.append(result_all[f'{target}_accuracy'])
+
+        print(np.array(results_single_test))
+        print(np.array(results_all_test))
 
         print(np.array(results_single_test).mean())
         print(np.array(results_all_test).mean())
