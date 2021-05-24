@@ -20,5 +20,4 @@ class ModelInterface(BaseModule):
         elif mode == 'predict':
             self.transaction.hmd['predictions'] = self.transaction.model_backend.predict()
         elif mode == 'finetune':
-            self.transaction.lmd['quick_learn'] = True  # is this needed here?
             self.transaction.model_backend.finetune()

@@ -279,16 +279,11 @@ class AdjustTransaction(Transaction):
             self._call_phase_module(module_name='DataCleaner')
             self._call_phase_module(module_name='DataSplitter')
             self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
-            # self.save_metadata()  # intersperse?
             self.lmd['current_phase'] = MODEL_STATUS_ADJUSTING
 
-            # quick learn
             self._call_phase_module(module_name='ModelInterface', mode='finetune')
             predict_method = self.session.predict
             def predict_method_wrapper(*args, **kwargs):
-                if 'advanced_args' not in kwargs:
-                    kwargs['advanced_args'] = {}
-                kwargs['advanced_args']['quick_predict'] = True
                 return predict_method(*args, **kwargs)
             self.session.predict = predict_method_wrapper
 
