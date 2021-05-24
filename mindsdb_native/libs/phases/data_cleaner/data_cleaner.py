@@ -3,7 +3,6 @@ import numpy as np
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.constants.mindsdb import TRANSACTION_LEARN
 
-
 class DataCleaner(BaseModule):
     def _get_empty_columns(self, df):
         empty_columns = []
