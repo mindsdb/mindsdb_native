@@ -203,6 +203,11 @@ def evaluate_regression_accuracy(
         backend,
         **kwargs
     ):
+    if kwargs.get('ts_window', None) is not None and kwargs['ts_window'] <= 2*len(predictions[column]):
+        # with enough rows, truncate 1st 'window' outputs to account for incomplete historical context
+        predictions[column] = predictions[column][kwargs['ts_window']:]
+        true_values = true_values[kwargs['ts_window']:]
+
     if f'{column}_confidence_range' in predictions:
         Y = np.array(true_values)
         ranges = predictions[f'{column}_confidence_range']

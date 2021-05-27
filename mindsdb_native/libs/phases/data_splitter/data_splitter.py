@@ -36,17 +36,21 @@ class DataSplitter(BaseModule):
                 test_indexes[NO_GROUP] = data_split_indexes['test_indexes']
                 validation_indexes[NO_GROUP] = data_split_indexes['validation_indexes']
             else:
+
                 if len(group_by) > 0:
                     for group in all_indexes:
                         if group == NO_GROUP: continue
                         length = len(all_indexes[group])
+                        # for time series, val and test should both have >= 2*nr_predictions rows
+                        train_cutoff = max(length * 2 * CONFIG.TEST_TRAIN_RATIO,
+                                           2 * 2 * self.transaction.lmd['tss'].get('nr_predictions', 0))
 
                         train_a = 0
-                        train_b = round(length - length * CONFIG.TEST_TRAIN_RATIO)
+                        train_b = round(length - train_cutoff)
                         train_indexes[group] = all_indexes[group][train_a:train_b]
 
                         test_a = train_b
-                        test_b = train_b + round(length * CONFIG.TEST_TRAIN_RATIO / 2)
+                        test_b = train_b + round(train_cutoff / 2)
                         test_indexes[group] = all_indexes[group][test_a:test_b]
 
                         valid_a = test_b
@@ -58,14 +62,16 @@ class DataSplitter(BaseModule):
                         validation_indexes[NO_GROUP].extend(validation_indexes[group])
                 else:
                     length = len(all_indexes[NO_GROUP])
+                    train_cutoff = max(length * 2 * CONFIG.TEST_TRAIN_RATIO,
+                                       2 * 2 * self.transaction.lmd['tss'].get('nr_predictions', 0))
 
                     # make sure that the last in the time series are also the subset used for test
                     train_a = 0
-                    train_b = int(length * (1 - 2 * CONFIG.TEST_TRAIN_RATIO))
+                    train_b = round(length - train_cutoff)
                     train_indexes[NO_GROUP] = all_indexes[NO_GROUP][train_a:train_b]
 
                     valid_a = train_b
-                    valid_b = train_b + int(length * CONFIG.TEST_TRAIN_RATIO)
+                    valid_b = train_b + round(train_cutoff / 2)
                     validation_indexes[NO_GROUP] = all_indexes[NO_GROUP][valid_a:valid_b]
 
                     test_a = valid_b

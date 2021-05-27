@@ -55,7 +55,7 @@ def _ts_add_previous_rows(df, historical_columns, window):
     return df
 
 
-def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
+def _ts_add_previous_target(df, predict_columns, nr_predictions, window, mode):
     for target_column in predict_columns:
         previous_target_values = list(df[target_column])
         del previous_target_values[-1]
@@ -72,10 +72,18 @@ def _ts_add_previous_target(df, predict_columns, nr_predictions, window):
         for timestep_index in range(1, nr_predictions):
             next_target_value_arr = list(df[target_column])
             for del_index in range(0, min(timestep_index, len(next_target_value_arr))):
-                del next_target_value_arr[del_index]
-                next_target_value_arr.append(0)
-            # @TODO: Maybe ignore the rows with `None` next targets for training
+                del next_target_value_arr[0]
+                next_target_value_arr.append(None)
             df[f'{target_column}_timestep_{timestep_index}'] = next_target_value_arr
+
+    # drop rows with incomplete target info.
+    if mode == 'learn':
+        for target_column in predict_columns:
+            for col in [f'{target_column}_timestep_{i}' for i in range(1, nr_predictions)]:
+                if 'make_predictions' not in df.columns:
+                    df['make_predictions'] = True
+                df.loc[df[col].isna(), ['make_predictions']] = False
+
     return df
 
 
@@ -179,7 +187,7 @@ class LightwoodBackend:
             df_arr = pool.map(partial(_ts_order_col_to_cell_lists, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns']), df_arr)
             df_arr = pool.map(partial(_ts_add_previous_rows, historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'], window=window), df_arr)
             if self.transaction.lmd['tss']['use_previous_target']:
-                df_arr = pool.map(partial(_ts_add_previous_target, predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window), df_arr)
+                df_arr = pool.map(partial(_ts_add_previous_target, predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window, mode=mode), df_arr)
             pool.close()
             pool.join()
         else:
@@ -188,7 +196,7 @@ class LightwoodBackend:
                 df_arr[i] = _ts_order_col_to_cell_lists(df_arr[i], historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'])
                 df_arr[i] = _ts_add_previous_rows(df_arr[i], historical_columns=ob_arr + self.transaction.lmd['tss']['historical_columns'], window=window)
                 if self.transaction.lmd['tss']['use_previous_target']:
-                    df_arr[i] = _ts_add_previous_target(df_arr[i], predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window)
+                    df_arr[i] = _ts_add_previous_target(df_arr[i], predict_columns=self.transaction.lmd['predict_columns'], nr_predictions=self.nr_predictions, window=window, mode=mode)
 
         combined_df = pd.concat(df_arr)
 
@@ -503,13 +511,17 @@ class LightwoodBackend:
 
                 if self.transaction.lmd['tss']['is_timeseries']:
                     validation_df = self.transaction.input_data.validation_df[self.transaction.input_data.validation_df['make_predictions'] == True]
+                    ts_window = self.transaction.lmd['tss'].get('window', 0)
+                else:
+                    ts_window = None
 
                 validation_accuracy = evaluate_accuracy(
                     validation_predictions,
                     validation_df,
                     self.transaction.lmd['stats_v2'],
                     self.transaction.lmd['predict_columns'],
-                    backend=self
+                    backend=self,
+                    ts_window=ts_window
                 )
 
                 predictors_and_accuracies.append((
