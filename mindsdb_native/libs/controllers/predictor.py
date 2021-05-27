@@ -476,6 +476,3 @@ class Predictor:
             )
 
             self.transaction.run()
-
-    def online_learn(self, from_data):
-        pass
