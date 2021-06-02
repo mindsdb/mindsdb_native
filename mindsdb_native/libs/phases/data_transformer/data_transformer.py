@@ -115,15 +115,6 @@ class DataTransformer(BaseModule):
                 if data_subtype == DATA_SUBTYPES.INT:
                     self._apply_to_all_data(input_data, column, _try_round, transaction_type)
 
-            if data_type == DATA_TYPES.DATE:
-                self._apply_to_all_data(
-                    input_data,
-                    column,
-                    _standardize_date,
-                    transaction_type,
-                    dateutil_parser_kwargs=self.transaction.lmd.get('dateutil_parser_kwargs_per_column', {}).get(column, {})
-                )
-
             if data_type == DATA_TYPES.CATEGORICAL:
                 if data_subtype == DATA_SUBTYPES.TAGS:
                     self._apply_to_all_data(input_data, column, _tags_to_tuples, transaction_type)
@@ -137,17 +128,25 @@ class DataTransformer(BaseModule):
                 if data_subtype == DATA_SUBTYPES.ARRAY:
                     self._apply_to_all_data(input_data, column, _standardize_timeseries, transaction_type)
 
-            if self.transaction.hmd['model_backend'] == 'lightwood':
-                if data_type == DATA_TYPES.DATE:
-                    self._apply_to_all_data(
-                        input_data,
-                        column,
-                        _standardize_datetime,
-                        transaction_type,
-                        dateutil_parser_kwargs=self.transaction.lmd.get('dateutil_parser_kwargs_per_column', {}).get(column, {})
-                    )
-                    self._apply_to_all_data(input_data, column, _lightwood_datetime_processing, transaction_type)
-                    self._apply_to_all_data(input_data, column, _handle_nan, transaction_type)
+            if self.transaction.hmd['model_backend'] == 'lightwood' and data_type == DATA_TYPES.DATE:
+                self._apply_to_all_data(
+                    input_data,
+                    column,
+                    _standardize_datetime,
+                    transaction_type,
+                    dateutil_parser_kwargs=self.transaction.lmd.get('dateutil_parser_kwargs_per_column', {}).get(column, {})
+                )
+                self._apply_to_all_data(input_data, column, _lightwood_datetime_processing, transaction_type)
+                self._apply_to_all_data(input_data, column, _handle_nan, transaction_type)
+
+            elif data_type == DATA_TYPES.DATE:
+                self._apply_to_all_data(
+                    input_data,
+                    column,
+                    _standardize_date,
+                    transaction_type,
+                    dateutil_parser_kwargs=self.transaction.lmd.get('dateutil_parser_kwargs_per_column', {}).get(column, {})
+                )
 
         # Initialize this here, will be overwritten if `equal_accuracy_for_all_output_categories` is specified to be True in order to account for it
         self.transaction.lmd['weight_map'] = self.transaction.lmd['output_categories_importance_dictionary']
