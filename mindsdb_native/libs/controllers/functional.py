@@ -152,11 +152,12 @@ def rename_model(old_model_name, new_model_name):
             return True
 
         try:
-            shutil.copy(
+            shutil.rmtree(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, new_model_name))
+            shutil.copytree(
                 os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name),
                 os.path.join(CONFIG.MINDSDB_STORAGE_PATH, new_model_name)
             )
-        except Exception:
+        except Exception as e:
             return False
 
         lmd = load_lmd(os.path.join(CONFIG.MINDSDB_STORAGE_PATH, old_model_name, 'light_model_metadata.pickle'))
