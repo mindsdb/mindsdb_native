@@ -83,6 +83,10 @@ class DataSplitter(BaseModule):
             self.transaction.input_data.validation_df = self.transaction.input_data.data_frame.loc[validation_indexes[NO_GROUP]].copy()
 
             if self.transaction.lmd['tss']['is_timeseries']:
+                ts_train_row_count = len(self.transaction.input_data.train_df)
+                ts_test_row_count = len(self.transaction.input_data.test_df)
+                ts_val_row_count = len(self.transaction.input_data.validation_df)
+
                 historical_train = deepcopy(self.transaction.input_data.train_df)
                 historical_train['make_predictions'] = [False] * len(historical_train)
 
@@ -90,14 +94,11 @@ class DataSplitter(BaseModule):
                 historical_test['make_predictions'] = [False] * len(historical_test)
 
                 self.transaction.input_data.train_df['make_predictions'] = [True] * len(self.transaction.input_data.train_df)
-                ts_train_row_count = len(self.transaction.input_data.train_df)
 
                 self.transaction.input_data.test_df['make_predictions'] = [True] * len(self.transaction.input_data.test_df)
-                ts_test_row_count = len(self.transaction.input_data.test_df)
                 self.transaction.input_data.test_df = pd.concat([self.transaction.input_data.test_df,historical_train])
 
                 self.transaction.input_data.validation_df['make_predictions'] = [True] * len(self.transaction.input_data.validation_df)
-                ts_val_row_count = len(self.transaction.input_data.validation_df)
                 self.transaction.input_data.validation_df = pd.concat([self.transaction.input_data.validation_df,historical_test,deepcopy(historical_train)])
 
             self.transaction.input_data.data_frame = None
@@ -107,6 +108,7 @@ class DataSplitter(BaseModule):
             self.transaction.lmd['data_preparation']['validation_row_count'] = len(self.transaction.input_data.validation_df)
 
             if self.transaction.lmd['tss']['is_timeseries']:
+                # restore original row count (prior to added historical context)
                 self.transaction.lmd['data_preparation']['train_row_count'] = ts_train_row_count
                 self.transaction.lmd['data_preparation']['validation_row_count'] = ts_val_row_count
                 self.transaction.lmd['data_preparation']['test_row_count'] = ts_test_row_count
