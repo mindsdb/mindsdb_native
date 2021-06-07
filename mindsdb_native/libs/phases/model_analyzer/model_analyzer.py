@@ -103,7 +103,7 @@ class ModelAnalyzer(BaseModule):
                 else:
                     normalizer = None
 
-                fixed_significance = self.transaction.lmd.get('fixed_confidenece', None)
+                fixed_significance = self.transaction.lmd.get('fixed_confidence', None)
 
                 # instance the ICP
                 nc = nc_class(model, nc_function, normalizer=normalizer)
