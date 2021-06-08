@@ -1,7 +1,9 @@
-import numpy as np
-import pandas as pd
 from copy import deepcopy
 from itertools import product
+
+import torch
+import numpy as np
+import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 from nonconformist.icp import IcpRegressor, IcpClassifier
 from nonconformist.nc import RegressorNc, ClassifierNc, MarginErrFunc
@@ -11,7 +13,7 @@ from mindsdb_native.libs.helpers.general_helpers import pickle_obj, evaluate_acc
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.phases.base_module import BaseModule
 from mindsdb_native.libs.helpers.conformal_helpers import ConformalClassifierAdapter, ConformalRegressorAdapter
-from mindsdb_native.libs.helpers.conformal_helpers import BoostedAbsErrorErrFunc, SelfawareNormalizer
+from mindsdb_native.libs.helpers.conformal_helpers import BoostedAbsErrorErrFunc, SelfawareNormalizer, t_softmax
 from mindsdb_native.libs.helpers.confidence_helpers import clean_df, set_conf_range
 from mindsdb_native.libs.helpers.accuracy_stats import AccStats
 
@@ -226,7 +228,9 @@ class ModelAnalyzer(BaseModule):
             ignorable_input_columns = [x for x in input_columns if self.transaction.lmd['stats_v2'][x]['typing']['data_type'] != DATA_TYPES.FILE_PATH
                             and (not self.transaction.lmd['tss']['is_timeseries'] or
                                  (x not in self.transaction.lmd['tss']['order_by'] and
-                                 x not in self.transaction.lmd['tss']['historical_columns']))]
+                                  (self.transaction.lmd['tss']['group_by'] is None or
+                                   x not in self.transaction.lmd['tss']['group_by']) and
+                                  x not in self.transaction.lmd['tss']['historical_columns']))]
 
             for col in ignorable_input_columns:
                 empty_input_predictions[col] = self.transaction.model_backend.predict('validate', ignore_columns=[col])
@@ -241,11 +245,15 @@ class ModelAnalyzer(BaseModule):
 
             # Get some information about the importance of each column
             self.transaction.lmd['column_importances'] = {}
+            acc_increases = []
             for col in ignorable_input_columns:
                 accuracy_increase = (normal_accuracy - empty_input_accuracy[col])
-                # normalize from 0 to 10
-                self.transaction.lmd['column_importances'][col] = 10 * max(0, accuracy_increase)
-                assert self.transaction.lmd['column_importances'][col] <= 10
+                acc_increases.append(accuracy_increase)
+
+            # low 0.2 temperature to accentuate differences
+            acc_increases = t_softmax(torch.Tensor([acc_increases]), t=0.2).tolist()[0]
+            for col, inc in zip(ignorable_input_columns, acc_increases):
+                self.transaction.lmd['column_importances'][col] = 10*inc  # scores go from 0 to 10 in GUI
 
         # Get accuracy stats
         overall_accuracy_arr = []
