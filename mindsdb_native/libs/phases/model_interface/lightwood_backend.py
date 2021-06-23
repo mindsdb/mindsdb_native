@@ -691,7 +691,7 @@ class LightwoodBackend:
             ensemble = LightwoodEnsemble(load_from_path=load_path)
         except Exception as e:
             load_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'])
-            ensemble = LightwoodEnsemble(predictor=Predictor(load_from_path=os.path.join(load_path, 'lightwood_data')))
+            ensemble = LightwoodEnsemble(predictors=Predictor(load_from_path=os.path.join(load_path, 'lightwood_data')))
         except Exception as e:
             raise("Adjust can only be called on an already trained Predictor!")
 
