@@ -50,7 +50,7 @@ class DataSplitter(BaseModule):
                         train_indexes[group] = all_indexes[group][train_a:train_b]
 
                         test_a = train_b
-                        test_b = train_b + max(0, round(train_cutoff / 2))
+                        test_b = test_a + max(test_a, round(train_cutoff / 2))
                         test_indexes[group] = all_indexes[group][test_a:test_b]
 
                         valid_a = test_b
