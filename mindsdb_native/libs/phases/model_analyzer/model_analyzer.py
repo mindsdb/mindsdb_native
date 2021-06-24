@@ -164,6 +164,8 @@ class ModelAnalyzer(BaseModule):
                     icps_df = deepcopy(self.transaction.input_data.cached_val_df)
                     if is_multi_ts:
                         icps_df[f'__predicted_{target}'] = [p[0] for p in normal_predictions[target]]
+                    elif is_classification:
+                        icps_df[f'__predicted_{target}'] = normal_predictions[f'{target}_class_distribution']
                     else:
                         icps_df[f'__predicted_{target}'] = normal_predictions[target]
 
@@ -179,6 +181,8 @@ class ModelAnalyzer(BaseModule):
 
                         # save relevant predictions in the caches, then calibrate the ICP
                         pred_cache = icp_df.pop(f'__predicted_{target}').values
+                        if is_classification:
+                            pred_cache = np.vstack(pred_cache)
                         icps[frozenset(group)].nc_function.model.prediction_cache = pred_cache
                         icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
                         if icps[frozenset(group)].nc_function.normalizer is not None:
