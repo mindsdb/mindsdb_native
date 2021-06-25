@@ -33,7 +33,6 @@ class TestFinetune(unittest.TestCase):
                 predictor.learn(from_data=train,
                                 to_predict=target,
                                 stop_training_in_x_seconds=10,
-                                advanced_args={'use_mixers': ['LightGBMMixer']},
                                 use_gpu=False)
             else:
                 # finetune here
