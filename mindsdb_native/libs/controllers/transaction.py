@@ -128,7 +128,7 @@ class Transaction:
             self.log.error(traceback.format_exc())
             self.log.error(f'Could not save mindsdb heavy metadata in the file: {fn}')
 
-        if 'icp' in self.hmd.keys() and self.hmd['icp']['__mdb_active']:
+        if 'icp' in self.hmd.keys() and self.hmd.get('icp', {}) and self.hmd['icp'].get('__mdb_active', False):
             icp_fn = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.hmd['name'], 'icp.pickle')
             mdb_predictors = {}
             try:
@@ -269,6 +269,36 @@ class LearnTransaction(Transaction):
             self._run()
         else:
             _thread.start_new_thread(self._run(), ())
+
+
+class AdjustTransaction(Transaction):
+    def run(self):
+        try:
+            self.lmd['current_phase'] = MODEL_STATUS_PREPARING
+            self._call_phase_module(module_name='DataExtractor')
+            self._call_phase_module(module_name='DataCleaner')
+            self._call_phase_module(module_name='DataSplitter')
+            self._call_phase_module(module_name='DataTransformer', input_data=self.input_data)
+            self.lmd['current_phase'] = MODEL_STATUS_ADJUSTING
+
+            self._call_phase_module(module_name='ModelInterface', mode='finetune')
+            predict_method = self.session.predict
+            def predict_method_wrapper(*args, **kwargs):
+                return predict_method(*args, **kwargs)
+            self.session.predict = predict_method_wrapper
+
+            self.lmd['current_phase'] = MODEL_STATUS_ADJUSTED
+            self.save_metadata()
+            return
+
+        except Exception as e:
+            self.lmd['is_active'] = False
+            self.lmd['current_phase'] = MODEL_STATUS_ERROR
+            self.lmd['stack_trace_on_error'] = traceback.format_exc()
+            self.lmd['error_explanation'] = str(e)
+            self.log.error(str(e))
+            self.save_metadata()
+            raise e
 
 class AnalyseTransaction(Transaction):
     def run(self):
