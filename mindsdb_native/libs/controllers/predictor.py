@@ -447,11 +447,6 @@ class Predictor:
             return self.transaction.output_data
 
     def adjust(self, from_data):
-        # try:
-        #     assert self.predictor is not None  # TODO have to find out best way of doing this
-        # except AssertionError:
-        #     raise("Adjusting (or fine-tuning) can only be done for an already trained predictor.")
-
         with MDBLock('exclusive', 'learn_' + self.name):
 
             light_transaction_metadata = load_lmd(os.path.join(
