@@ -596,8 +596,7 @@ class LightwoodBackend:
                         self.predictor = LightwoodEnsemble(load_from_path=ensemble_path)
                     except Exception as e:
                         raise(e)
-                except Exception as e:
-                    raise(e)
+
             # not the most efficient but least prone to bug and should be fast enough
             if len(ignore_columns) > 0:
                 run_df = df.copy(deep=True)
@@ -686,14 +685,16 @@ class LightwoodBackend:
         return formated_predictions
 
     def finetune(self):
+        ensemble = None
         try:
             load_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'])
             ensemble = LightwoodEnsemble(load_from_path=load_path)
         except Exception as e:
             load_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, self.transaction.lmd['name'])
             ensemble = LightwoodEnsemble(predictors=Predictor(load_from_path=os.path.join(load_path, 'lightwood_data')))
-        except Exception as e:
-            raise("Adjust can only be called on an already trained Predictor!")
+
+        if ensemble is None:
+            raise(Exception("Adjust can only be called on an already trained Predictor!"))
 
         self.train()  # this generates a new predictor object
 

@@ -1,11 +1,12 @@
 import unittest
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.metrics import r2_score, balanced_accuracy_score
+np.random.seed(42)
+
 import mindsdb_native
 from mindsdb_native import Predictor
-from sklearn.metrics import r2_score, balanced_accuracy_score
-from sklearn.datasets import load_iris
-import pandas as pd
-import numpy as np
-np.random.seed(42)
 
 
 class TestFinetune(unittest.TestCase):
