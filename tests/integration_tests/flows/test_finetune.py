@@ -53,8 +53,8 @@ class TestFinetune(unittest.TestCase):
                                                                 'neighborhood',
                                                                 r2_score,
                                                                 '__test_finetune_numerical')
-        assert np.array(accs_single_split).mean() >= 0.9
-        assert np.array(accs_all_data).mean() >= 0.9
+        assert np.array(accs_single_split).mean() >= 0.8
+        assert np.array(accs_all_data).mean() >= 0.8
 
     def test_finetune_classification(self):
         df = load_iris(as_frame=True).frame
@@ -65,5 +65,5 @@ class TestFinetune(unittest.TestCase):
                                                                 'finetune_group',
                                                                 balanced_accuracy_score,
                                                                 '__test_finetune_categorical')
-        assert np.array(accs_single_split).mean() >= 0.9
-        assert np.array(accs_all_data).mean() >= 0.9
+        assert np.array(accs_single_split).mean() >= 0.8
+        assert np.array(accs_all_data).mean() >= 0.8
