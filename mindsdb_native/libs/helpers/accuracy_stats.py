@@ -137,8 +137,8 @@ class AccStats:
             nr_samples = min(400,len(self.numerical_samples_arr))
             sampled_numerical_samples_arr = random.sample(self.numerical_samples_arr, nr_samples)
             accuracy_samples = {
-                'y': [x[0] for x in sampled_numerical_samples_arr]
-                ,'x': [x[1] for x in sampled_numerical_samples_arr]
+                'y': []
+                ,'x': []
             }
 
         return overall_accuracy, accuracy_histogram, cm, accuracy_samples
