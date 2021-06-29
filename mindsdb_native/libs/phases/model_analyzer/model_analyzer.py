@@ -307,12 +307,12 @@ class ModelAnalyzer(BaseModule):
                 input_columns=input_columns
             )
 
-            predictions_arr = [normal_predictions_test] + [x for x in empty_input_predictions_test.values()]
+            predictions_arr = [normal_predictions] + [x for x in empty_input_predictions.values()]
 
             acc_stats.fit(
-                test_df,
+                validation_df,
                 predictions_arr,
-                [[ignored_column] for ignored_column in empty_input_predictions_test]
+                [[ignored_column] for ignored_column in empty_input_predictions]
             )
 
             overall_accuracy, accuracy_histogram, cm, accuracy_samples = acc_stats.get_accuracy_stats()
