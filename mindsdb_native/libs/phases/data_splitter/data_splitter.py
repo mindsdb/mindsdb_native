@@ -46,11 +46,11 @@ class DataSplitter(BaseModule):
                                            2 * 2 * self.transaction.lmd['tss'].get('nr_predictions', 0))
 
                         train_a = 0
-                        train_b = round(length - train_cutoff)
+                        train_b = max(0, round(length - train_cutoff))
                         train_indexes[group] = all_indexes[group][train_a:train_b]
 
                         test_a = train_b
-                        test_b = train_b + round(train_cutoff / 2)
+                        test_b = test_a + max(0, round(train_cutoff / 2))
                         test_indexes[group] = all_indexes[group][test_a:test_b]
 
                         valid_a = test_b

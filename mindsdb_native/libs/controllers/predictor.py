@@ -11,7 +11,7 @@ from mindsdb_native.libs.data_types.mindsdb_logger import MindsdbLogger
 from mindsdb_native.libs.helpers.multi_data_source import get_ds
 from mindsdb_native.config import CONFIG
 from mindsdb_native.libs.controllers.transaction import (
-    LearnTransaction, PredictTransaction, MutatingTransaction
+    LearnTransaction, PredictTransaction, MutatingTransaction, AdjustTransaction
 )
 from mindsdb_native.libs.constants.mindsdb import *
 from mindsdb_native.libs.helpers.general_helpers import load_lmd, load_hmd
@@ -445,3 +445,29 @@ class Predictor:
             )
             self.transaction.run()
             return self.transaction.output_data
+
+    def adjust(self, from_data):
+        with MDBLock('exclusive', 'learn_' + self.name):
+
+            light_transaction_metadata = load_lmd(os.path.join(
+                CONFIG.MINDSDB_STORAGE_PATH,
+                self.name,
+                'light_model_metadata.pickle'
+            ))
+
+            heavy_transaction_metadata = load_hmd(os.path.join(
+                CONFIG.MINDSDB_STORAGE_PATH,
+                self.name,
+                'heavy_model_metadata.pickle'
+            ))
+
+            heavy_transaction_metadata['from_data'] = get_ds(from_data)
+
+            self.transaction = AdjustTransaction(
+                session=self,
+                light_transaction_metadata=light_transaction_metadata,
+                heavy_transaction_metadata=heavy_transaction_metadata,
+                logger=self.log
+            )
+
+            self.transaction.run()

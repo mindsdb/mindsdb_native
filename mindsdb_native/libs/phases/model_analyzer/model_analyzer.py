@@ -164,6 +164,8 @@ class ModelAnalyzer(BaseModule):
                     icps_df = deepcopy(self.transaction.input_data.cached_val_df)
                     if is_multi_ts:
                         icps_df[f'__predicted_{target}'] = [p[0] for p in normal_predictions[target]]
+                    elif is_classification:
+                        icps_df[f'__predicted_{target}'] = normal_predictions[f'{target}_class_distribution']
                     else:
                         icps_df[f'__predicted_{target}'] = normal_predictions[target]
 
@@ -179,6 +181,8 @@ class ModelAnalyzer(BaseModule):
 
                         # save relevant predictions in the caches, then calibrate the ICP
                         pred_cache = icp_df.pop(f'__predicted_{target}').values
+                        if is_classification:
+                            pred_cache = np.vstack(pred_cache)
                         icps[frozenset(group)].nc_function.model.prediction_cache = pred_cache
                         icp_df, y = clean_df(icp_df, target, self.transaction, is_classification, fit_params)
                         if icps[frozenset(group)].nc_function.normalizer is not None:
@@ -303,12 +307,12 @@ class ModelAnalyzer(BaseModule):
                 input_columns=input_columns
             )
 
-            predictions_arr = [normal_predictions_test] + [x for x in empty_input_predictions_test.values()]
+            predictions_arr = [normal_predictions] + [x for x in empty_input_predictions.values()]
 
             acc_stats.fit(
-                test_df,
+                validation_df,
                 predictions_arr,
-                [[ignored_column] for ignored_column in empty_input_predictions_test]
+                [[ignored_column] for ignored_column in empty_input_predictions]
             )
 
             overall_accuracy, accuracy_histogram, cm, accuracy_samples = acc_stats.get_accuracy_stats()

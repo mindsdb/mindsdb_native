@@ -8,6 +8,7 @@ from nonconformist.base import ClassifierAdapter
 from nonconformist.nc import BaseScorer, RegressionErrFunc
 
 from lightwood.api.predictor import Predictor
+from lightwood.api.ensemble import LightwoodEnsemble
 from mindsdb_native.config import CONFIG
 
 
@@ -31,7 +32,10 @@ def restore_icp_state(col, hmd, session):
         predictor = session.transaction.model_backend.predictor
     except AttributeError:
         model_path = os.path.join(CONFIG.MINDSDB_STORAGE_PATH, hmd['name'], 'lightwood_data')
-        predictor = Predictor(load_from_path=model_path)
+        try:
+            predictor = Predictor(load_from_path=model_path)
+        except RuntimeError as e:
+            predictor = LightwoodEnsemble(load_from_path=os.path.join(CONFIG.MINDSDB_STORAGE_PATH, hmd['name']))
 
     for group, icp in icps.items():
         if group not in ['__mdb_groups', '__mdb_group_keys']:
