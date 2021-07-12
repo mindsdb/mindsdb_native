@@ -356,6 +356,7 @@ class PredictTransaction(Transaction):
             return self.output_data
 
         output_data = {col: [] for col in self.lmd['columns']}
+        dtypes = {col: {} for col in self.lmd['predict_columns']}
 
         if 'make_predictions' in self.input_data.data_frame.columns:
             if self.lmd['tss'].get('infer_mode', False):
@@ -378,6 +379,20 @@ class PredictTransaction(Transaction):
                 if f'{col}_class_distribution' in self.hmd['predictions']:
                     output_data[f'{col}_class_distribution'] = self.hmd['predictions'][f'{col}_class_distribution']
                     self.lmd['lightwood_data'][f'{col}_class_map'] = self.lmd['stats_v2'][col]['lightwood_class_map']
+
+                typing_info = self.lmd['stats_v2'][col]['typing']
+                dtypes[col]['numerical'] = typing_info['data_type'] == DATA_TYPES.NUMERIC or \
+                               (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                                DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys())
+
+                dtypes[col]['categorical'] = (typing_info['data_type'] == DATA_TYPES.CATEGORICAL or
+                                  (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
+                                   DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())) and \
+                                 typing_info['data_subtype'] != DATA_SUBTYPES.TAGS
+
+                dtypes[col]['anomaly'] = dtypes[col]['numerical'] and self.lmd['tss']['is_timeseries'] and \
+                                         self.lmd['anomaly_detection']
+
             else:
                 output_data[col] = list(predictions_df[col])
 
@@ -404,21 +419,8 @@ class PredictTransaction(Transaction):
                 output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
                 output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
 
-                typing_info = self.lmd['stats_v2'][predicted_col]['typing']
-                is_numerical = typing_info['data_type'] == DATA_TYPES.NUMERIC or \
-                               (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
-                                DATA_TYPES.NUMERIC in typing_info['data_type_dist'].keys())
-
-                is_categorical = (typing_info['data_type'] == DATA_TYPES.CATEGORICAL or
-                                 (typing_info['data_type'] == DATA_TYPES.SEQUENTIAL and
-                                  DATA_TYPES.CATEGORICAL in typing_info['data_type_dist'].keys())) and \
-                                  typing_info['data_subtype'] != DATA_SUBTYPES.TAGS
-
-                is_anomaly_task = is_numerical and \
-                                  self.lmd['tss']['is_timeseries'] and \
-                                  self.lmd['anomaly_detection']
-
-                if (is_numerical or is_categorical) and self.hmd['icp'].get(predicted_col, False):
+                if (dtypes[predicted_col]['numerical'] or dtypes[predicted_col]['categorical']) and \
+                        self.hmd['icp'].get(predicted_col, False):
 
                     # reorder DF index
                     index = self.hmd['icp'][predicted_col]['__default'].index.values
@@ -439,14 +441,14 @@ class PredictTransaction(Transaction):
                     X = deepcopy(icp_X)
 
                     # get all possible ranges
-                    if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1 and is_numerical:
+                    if self.lmd['tss']['is_timeseries'] and self.lmd['tss']['nr_predictions'] > 1 and dtypes[predicted_col]['numerical']:
 
                         # bounds in time series are only given for the first forecast
                         self.hmd['icp'][predicted_col]['__default'].nc_function.model.prediction_cache = \
                             [p[0] for p in output_data[predicted_col]]
                         all_confs = self.hmd['icp'][predicted_col]['__default'].predict(X.values)
 
-                    elif is_numerical:
+                    elif dtypes[predicted_col]['numerical']:
                         self.hmd['icp'][predicted_col]['__default'].nc_function.model.prediction_cache = \
                             output_data[predicted_col]
                         all_confs = self.hmd['icp'][predicted_col]['__default'].predict(X.values)
@@ -463,12 +465,12 @@ class PredictTransaction(Transaction):
                         all_confs = np.swapaxes(np.swapaxes(all_ranges, 0, 2), 0, 1)
 
                     # convert (B, 2, 99) into (B, 2) given width or error rate constraints
-                    if is_numerical:
+                    if dtypes[predicted_col]['numerical']:
                         significances = self.lmd.get('fixed_confidence', None)
                         if significances is not None:
                             confs = all_confs[:, :, int(100*(1-significances))-1]
                         else:
-                            error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
+                            error_rate = self.lmd['anomaly_error_rate'] if dtypes[predicted_col]['anomaly'] else None
                             significances, confs = get_numerical_conf_range(all_confs,
                                                                             predicted_col,
                                                                             self.lmd['stats_v2'],
@@ -504,9 +506,9 @@ class PredictTransaction(Transaction):
                                         icp.nc_function.normalizer.prediction_cache = X.pop('__mdb_selfaware_scores').values
 
                                     # predict and get confidence level given width or error rate constraints
-                                    if is_numerical:
+                                    if dtypes[predicted_col]['numerical']:
                                         all_confs = icp.predict(X.values)
-                                        error_rate = self.lmd['anomaly_error_rate'] if is_anomaly_task else None
+                                        error_rate = self.lmd['anomaly_error_rate'] if dtypes[predicted_col]['anomaly'] else None
                                         significances, confs = get_numerical_conf_range(all_confs, predicted_col,
                                                                                         self.lmd['stats_v2'],
                                                                                         group=frozenset(group),
@@ -535,7 +537,7 @@ class PredictTransaction(Transaction):
                     output_data[f'{predicted_col}_confidence_range'] = confs
 
                     # anomaly detection
-                    if is_anomaly_task:
+                    if dtypes[predicted_col]['anomaly']:
                         anomalies = get_anomalies(output_data[f'{predicted_col}_confidence_range'],
                                                   output_data[f'__observed_{predicted_col}'],
                                                   cooldown=self.lmd['anomaly_cooldown'])
@@ -547,7 +549,7 @@ class PredictTransaction(Transaction):
                 output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
 
         if self.lmd['tss'].get('infer_mode', False):
-            output_data = reformat_inferred(output_data, self.lmd['tss'])
+            output_data = reformat_inferred(output_data, self.lmd['tss'], self.lmd['predict_columns'], dtypes)
 
         self.output_data = PredictTransactionOutputData(
             transaction=self,
