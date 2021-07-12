@@ -122,6 +122,9 @@ class LightwoodBackend:
             infer_mode = index.shape[0] == 0  # condition to trigger: make_predictions is set to False everywhere
         else:
             infer_mode = False
+
+        self.transaction.lmd['tss']['infer_mode'] = infer_mode
+
         original_index_list = []
         idx = 0
         for row in original_df.itertuples():

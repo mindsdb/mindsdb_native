@@ -372,3 +372,20 @@ def load_hmd(path):
     if 'breakpoint' not in hmd:
         hmd['breakpoint'] = None
     return hmd
+
+
+def reformat_inferred(data, tss_args):
+    """
+    Modifies output data whenever time series inferring mode is activated:
+        - Change timestamps in `order_by` col to future values that the predictions belong to.
+    """
+    for idx in range(len(data[tss_args['order_by'][0]])):
+        order_sample = data[tss_args['order_by'][0]][idx]
+
+        # assumes regular intervals between series points
+        interval = order_sample[-1] - order_sample[-2]
+
+        future_timestamps = [order_sample[-1] + interval*i for i in range(tss_args['nr_predictions'])]
+        data[tss_args['order_by'][0]][idx] = future_timestamps
+
+    return data

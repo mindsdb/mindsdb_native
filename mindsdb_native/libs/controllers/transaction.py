@@ -358,9 +358,7 @@ class PredictTransaction(Transaction):
         output_data = {col: [] for col in self.lmd['columns']}
 
         if 'make_predictions' in self.input_data.data_frame.columns:
-            to_predict = self.input_data.data_frame[self.input_data.data_frame['make_predictions'] == True]
-            if to_predict.shape[0] == 0:
-                # assume infer mode, get cached DF with new rows
+            if self.lmd['tss'].get('infer_mode', False):
                 predictions_df = self.input_data.cached_pred_df
             else:
                 predictions_df = pd.DataFrame(
@@ -547,6 +545,9 @@ class PredictTransaction(Transaction):
             for predicted_col in self.lmd['predict_columns']:
                 output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
                 output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
+
+        if self.lmd['tss'].get('infer_mode', False):
+            output_data = reformat_inferred(output_data, self.lmd['tss'], self.lmd['predict_columns'])
 
         self.output_data = PredictTransactionOutputData(
             transaction=self,
