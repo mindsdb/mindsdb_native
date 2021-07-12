@@ -74,7 +74,11 @@ class TransactionOutputRow:
                 answers[pred_col]['anomaly'] = prediction_row[f'{pred_col}_anomaly']
 
             if prediction_row.get(f'{pred_col}_confidence') is not None:
-                answers[pred_col]['confidence'] = round(prediction_row[f'{pred_col}_confidence'], 4)
+                if isinstance(prediction_row.get(f'{pred_col}_confidence'), list):
+                    # for T+N predictors, consider the 1st confidence only
+                    answers[pred_col]['confidence'] = round(prediction_row[f'{pred_col}_confidence'][0], 4)
+                else:
+                    answers[pred_col]['confidence'] = round(prediction_row[f'{pred_col}_confidence'], 4)
                 quality = 'very confident'
                 if answers[pred_col]['confidence'] < 0.8:
                     quality = 'confident'
