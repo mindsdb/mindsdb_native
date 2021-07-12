@@ -547,7 +547,7 @@ class PredictTransaction(Transaction):
                 output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
 
         if self.lmd['tss'].get('infer_mode', False):
-            output_data = reformat_inferred(output_data, self.lmd['tss'], self.lmd['predict_columns'])
+            output_data = reformat_inferred(output_data, self.lmd['tss'])
 
         self.output_data = PredictTransactionOutputData(
             transaction=self,
