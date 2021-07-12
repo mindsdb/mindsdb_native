@@ -378,10 +378,6 @@ def reformat_inferred(data, tss_args, target_cols, dtypes):
     """
     Modifies output data whenever time series inferring mode is activated:
         - Change timestamps in `order_by` col to future values that the predictions belong to.
-        - Add confidence (and bounds where applicable) to t+n predictions, for n>1
-            @TODO: active research question: how to guarantee 1-e coverage for t+n, n>1
-            for now, we replicate the width and conf obtained for t+1
-
     """
     for idx in range(len(data[tss_args['order_by'][0]])):
         order_sample = data[tss_args['order_by'][0]][idx]
@@ -391,13 +387,5 @@ def reformat_inferred(data, tss_args, target_cols, dtypes):
 
         future_timestamps = [order_sample[-1] + interval*i for i in range(tss_args['nr_predictions'])]
         data[tss_args['order_by'][0]][idx] = future_timestamps
-
-        for target in target_cols:
-            conf = data[f'{target}_confidence'][idx]
-            data[f'{target}_confidence'][idx] = [conf for _ in range(tss_args['nr_predictions'])]
-
-            if dtypes[target]['numerical']:
-                width = data[f'{target}_confidence_range'][idx][1] - data[f'{target}_confidence_range'][idx][0]
-                data[f'{target}_confidence_range'][idx] = [[pred-width/2, pred+width/2] for pred in data[target][idx]]
 
     return data

@@ -1,5 +1,6 @@
 from mindsdb_native.libs.helpers.general_helpers import *
-from mindsdb_native.libs.helpers.confidence_helpers import get_numerical_conf_range, get_categorical_conf, get_anomalies
+from mindsdb_native.libs.helpers.confidence_helpers import get_numerical_conf_range, get_categorical_conf
+from mindsdb_native.libs.helpers.confidence_helpers import add_tn_conf_bounds, get_anomalies
 from mindsdb_native.libs.helpers.conformal_helpers import restore_icp_state, clear_icp_state
 from mindsdb_native.libs.data_types.transaction_data import TransactionData
 from mindsdb_native.libs.data_types.transaction_output_data import (
@@ -548,6 +549,8 @@ class PredictTransaction(Transaction):
                 output_data[f'{predicted_col}_confidence'] = [None] * len(output_data[predicted_col])
                 output_data[f'{predicted_col}_confidence_range'] = [[None, None]] * len(output_data[predicted_col])
 
+        if self.lmd['tss'].get('nr_predictions', 1) > 1:
+            output_data = add_tn_conf_bounds(output_data, self.lmd['tss'], self.lmd['predict_columns'], dtypes)
         if self.lmd['tss'].get('infer_mode', False):
             output_data = reformat_inferred(output_data, self.lmd['tss'], self.lmd['predict_columns'], dtypes)
 

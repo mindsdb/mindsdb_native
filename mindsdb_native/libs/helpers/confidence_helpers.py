@@ -172,3 +172,21 @@ def get_anomalies(bounds, observed_series, cooldown=1):
             counter += 1
 
     return anomalies
+
+
+def add_tn_conf_bounds(data, tss_args, target_cols, dtypes):
+    """
+    Add confidence (and bounds where applicable) to t+n predictions, for n>1
+        @TODO: active research question: how to guarantee 1-e coverage for t+n, n>1
+        for now, we replicate the width and conf obtained for t+1
+    """
+    for idx in range(len(data[tss_args['order_by'][0]])):
+        for target in target_cols:
+            conf = data[f'{target}_confidence'][idx]
+            data[f'{target}_confidence'][idx] = [conf for _ in range(tss_args['nr_predictions'])]
+
+            if dtypes[target]['numerical']:
+                width = data[f'{target}_confidence_range'][idx][1] - data[f'{target}_confidence_range'][idx][0]
+                data[f'{target}_confidence_range'][idx] = [[pred - width / 2, pred + width / 2] for pred in
+                                                           data[target][idx]]
+    return data
