@@ -369,8 +369,8 @@ def get_model_data(model_name=None, lmd=None):
                         continue
                     if icol not in lmd['predict_columns']:
                         try:
-                            mao['overall_input_importance']['x'].append(icol)
                             mao['overall_input_importance']['y'].append(round(lmd['column_importances'][icol],1))
+                            mao['overall_input_importance']['x'].append(icol)
                         except Exception:
                             print(f'No column importances found for {icol} !')
 
