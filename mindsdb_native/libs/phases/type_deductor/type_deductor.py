@@ -100,6 +100,9 @@ def count_data_types_in_column(data, lmd, col_name):
     def type_check_sequence(element):
         type_guess, subtype_guess = None, None
 
+        if isinstance(element, str) is False:
+            return None, None
+
         for sep_char in [',', '\t', '|', ' ']:
             all_nr = True
             if '[' in element:
@@ -129,6 +132,12 @@ def count_data_types_in_column(data, lmd, col_name):
 
     def type_check_date(element):
         type_guess, subtype_guess = None, None
+
+        if isinstance(element, datetime.datetime):
+            type_guess = DATA_TYPES.DATE
+            subtype_guess = DATA_SUBTYPES.DATE
+            return type_guess, subtype_guess
+
         try:
             dt = dateutil.parser.parse(element, **lmd.get('dateutil_parser_kwargs_per_column', {}).get(col_name, {}))
 
@@ -141,6 +150,8 @@ def count_data_types_in_column(data, lmd, col_name):
                 subtype_guess = DATA_SUBTYPES.TIMESTAMP
             type_guess = DATA_TYPES.DATE
         except ValueError:
+            pass
+        except TypeError as e:
             pass
         return type_guess, subtype_guess
 
