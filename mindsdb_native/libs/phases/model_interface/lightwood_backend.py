@@ -385,9 +385,9 @@ class LightwoodBackend:
         if self.transaction.lmd['use_gpu'] is not None:
             lightwood.config.config.CONFIG.USE_CUDA = self.transaction.lmd['use_gpu']
 
-        if self.transaction.lmd['quick_learn']:
-            self.transaction.input_data.train_df = pd.concat([copy.deepcopy(self.transaction.input_data.train_df),copy.deepcopy(self.transaction.input_data.test_df)]).reset_index()
-            self.transaction.input_data.test_df = copy.deepcopy(self.transaction.input_data.validation_df).reset_index()
+        # if self.transaction.lmd['quick_learn']:
+        self.transaction.input_data.train_df = pd.concat([copy.deepcopy(self.transaction.input_data.train_df),copy.deepcopy(self.transaction.input_data.test_df)]).reset_index()
+        self.transaction.input_data.test_df = copy.deepcopy(self.transaction.input_data.validation_df).reset_index()
 
         secondary_type_dict = {}
         if self.transaction.lmd['tss']['is_timeseries']:
