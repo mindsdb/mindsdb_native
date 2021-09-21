@@ -1,3 +1,6 @@
+This repository is now deprecated, please consider using mindsdb proper for a high level automatic machine learning solution or using [the new lightwood](https://github.com/mindsdb/lightwood) if you want something lower-level.
+
+
 <h1 align="center">
 	<img width="300" src="https://github.com/mindsdb/mindsdb_native/blob/stable/assets/MindsDBColorPurp@3x.png?raw=true" alt="MindsDB"> 
 	<br>
